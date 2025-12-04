@@ -1,6 +1,47 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Login failed");
+        return;
+      }
+
+      // Success - redirect to dashboard
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
       <div className="w-full max-w-md">
@@ -10,8 +51,13 @@ export default function LoginPage() {
             <p className="text-slate-600">Sign in to your OMNEXORA account</p>
           </div>
 
-          {/* Placeholder form - will be replaced with real auth */}
-          <div className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
                 Email Address
@@ -19,9 +65,12 @@ export default function LoginPage() {
               <input
                 type="email"
                 id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
-                disabled
+                required
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -31,23 +80,22 @@ export default function LoginPage() {
               <input
                 type="password"
                 id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
-                disabled
+                required
+                disabled={isLoading}
               />
             </div>
             <button
-              type="button"
+              type="submit"
               className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled
+              disabled={isLoading}
             >
-              Sign In
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
-          </div>
-
-          <p className="mt-6 text-center text-sm text-slate-500">
-            Login form coming soon. Check back later!
-          </p>
+          </form>
 
           <div className="mt-8 pt-6 border-t border-slate-200 text-center">
             <p className="text-sm text-slate-600">
@@ -62,4 +110,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
