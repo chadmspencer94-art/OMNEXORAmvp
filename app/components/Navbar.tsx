@@ -13,7 +13,13 @@ export default async function Navbar() {
 
   return (
     <NavbarClient
-      user={user ? { email: user.email } : null}
+      user={user ? { 
+        email: user.email,
+        role: user.role || "tradie",
+        verificationStatus: user.verificationStatus || "unverified",
+        verifiedAt: user.verifiedAt ?? null,
+        isAdmin: user.isAdmin ?? false,
+      } : null}
     />
   );
 }

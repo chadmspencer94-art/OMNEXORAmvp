@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type UserRole = "tradie" | "client";
+
 export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<UserRole>("tradie");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -35,7 +38,7 @@ export default function RegisterPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role }),
       });
 
       const data = await response.json();
@@ -69,6 +72,43 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
+
+            {/* Role Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                I am a...
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRole("tradie")}
+                  disabled={isLoading}
+                  className={`p-4 border-2 rounded-xl text-center transition-all ${
+                    role === "tradie"
+                      ? "border-amber-500 bg-amber-50 text-amber-900"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="text-2xl mb-1">🔧</div>
+                  <div className="font-semibold">Tradie</div>
+                  <div className="text-xs text-slate-500">Create job packs</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("client")}
+                  disabled={isLoading}
+                  className={`p-4 border-2 rounded-xl text-center transition-all ${
+                    role === "client"
+                      ? "border-amber-500 bg-amber-50 text-amber-900"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="text-2xl mb-1">🏠</div>
+                  <div className="font-semibold">Client</div>
+                  <div className="text-xs text-slate-500">Request work</div>
+                </button>
+              </div>
+            </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">

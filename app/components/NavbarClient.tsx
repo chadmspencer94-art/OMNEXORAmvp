@@ -4,10 +4,98 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type UserRole = "tradie" | "client";
+type VerificationStatus = "unverified" | "pending_review" | "verified" | "rejected";
+
 interface NavbarClientProps {
   user: {
     email: string;
+    role: UserRole;
+    verificationStatus: VerificationStatus;
+    verifiedAt: string | null;
+    isAdmin: boolean;
   } | null;
+}
+
+function VerificationBadge({ role, status }: { role: UserRole; status: VerificationStatus }) {
+  if (role === "tradie") {
+    if (status === "verified") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 border border-emerald-300">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+          Verified
+        </span>
+      );
+    }
+    if (status === "pending_review") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-900/50 text-amber-400 text-xs font-medium rounded-full">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+          </svg>
+          Verification Pending
+        </span>
+      );
+    }
+    if (status === "rejected") {
+      return (
+        <Link
+          href="/settings/verification"
+          className="inline-flex items-center gap-1 px-2 py-1 bg-red-900/50 text-red-400 hover:text-red-300 text-xs font-medium rounded-full transition-colors"
+        >
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          Verification Rejected
+        </Link>
+      );
+    }
+    // status === "unverified"
+    return (
+      <Link
+        href="/settings/verification"
+        className="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 text-slate-400 hover:text-slate-300 text-xs font-medium rounded-full transition-colors"
+      >
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+        </svg>
+        Not Verified
+      </Link>
+    );
+  }
+  
+  // Client badge
+  if (status === "verified") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 border border-emerald-300">
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+        </svg>
+        Verified
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-900/50 text-red-400 text-xs font-medium rounded-full">
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+        </svg>
+        Rejected
+      </span>
+    );
+  }
+  // status === "unverified" or "pending_review" for client
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 text-slate-400 text-xs font-medium rounded-full">
+      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+      </svg>
+      Not Verified
+    </span>
+  );
 }
 
 export default function NavbarClient({ user }: NavbarClientProps) {
@@ -74,6 +162,15 @@ export default function NavbarClient({ user }: NavbarClientProps) {
               )}
               {isLoggedIn ? (
                 <>
+                  <VerificationBadge role={user.role} status={user.verificationStatus} />
+                  {user.isAdmin && (
+                    <Link
+                      href="/admin/verification"
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors text-xs font-medium"
+                    >
+                      Admin
+                    </Link>
+                  )}
                   <span className="text-slate-400 text-sm truncate max-w-[150px]">
                     {user.email}
                   </span>
@@ -148,6 +245,18 @@ export default function NavbarClient({ user }: NavbarClientProps) {
               )}
               {isLoggedIn ? (
                 <>
+                  <div className="px-4 py-2">
+                    <VerificationBadge role={user.role} status={user.verificationStatus} />
+                  </div>
+                  {user.isAdmin && (
+                    <Link
+                      href="/admin/verification"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block mx-4 my-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-center rounded-lg transition-colors text-sm font-medium"
+                    >
+                      Admin Panel
+                    </Link>
+                  )}
                   <p className="px-4 py-2 text-slate-400 text-sm truncate">
                     {user.email}
                   </p>

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 
 type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Other";
 
@@ -14,13 +14,13 @@ interface FormData {
   propertyType: string;
   address: string;
   notes: string;
-  labourRatePerHour: string;
-  helperRatePerHour: string;
-  materialsAreRoughEstimate: boolean;
 }
 
-export default function NewJobPage() {
+export default function EditJobPage() {
   const router = useRouter();
+  const params = useParams();
+  const jobId = params.id as string;
+
   const [formData, setFormData] = useState<FormData>({
     clientName: "",
     clientEmail: "",
@@ -29,29 +29,61 @@ export default function NewJobPage() {
     propertyType: "",
     address: "",
     notes: "",
-    labourRatePerHour: "",
-    helperRatePerHour: "",
-    materialsAreRoughEstimate: false,
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
 
   const validateEmail = (email: string) => {
+    if (!email) return true; // Allow empty for backwards compatibility
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
+  // Load existing job data
+  useEffect(() => {
+    async function loadJob() {
+      try {
+        const response = await fetch(`/api/jobs/${jobId}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError("Job not found");
+          } else if (response.status === 401 || response.status === 403) {
+            router.push("/login");
+            return;
+          } else {
+            setError("Failed to load job");
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        const data = await response.json();
+        setFormData({
+          clientName: data.job.clientName || "",
+          clientEmail: data.job.clientEmail || "",
+          title: data.job.title || "",
+          tradeType: data.job.tradeType || "Painter",
+          propertyType: data.job.propertyType || "",
+          address: data.job.address || "",
+          notes: data.job.notes || "",
+        });
+        setIsLoading(false);
+      } catch {
+        setError("Failed to load job");
+        setIsLoading(false);
+      }
+    }
+
+    loadJob();
+  }, [jobId, router]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     
     // Clear email error when user types
     if (name === "clientEmail") {
@@ -64,60 +96,90 @@ export default function NewJobPage() {
     setError("");
     setEmailError("");
 
-    // Validate email before submission
+    // Validate email before submission (if provided)
     if (formData.clientEmail && !validateEmail(formData.clientEmail)) {
       setEmailError("Please enter a valid email address");
       return;
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
 
     try {
-      // Prepare data for submission
-      const submitData = {
-        ...formData,
-        labourRatePerHour: formData.labourRatePerHour ? Number(formData.labourRatePerHour) : null,
-        helperRatePerHour: formData.helperRatePerHour ? Number(formData.helperRatePerHour) : null,
-      };
-
-      const response = await fetch("/api/jobs", {
-        method: "POST",
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(submitData),
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Failed to create job");
-        setIsLoading(false);
+        setError(data.error || "Failed to update job");
+        setIsSaving(false);
         return;
       }
 
       // Success - redirect to the job detail page
-      // Keep isLoading true to prevent double submission during navigation
-      router.push(`/jobs/${data.job.id}`);
+      router.push(`/jobs/${jobId}`);
     } catch {
       setError("An unexpected error occurred. Please try again.");
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-slate-200 rounded w-1/4 mb-4"></div>
+          <div className="h-12 bg-slate-200 rounded w-1/2 mb-8"></div>
+          <div className="bg-white rounded-xl border border-slate-200 p-8">
+            <div className="space-y-6">
+              <div className="h-10 bg-slate-200 rounded"></div>
+              <div className="h-10 bg-slate-200 rounded"></div>
+              <div className="h-10 bg-slate-200 rounded"></div>
+              <div className="h-32 bg-slate-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !formData.title) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+          <svg className="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">{error}</h2>
+          <Link
+            href="/jobs"
+            className="inline-flex items-center text-amber-600 hover:text-amber-700 font-medium mt-4"
+          >
+            ← Back to Jobs
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
         <Link
-          href="/jobs"
+          href={`/jobs/${jobId}`}
           className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 mb-4"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to Jobs
+          Back to Job
         </Link>
-        <h1 className="text-3xl font-bold text-slate-900">New Job</h1>
-        <p className="mt-2 text-slate-600">Create a new AI-powered job pack for your client.</p>
+        <h1 className="text-3xl font-bold text-slate-900">Edit Job</h1>
+        <p className="mt-2 text-slate-600">Update the job details. You can regenerate the AI pack after saving.</p>
       </div>
 
       {/* Form */}
@@ -149,7 +211,7 @@ export default function NewJobPage() {
                       placeholder="e.g. John Smith"
                       className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
                       required
-                      disabled={isLoading}
+                      disabled={isSaving}
                     />
                   </div>
                   <div>
@@ -167,7 +229,7 @@ export default function NewJobPage() {
                         emailError ? "border-red-500" : "border-slate-300"
                       }`}
                       required
-                      disabled={isLoading}
+                      disabled={isSaving}
                     />
                     {emailError && (
                       <p className="mt-1 text-sm text-red-600">{emailError}</p>
@@ -193,7 +255,7 @@ export default function NewJobPage() {
                       placeholder="e.g. 3x2 repaint – Baldivis"
                       className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
                       required
-                      disabled={isLoading}
+                      disabled={isSaving}
                     />
                   </div>
 
@@ -208,7 +270,7 @@ export default function NewJobPage() {
                         value={formData.tradeType}
                         onChange={handleChange}
                         className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors bg-white"
-                        disabled={isLoading}
+                        disabled={isSaving}
                       >
                         <option value="Painter">Painter</option>
                         <option value="Plasterer">Plasterer</option>
@@ -231,7 +293,7 @@ export default function NewJobPage() {
                         placeholder="e.g. Single-storey house"
                         className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
                         required
-                        disabled={isLoading}
+                        disabled={isSaving}
                       />
                     </div>
                   </div>
@@ -248,7 +310,7 @@ export default function NewJobPage() {
                       onChange={handleChange}
                       placeholder="e.g. 123 Main St, Baldivis WA 6171"
                       className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
-                      disabled={isLoading}
+                      disabled={isSaving}
                     />
                   </div>
                 </div>
@@ -269,96 +331,11 @@ export default function NewJobPage() {
                     rows={6}
                     placeholder="Include as much detail as possible:&#10;• Room list and sizes&#10;• Current condition of surfaces&#10;• Any prep work needed&#10;• Specific colours or products&#10;• Access considerations&#10;• Timeline requirements"
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors resize-none"
-                    disabled={isLoading}
+                    disabled={isSaving}
                   />
-                  <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <p className="text-xs font-medium text-slate-600 mb-2">💡 Example descriptions:</p>
-                    <ul className="text-xs text-slate-500 space-y-1">
-                      <li>• &quot;1x bedroom 3x3m, walls currently off-white, light prep needed&quot;</li>
-                      <li>• &quot;Ceilings 2.4m high, some cracking, needs patch and sand&quot;</li>
-                      <li>• &quot;Skirtings and doors semi-gloss, minor scuffs&quot;</li>
-                      <li>• &quot;Access via front door, no furniture or light furniture&quot;</li>
-                    </ul>
-                  </div>
                   <p className="mt-2 text-sm text-slate-500">
                     The more detail you provide, the better your AI job pack will be.
                   </p>
-                </div>
-              </div>
-
-              {/* Pricing Context Section */}
-              <div className="pt-6 border-t border-slate-200">
-                <h2 className="text-lg font-semibold text-slate-900 mb-1">Pricing Context</h2>
-                <p className="text-sm text-slate-500 mb-4">Optional – helps AI generate more accurate quotes</p>
-                
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="labourRatePerHour" className="block text-sm font-medium text-slate-700 mb-2">
-                        Your labour rate per hour (ex GST)
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                        <input
-                          type="number"
-                          id="labourRatePerHour"
-                          name="labourRatePerHour"
-                          value={formData.labourRatePerHour}
-                          onChange={handleChange}
-                          min="0"
-                          step="1"
-                          placeholder="50"
-                          className="w-full pl-8 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500">
-                        If empty, we&apos;ll assume a typical rate for your trade in WA.
-                      </p>
-                    </div>
-
-                    <div>
-                      <label htmlFor="helperRatePerHour" className="block text-sm font-medium text-slate-700 mb-2">
-                        Helper / second painter rate (optional)
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                        <input
-                          type="number"
-                          id="helperRatePerHour"
-                          name="helperRatePerHour"
-                          value={formData.helperRatePerHour}
-                          onChange={handleChange}
-                          min="0"
-                          step="1"
-                          placeholder="40"
-                          className="w-full pl-8 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500">
-                        If you usually work with a helper, add their rate. If not, leave blank.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <input
-                      type="checkbox"
-                      id="materialsAreRoughEstimate"
-                      name="materialsAreRoughEstimate"
-                      checked={formData.materialsAreRoughEstimate}
-                      onChange={handleChange}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
-                      disabled={isLoading}
-                    />
-                    <label htmlFor="materialsAreRoughEstimate" className="text-sm text-slate-700">
-                      <span className="font-medium">Treat material prices as rough estimates only</span>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Yes – clearly state that material prices are approximate and must be checked against current supplier prices.
-                      </p>
-                    </label>
-                  </div>
                 </div>
               </div>
 
@@ -366,34 +343,34 @@ export default function NewJobPage() {
               <div className="pt-6 border-t border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <p className="text-sm text-slate-500">
-                    AI will generate a complete job pack including quote, scope, and materials.
+                    After saving, you can regenerate the AI job pack with the updated details.
                   </p>
                   <div className="flex items-center gap-3">
                     <Link
-                      href="/jobs"
+                      href={`/jobs/${jobId}`}
                       className="px-6 py-3 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
                     >
                       Cancel
                     </Link>
                     <button
                       type="submit"
-                      disabled={isLoading}
+                      disabled={isSaving}
                       className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                     >
-                      {isLoading ? (
+                      {isSaving ? (
                         <>
                           <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-slate-900" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                           </svg>
-                          Generating AI Pack...
+                          Saving...
                         </>
                       ) : (
                         <>
                           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          Generate Job Pack
+                          Save Changes
                         </>
                       )}
                     </button>
@@ -404,23 +381,7 @@ export default function NewJobPage() {
           </div>
         </div>
       </form>
-
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-sm mx-4 text-center shadow-2xl">
-            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-amber-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Generating AI Job Pack</h3>
-            <p className="text-slate-600 text-sm">
-              Our AI is creating your professional quote, scope of work, and materials list. This usually takes 10-20 seconds.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+

@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createUser, createSession, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from "@/lib/auth";
+import { createUser, createSession, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS, type UserRole } from "@/lib/auth";
 
 interface RegisterRequestBody {
   email: string;
   password: string;
+  role?: UserRole;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as RegisterRequestBody;
-    const { email, password } = body;
+    const { email, password, role } = body;
 
     // Validate input
     if (!email || typeof email !== "string") {
@@ -43,8 +44,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate role (if provided)
+    const validRoles: UserRole[] = ["tradie", "client"];
+    const userRole: UserRole = role && validRoles.includes(role) ? role : "tradie";
+
     // Create the user
-    const user = await createUser(email, password);
+    const user = await createUser(email, password, userRole);
 
     // Create a session
     const sessionId = await createSession(user.id);
@@ -55,6 +60,10 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         email: user.email,
+        role: user.role,
+        verificationStatus: user.verificationStatus,
+        verifiedAt: user.verifiedAt,
+        isAdmin: user.isAdmin,
       },
     });
 

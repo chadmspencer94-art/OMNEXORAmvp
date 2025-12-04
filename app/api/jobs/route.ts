@@ -17,7 +17,18 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json();
-    const { title, tradeType, propertyType, address, notes } = body;
+    const { 
+      title, 
+      tradeType, 
+      propertyType, 
+      address, 
+      notes, 
+      clientName, 
+      clientEmail,
+      labourRatePerHour,
+      helperRatePerHour,
+      materialsAreRoughEstimate,
+    } = body;
 
     // Validate required fields
     if (!title || typeof title !== "string" || title.trim() === "") {
@@ -34,11 +45,64 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate trade type
+    // Validate client name (required for new jobs)
+    if (!clientName || typeof clientName !== "string" || clientName.trim() === "") {
+      return NextResponse.json(
+        { error: "Client name is required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate client email (required for new jobs)
+    if (!clientEmail || typeof clientEmail !== "string" || clientEmail.trim() === "") {
+      return NextResponse.json(
+        { error: "Client email is required" },
+        { status: 400 }
+      );
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(clientEmail.trim())) {
+      return NextResponse.json(
+        { error: "Please enter a valid email address" },
+        { status: 400 }
+      );
+    }
+
+    // Validate trade type (if provided, must be valid; defaults to "Painter" if not provided)
     const validTradeTypes: TradeType[] = ["Painter", "Plasterer", "Carpenter", "Electrician", "Other"];
-    const normalizedTradeType: TradeType = validTradeTypes.includes(tradeType) 
+    if (tradeType !== undefined && !validTradeTypes.includes(tradeType)) {
+      return NextResponse.json(
+        { error: "Invalid trade type. Must be one of: Painter, Plasterer, Carpenter, Electrician, Other" },
+        { status: 400 }
+      );
+    }
+    const normalizedTradeType: TradeType = tradeType && validTradeTypes.includes(tradeType) 
       ? tradeType 
       : "Painter";
+
+    // Parse and validate optional pricing fields
+    const parsedLabourRate = labourRatePerHour !== undefined && labourRatePerHour !== null && labourRatePerHour !== ""
+      ? Number(labourRatePerHour)
+      : null;
+    const parsedHelperRate = helperRatePerHour !== undefined && helperRatePerHour !== null && helperRatePerHour !== ""
+      ? Number(helperRatePerHour)
+      : null;
+
+    // Validate rates are positive numbers if provided
+    if (parsedLabourRate !== null && (isNaN(parsedLabourRate) || parsedLabourRate <= 0)) {
+      return NextResponse.json(
+        { error: "Labour rate must be a positive number" },
+        { status: 400 }
+      );
+    }
+    if (parsedHelperRate !== null && (isNaN(parsedHelperRate) || parsedHelperRate <= 0)) {
+      return NextResponse.json(
+        { error: "Helper rate must be a positive number" },
+        { status: 400 }
+      );
+    }
 
     // Prepare job data
     const jobData: CreateJobData = {
@@ -47,6 +111,11 @@ export async function POST(request: Request) {
       propertyType: propertyType.trim(),
       address: address?.trim() || undefined,
       notes: notes?.trim() || undefined,
+      clientName: clientName.trim(),
+      clientEmail: clientEmail.trim().toLowerCase(),
+      labourRatePerHour: parsedLabourRate,
+      helperRatePerHour: parsedHelperRate,
+      materialsAreRoughEstimate: materialsAreRoughEstimate === true,
     };
 
     // Create the job with ai_pending status

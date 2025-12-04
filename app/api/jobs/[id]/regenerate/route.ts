@@ -1,0 +1,60 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { getJobById, saveJob, generateJobPack } from "@/lib/jobs";
+
+/**
+ * POST /api/jobs/[id]/regenerate - Regenerate the AI job pack
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const job = await getJobById(id);
+
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
+    if (job.userId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Don't allow regeneration if already generating or initial generation is pending
+    if (job.status === "generating" || job.status === "ai_pending") {
+      return NextResponse.json(
+        { error: "Job pack is already being generated" },
+        { status: 409 }
+      );
+    }
+
+    // Set status to generating
+    job.status = "generating";
+    await saveJob(job);
+
+    try {
+      // Generate the new job pack
+      const updatedJob = await generateJobPack(job);
+      return NextResponse.json({ job: updatedJob });
+    } catch (error) {
+      // If generation fails, mark as failed
+      console.error("Error generating job pack:", error);
+      job.status = "ai_failed";
+      await saveJob(job);
+      return NextResponse.json(
+        { error: "Failed to generate job pack" },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    console.error("Error in regenerate endpoint:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+

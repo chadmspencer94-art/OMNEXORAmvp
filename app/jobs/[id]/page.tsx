@@ -1,7 +1,21 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
+import { Pencil } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { getJobById, type Job, type JobStatus } from "@/lib/jobs";
+import { getJobById, type Job, type JobStatus, type JobWorkflowStatus, type AIReviewStatus, type ClientStatus } from "@/lib/jobs";
+import CopyForClientButton from "./CopyForClientButton";
+import EmailToClientButton from "./EmailToClientButton";
+import RegenerateButton from "./RegenerateButton";
+import JobStatusControl from "./JobStatusControl";
+import AIReviewStatusControl from "./AIReviewStatusControl";
+import ClientStatusControl from "./ClientStatusControl";
+import SendToClientButton from "./SendToClientButton";
+import JobPackPdfButton from "./JobPackPdfButton";
+import MaterialsEditButton from "./MaterialsEditButton";
+import DeleteJobButton from "./DeleteJobButton";
+import VerifiedBadge from "@/app/components/VerifiedBadge";
+import OmnexoraHeader from "@/app/components/OmnexoraHeader";
+import FeedbackButton from "@/app/components/FeedbackButton";
 
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
@@ -11,17 +25,27 @@ interface JobDetailPageProps {
 // Type Definitions for Parsed AI Data
 // ============================================================================
 
-interface QuoteLineItem {
+interface LabourQuote {
   description?: string;
-  rate?: string;
+  hours?: string;
+  ratePerHour?: string;
   total?: string;
-  cost?: string;
+}
+
+interface MaterialsQuote {
+  description?: string;
+  totalMaterialsCost?: string;
+}
+
+interface TotalEstimateQuote {
+  description?: string;
+  totalJobEstimate?: string;
 }
 
 interface ParsedQuote {
-  labour?: QuoteLineItem;
-  materials?: QuoteLineItem;
-  totalEstimate?: QuoteLineItem;
+  labour?: LabourQuote;
+  materials?: MaterialsQuote;
+  totalEstimate?: TotalEstimateQuote;
 }
 
 interface MaterialItem {
@@ -40,6 +64,8 @@ function StatusBadge({ status }: { status: JobStatus }) {
     ai_pending: "bg-amber-100 text-amber-700",
     ai_complete: "bg-green-100 text-green-700",
     ai_failed: "bg-red-100 text-red-700",
+    pending_regeneration: "bg-orange-100 text-orange-700",
+    generating: "bg-amber-100 text-amber-700",
   };
 
   const labels: Record<JobStatus, string> = {
@@ -47,10 +73,76 @@ function StatusBadge({ status }: { status: JobStatus }) {
     ai_pending: "Generating...",
     ai_complete: "Complete",
     ai_failed: "Failed",
+    pending_regeneration: "Needs Update",
+    generating: "Regenerating...",
   };
 
   return (
     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${styles[status]}`}>
+      {labels[status]}
+    </span>
+  );
+}
+
+function JobWorkflowStatusBadge({ status }: { status: JobWorkflowStatus }) {
+  const styles: Record<JobWorkflowStatus, string> = {
+    pending: "bg-amber-100 text-amber-700",
+    booked: "bg-green-100 text-green-700",
+    completed: "bg-blue-100 text-blue-700",
+    cancelled: "bg-slate-100 text-slate-500",
+  };
+
+  const labels: Record<JobWorkflowStatus, string> = {
+    pending: "Pending",
+    booked: "Booked",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  };
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
+      {labels[status]}
+    </span>
+  );
+}
+
+function AIReviewStatusBadge({ status }: { status: AIReviewStatus }) {
+  const styles: Record<AIReviewStatus, string> = {
+    pending: "bg-amber-100 text-amber-700",
+    confirmed: "bg-green-100 text-green-700",
+  };
+
+  const labels: Record<AIReviewStatus, string> = {
+    pending: "Pending review",
+    confirmed: "Confirmed",
+  };
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
+      {labels[status]}
+    </span>
+  );
+}
+
+function ClientStatusBadge({ status }: { status: ClientStatus }) {
+  const styles: Record<ClientStatus, string> = {
+    draft: "bg-slate-100 text-slate-700",
+    sent: "bg-blue-100 text-blue-700",
+    accepted: "bg-emerald-100 text-emerald-700",
+    declined: "bg-rose-100 text-rose-700",
+    cancelled: "bg-amber-100 text-amber-700",
+  };
+
+  const labels: Record<ClientStatus, string> = {
+    draft: "Draft",
+    sent: "Sent to client",
+    accepted: "Accepted",
+    declined: "Declined",
+    cancelled: "Cancelled",
+  };
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
       {labels[status]}
     </span>
   );
@@ -134,11 +226,16 @@ function PricingSection({ content }: { content?: string }) {
                 {parsedQuote.labour.description && (
                   <p className="text-sm text-slate-600 mb-2">{parsedQuote.labour.description}</p>
                 )}
-                {parsedQuote.labour.rate && (
-                  <p className="text-xs text-slate-500">Rate: {parsedQuote.labour.rate}</p>
-                )}
+                <div className="space-y-1">
+                  {parsedQuote.labour.hours && (
+                    <p className="text-xs text-slate-500">Hours: {parsedQuote.labour.hours}</p>
+                  )}
+                  {parsedQuote.labour.ratePerHour && (
+                    <p className="text-xs text-slate-500">Rate: {parsedQuote.labour.ratePerHour}</p>
+                  )}
+                </div>
                 {parsedQuote.labour.total && (
-                  <p className="text-lg font-semibold text-slate-900">{parsedQuote.labour.total}</p>
+                  <p className="text-lg font-semibold text-slate-900 mt-2">{parsedQuote.labour.total}</p>
                 )}
               </div>
             )}
@@ -148,8 +245,8 @@ function PricingSection({ content }: { content?: string }) {
                 {parsedQuote.materials.description && (
                   <p className="text-sm text-slate-600 mb-2">{parsedQuote.materials.description}</p>
                 )}
-                {parsedQuote.materials.cost && (
-                  <p className="text-lg font-semibold text-slate-900">{parsedQuote.materials.cost}</p>
+                {parsedQuote.materials.totalMaterialsCost && (
+                  <p className="text-lg font-semibold text-slate-900 mt-2">{parsedQuote.materials.totalMaterialsCost}</p>
                 )}
               </div>
             )}
@@ -159,8 +256,8 @@ function PricingSection({ content }: { content?: string }) {
                 {parsedQuote.totalEstimate.description && (
                   <p className="text-sm text-amber-700 mb-2">{parsedQuote.totalEstimate.description}</p>
                 )}
-                {parsedQuote.totalEstimate.total && (
-                  <p className="text-lg font-bold text-amber-900">{parsedQuote.totalEstimate.total}</p>
+                {parsedQuote.totalEstimate.totalJobEstimate && (
+                  <p className="text-lg font-bold text-amber-900 mt-2">{parsedQuote.totalEstimate.totalJobEstimate}</p>
                 )}
               </div>
             )}
@@ -246,28 +343,61 @@ function ListSection({
   );
 }
 
-function MaterialsSection({ content }: { content?: string }) {
-  if (!content) return null;
+function MaterialsSection({ 
+  content, 
+  overrideText,
+  showRoughEstimateDisclaimer,
+  editButton,
+}: { 
+  content?: string;
+  overrideText?: string | null;
+  showRoughEstimateDisclaimer?: boolean;
+  editButton?: React.ReactNode;
+}) {
+  // If override text is present, show that instead of AI content
+  const hasOverride = overrideText && overrideText.trim().length > 0;
+  
+  // Show disclaimer if rough estimate flag is set OR if there's no custom override
+  const showDisclaimer = showRoughEstimateDisclaimer || !hasOverride;
 
   let materials: MaterialItem[] | null = null;
-  try {
-    materials = JSON.parse(content);
-  } catch {
-    // Parse failed, will show fallback
+  if (content && !hasOverride) {
+    try {
+      materials = JSON.parse(content);
+    } catch {
+      // Parse failed, will show fallback
+    }
   }
+
+  // Don't render if no content and no override
+  if (!content && !hasOverride) return null;
 
   return (
     <div className="border-b border-slate-200 pb-6">
-      <SectionHeader
-        title="Materials"
-        icon={
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-        }
-      />
+      <div className="flex items-center justify-between">
+        <SectionHeader
+          title="Materials"
+          icon={
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+          }
+        />
+        {editButton}
+      </div>
       <div className="pl-10">
-        {materials && Array.isArray(materials) && materials.length > 0 ? (
+        {hasOverride ? (
+          <>
+            <div className="mb-3">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                Final materials notes (overrides AI suggestion)
+              </span>
+            </div>
+            <div className="text-slate-700 text-sm whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-200">
+              {overrideText}
+            </div>
+          </>
+        ) : materials && Array.isArray(materials) && materials.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -288,10 +418,24 @@ function MaterialsSection({ content }: { content?: string }) {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : content ? (
           <pre className="text-slate-700 text-sm whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-200">
             {content}
           </pre>
+        ) : null}
+
+        {/* Materials disclaimer */}
+        {showDisclaimer && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-700 flex items-start gap-2">
+              <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                <strong>Note:</strong> Material prices are an estimate only and must be checked against current supplier pricing.
+              </span>
+            </p>
+          </div>
         )}
       </div>
     </div>
@@ -345,8 +489,54 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
     redirect("/jobs");
   }
 
+  // Handle deleted jobs - redirect to jobs list
+  if (job.isDeleted === true) {
+    redirect("/jobs?error=job_removed");
+  }
+
+  // Get verification status (with default for older users)
+  const verificationStatus = user.verificationStatus || "unverified";
+  const userRole = user.role || "tradie";
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Brand Header */}
+      <OmnexoraHeader verificationStatus={verificationStatus} />
+
+      {/* Verification Banner for unverified tradies */}
+      {userRole === "tradie" && verificationStatus !== "verified" && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="font-medium text-amber-800">
+                {verificationStatus === "pending_review" 
+                  ? "Verification in progress" 
+                  : "Complete your business verification"}
+              </p>
+              <p className="text-sm text-amber-700 mt-1">
+                {verificationStatus === "pending_review"
+                  ? "Your verification is being reviewed. You'll be able to email job packs once approved."
+                  : "Verify your business to display your \"Verified Trade\" badge and email job packs directly to clients."}
+              </p>
+              {verificationStatus !== "pending_review" && (
+                <a
+                  href="/settings/verification"
+                  className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-amber-700 hover:text-amber-800"
+                >
+                  Complete verification
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <Link
@@ -363,6 +553,13 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-slate-900">{job.title}</h1>
               <StatusBadge status={job.status} />
+              <Link
+                href={`/jobs/${job.id}/edit`}
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+                <span>Edit</span>
+              </Link>
             </div>
             <div className="flex flex-wrap items-center gap-4 text-slate-600 text-sm">
               <span className="flex items-center gap-1">
@@ -394,11 +591,71 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sticky top-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Job Information</h2>
             <div className="space-y-4">
+              {/* Job Workflow Status */}
               <div>
-                <p className="text-sm text-slate-500 mb-1">Status</p>
+                <p className="text-sm text-slate-500 mb-1">Job Status</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <JobWorkflowStatusBadge status={job.jobStatus || "pending"} />
+                </div>
+                <div className="mt-2">
+                  <JobStatusControl jobId={job.id} currentStatus={job.jobStatus || "pending"} />
+                </div>
+              </div>
+
+              {/* AI Pack Review Status */}
+              <div>
+                <p className="text-sm text-slate-500 mb-1">AI Pack</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <AIReviewStatusBadge status={job.aiReviewStatus || "pending"} />
+                </div>
+                <div className="mt-2">
+                  <AIReviewStatusControl jobId={job.id} currentStatus={job.aiReviewStatus || "pending"} />
+                </div>
+              </div>
+
+              {/* Client Status */}
+              <div>
+                <p className="text-sm text-slate-500 mb-1">Client Status</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <ClientStatusBadge status={job.clientStatus || "draft"} />
+                  {(job.clientStatus || "draft") === "accepted" && (
+                    <span className="text-xs text-emerald-600 font-medium">🎉 Won job!</span>
+                  )}
+                </div>
+                {job.clientStatusUpdatedAt && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Updated: {formatDate(job.clientStatusUpdatedAt)}
+                  </p>
+                )}
+                <div className="mt-2">
+                  <ClientStatusControl jobId={job.id} currentStatus={job.clientStatus || "draft"} />
+                </div>
+              </div>
+
+              {/* AI Generation Status */}
+              <div className="pt-4 border-t border-slate-200">
+                <p className="text-sm text-slate-500 mb-1">AI Generation</p>
                 <StatusBadge status={job.status} />
               </div>
-              <div>
+
+              {/* Client Details */}
+              {(job.clientName || job.clientEmail) && (
+                <div className="pt-4 border-t border-slate-200">
+                  <p className="text-sm text-slate-500 mb-2 font-medium">Client</p>
+                  {job.clientName && (
+                    <p className="text-slate-900 font-medium">{job.clientName}</p>
+                  )}
+                  {job.clientEmail && (
+                    <a
+                      href={`mailto:${job.clientEmail}`}
+                      className="text-amber-600 hover:text-amber-700 text-sm"
+                    >
+                      {job.clientEmail}
+                    </a>
+                  )}
+                </div>
+              )}
+              <div className="pt-4 border-t border-slate-200">
                 <p className="text-sm text-slate-500 mb-1">Trade Type</p>
                 <p className="text-slate-900 font-medium">{job.tradeType}</p>
               </div>
@@ -422,20 +679,58 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   <p className="text-slate-700 text-sm whitespace-pre-wrap">{job.notes}</p>
                 </div>
               )}
+
+              {/* Business Status */}
+              {userRole === "tradie" && (
+                <div className="pt-4 border-t border-slate-200">
+                  <p className="text-sm text-slate-500 mb-2">Business Status</p>
+                  {verificationStatus === "verified" ? (
+                    <VerifiedBadge />
+                  ) : verificationStatus === "pending_review" ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full border border-amber-300">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      </svg>
+                      Pending
+                    </span>
+                  ) : verificationStatus === "rejected" ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full border border-red-300">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      Rejected
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 text-xs font-medium rounded-full border border-slate-200">
+                      Not verified
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Remove Job Action */}
+              <div className="pt-4 border-t border-slate-200 space-y-3">
+                <DeleteJobButton jobId={job.id} />
+                <div>
+                  <FeedbackButton jobId={job.id} variant="compact" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Main Content - AI Job Pack */}
         <div className="lg:col-span-2">
-          {job.status === "ai_pending" && (
+          {(job.status === "ai_pending" || job.status === "generating") && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
               <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-10 h-10 text-amber-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">Generating Job Pack</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                {job.status === "generating" ? "Regenerating Job Pack" : "Generating Job Pack"}
+              </h3>
               <p className="text-slate-600">
                 Our AI is creating your professional quote, scope of work, and materials list.
                 This usually takes 10-20 seconds.
@@ -454,22 +749,87 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
               <p className="text-slate-600 mb-6">
                 We couldn&apos;t generate the AI job pack. This might be a temporary issue.
               </p>
-              <Link
-                href="/jobs/new"
-                className="inline-flex items-center px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors"
-              >
-                Try Again
-              </Link>
+              <RegenerateButton jobId={job.id} status={job.status} />
             </div>
           )}
 
-          {job.status === "ai_complete" && (
+          {(job.status === "ai_complete" || job.status === "pending_regeneration") && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              {/* Pending regeneration notice */}
+              {job.status === "pending_regeneration" && (
+                <div className="px-6 py-3 bg-orange-50 border-b border-orange-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span className="text-sm text-orange-700 font-medium">
+                      Job details changed – regenerate to update the AI job pack.
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold text-slate-900">AI Generated Job Pack</h2>
-                <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                  Powered by AI
-                </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <RegenerateButton jobId={job.id} status={job.status} />
+                  <CopyForClientButton
+                    title={job.title}
+                    address={job.address}
+                    summary={job.aiSummary}
+                    scopeOfWork={job.aiScopeOfWork}
+                    inclusions={job.aiInclusions}
+                    exclusions={job.aiExclusions}
+                    quoteJson={job.aiQuote}
+                  />
+                  <EmailToClientButton
+                    title={job.title}
+                    clientEmail={job.clientEmail}
+                    clientName={job.clientName}
+                    address={job.address}
+                    summary={job.aiSummary}
+                    scopeOfWork={job.aiScopeOfWork}
+                    inclusions={job.aiInclusions}
+                    exclusions={job.aiExclusions}
+                    quoteJson={job.aiQuote}
+                    verificationStatus={user.verificationStatus || "unverified"}
+                  />
+                  <SendToClientButton
+                    jobId={job.id}
+                    jobTitle={job.title}
+                    clientEmail={job.clientEmail}
+                    clientName={job.clientName}
+                    sentToClientAt={job.sentToClientAt}
+                    verificationStatus={user.verificationStatus || "unverified"}
+                  />
+                  {/* Hint for draft status */}
+                  {(!job.clientStatus || job.clientStatus === "draft") && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      💡 Once you email the job pack, this job will move to &ldquo;Sent&rdquo; status.
+                    </p>
+                  )}
+                  <JobPackPdfButton
+                    jobId={job.id}
+                    jobTitle={job.title}
+                    jobCreatedAt={job.createdAt}
+                    tradeType={job.tradeType}
+                    propertyType={job.propertyType}
+                    address={job.address}
+                    clientName={job.clientName}
+                    notes={job.notes}
+                    aiSummary={job.aiSummary}
+                    aiQuote={job.aiQuote}
+                    aiScopeOfWork={job.aiScopeOfWork}
+                    aiInclusions={job.aiInclusions}
+                    aiExclusions={job.aiExclusions}
+                    aiMaterials={job.aiMaterials}
+                    aiClientNotes={job.aiClientNotes}
+                    materialsOverrideText={job.materialsOverrideText}
+                    materialsAreRoughEstimate={job.materialsAreRoughEstimate}
+                  />
+                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                    Powered by AI
+                  </span>
+                </div>
               </div>
               <div className="p-6 space-y-6">
                 <SummarySection content={job.aiSummary} />
@@ -495,7 +855,17 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     </svg>
                   }
                 />
-                <MaterialsSection content={job.aiMaterials} />
+                <MaterialsSection 
+                  content={job.aiMaterials} 
+                  overrideText={job.materialsOverrideText}
+                  showRoughEstimateDisclaimer={job.materialsAreRoughEstimate}
+                  editButton={
+                    <MaterialsEditButton 
+                      jobId={job.id} 
+                      currentOverrideText={job.materialsOverrideText} 
+                    />
+                  }
+                />
                 <NotesSection content={job.aiClientNotes} />
               </div>
             </div>
