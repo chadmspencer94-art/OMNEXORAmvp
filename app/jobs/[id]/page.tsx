@@ -7,6 +7,33 @@ interface JobDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+// ============================================================================
+// Type Definitions for Parsed AI Data
+// ============================================================================
+
+interface QuoteLineItem {
+  description?: string;
+  rate?: string;
+  total?: string;
+  cost?: string;
+}
+
+interface ParsedQuote {
+  labour?: QuoteLineItem;
+  materials?: QuoteLineItem;
+  totalEstimate?: QuoteLineItem;
+}
+
+interface MaterialItem {
+  item: string;
+  quantity?: string;
+  estimatedCost?: string;
+}
+
+// ============================================================================
+// Helper Components
+// ============================================================================
+
 function StatusBadge({ status }: { status: JobStatus }) {
   const styles: Record<JobStatus, string> = {
     draft: "bg-slate-100 text-slate-700",
@@ -39,23 +66,265 @@ function formatDate(dateString: string): string {
   });
 }
 
-function Section({ title, content, icon }: { title: string; content?: string; icon: React.ReactNode }) {
+function SectionHeader({ title, icon }: { title: string; icon: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600">
+        {icon}
+      </div>
+      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+    </div>
+  );
+}
+
+// ============================================================================
+// Section Components
+// ============================================================================
+
+function SummarySection({ content }: { content?: string }) {
   if (!content) return null;
 
+  const paragraphs = content.split(/\n\n|\n/).filter(p => p.trim());
+
   return (
-    <div className="border-b border-slate-200 last:border-0 pb-6 last:pb-0">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600">
-          {icon}
-        </div>
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-      </div>
-      <div className="text-slate-700 whitespace-pre-wrap leading-relaxed pl-10">
-        {content}
+    <div className="border-b border-slate-200 pb-6">
+      <SectionHeader
+        title="Summary"
+        icon={
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        }
+      />
+      <div className="pl-10 space-y-2">
+        {paragraphs.map((p, i) => (
+          <p key={i} className="text-slate-700 leading-relaxed">{p}</p>
+        ))}
       </div>
     </div>
   );
 }
+
+function PricingSection({ content }: { content?: string }) {
+  if (!content) return null;
+
+  let parsedQuote: ParsedQuote | null = null;
+  try {
+    parsedQuote = JSON.parse(content);
+  } catch {
+    // Parse failed, will show fallback
+  }
+
+  return (
+    <div className="border-b border-slate-200 pb-6">
+      <SectionHeader
+        title="Pricing Snapshot"
+        icon={
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        }
+      />
+      <div className="pl-10">
+        {parsedQuote ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {parsedQuote.labour && (
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Labour</p>
+                {parsedQuote.labour.description && (
+                  <p className="text-sm text-slate-600 mb-2">{parsedQuote.labour.description}</p>
+                )}
+                {parsedQuote.labour.rate && (
+                  <p className="text-xs text-slate-500">Rate: {parsedQuote.labour.rate}</p>
+                )}
+                {parsedQuote.labour.total && (
+                  <p className="text-lg font-semibold text-slate-900">{parsedQuote.labour.total}</p>
+                )}
+              </div>
+            )}
+            {parsedQuote.materials && (
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Materials</p>
+                {parsedQuote.materials.description && (
+                  <p className="text-sm text-slate-600 mb-2">{parsedQuote.materials.description}</p>
+                )}
+                {parsedQuote.materials.cost && (
+                  <p className="text-lg font-semibold text-slate-900">{parsedQuote.materials.cost}</p>
+                )}
+              </div>
+            )}
+            {parsedQuote.totalEstimate && (
+              <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                <p className="text-xs font-medium text-amber-700 uppercase tracking-wider mb-1">Total Estimate</p>
+                {parsedQuote.totalEstimate.description && (
+                  <p className="text-sm text-amber-700 mb-2">{parsedQuote.totalEstimate.description}</p>
+                )}
+                {parsedQuote.totalEstimate.total && (
+                  <p className="text-lg font-bold text-amber-900">{parsedQuote.totalEstimate.total}</p>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <pre className="text-slate-700 text-sm whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-200">
+            {content}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ScopeSection({ content }: { content?: string }) {
+  if (!content) return null;
+
+  const lines = content.split("\n").filter(line => line.trim());
+
+  return (
+    <div className="border-b border-slate-200 pb-6">
+      <SectionHeader
+        title="Scope of Work"
+        icon={
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+        }
+      />
+      <div className="pl-10">
+        {lines.length > 1 ? (
+          <ol className="list-decimal list-inside space-y-2">
+            {lines.map((line, i) => (
+              <li key={i} className="text-slate-700 leading-relaxed">{line}</li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-slate-700 leading-relaxed">{content}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ListSection({ 
+  title, 
+  content, 
+  icon, 
+  variant = "check" 
+}: { 
+  title: string; 
+  content?: string; 
+  icon: React.ReactNode;
+  variant?: "check" | "x";
+}) {
+  if (!content) return null;
+
+  const items = content.split("\n").filter(item => item.trim());
+  if (items.length === 0) return null;
+
+  return (
+    <div className="border-b border-slate-200 pb-6">
+      <SectionHeader title={title} icon={icon} />
+      <div className="pl-10">
+        <ul className="space-y-2">
+          {items.map((item, i) => (
+            <li key={i} className="flex items-start gap-2">
+              {variant === "check" ? (
+                <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              <span className="text-slate-700 leading-relaxed">{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function MaterialsSection({ content }: { content?: string }) {
+  if (!content) return null;
+
+  let materials: MaterialItem[] | null = null;
+  try {
+    materials = JSON.parse(content);
+  } catch {
+    // Parse failed, will show fallback
+  }
+
+  return (
+    <div className="border-b border-slate-200 pb-6">
+      <SectionHeader
+        title="Materials"
+        icon={
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        }
+      />
+      <div className="pl-10">
+        {materials && Array.isArray(materials) && materials.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 pr-4 font-medium text-slate-600">Item</th>
+                  <th className="text-left py-2 pr-4 font-medium text-slate-600">Quantity</th>
+                  <th className="text-right py-2 font-medium text-slate-600">Est. Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {materials.map((mat, i) => (
+                  <tr key={i} className="border-b border-slate-100 last:border-0">
+                    <td className="py-2 pr-4 text-slate-700">{mat.item}</td>
+                    <td className="py-2 pr-4 text-slate-600">{mat.quantity || "—"}</td>
+                    <td className="py-2 text-right text-slate-700 font-medium">{mat.estimatedCost || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <pre className="text-slate-700 text-sm whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-200">
+            {content}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NotesSection({ content }: { content?: string }) {
+  if (!content) return null;
+
+  const paragraphs = content.split(/\n\n|\n/).filter(p => p.trim());
+
+  return (
+    <div className="pb-0">
+      <SectionHeader
+        title="Client Notes"
+        icon={
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+        }
+      />
+      <div className="pl-10 space-y-2">
+        {paragraphs.map((p, i) => (
+          <p key={i} className="text-slate-700 leading-relaxed">{p}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Page Component
+// ============================================================================
 
 export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const { id } = await params;
@@ -203,82 +472,31 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 </span>
               </div>
               <div className="p-6 space-y-6">
-                {/* Summary */}
-                <Section
-                  title="Summary"
-                  content={job.aiSummary}
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  }
-                />
-
-                {/* Quote */}
-                <Section
-                  title="Quote"
-                  content={job.aiQuote}
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  }
-                />
-
-                {/* Scope of Work */}
-                <Section
-                  title="Scope of Work"
-                  content={job.aiScopeOfWork}
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                  }
-                />
-
-                {/* Inclusions */}
-                <Section
+                <SummarySection content={job.aiSummary} />
+                <PricingSection content={job.aiQuote} />
+                <ScopeSection content={job.aiScopeOfWork} />
+                <ListSection
                   title="Inclusions"
                   content={job.aiInclusions}
+                  variant="check"
                   icon={
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   }
                 />
-
-                {/* Exclusions */}
-                <Section
+                <ListSection
                   title="Exclusions"
                   content={job.aiExclusions}
+                  variant="x"
                   icon={
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   }
                 />
-
-                {/* Materials */}
-                <Section
-                  title="Materials"
-                  content={job.aiMaterials}
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                  }
-                />
-
-                {/* Client Notes */}
-                <Section
-                  title="Client Notes"
-                  content={job.aiClientNotes}
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                  }
-                />
+                <MaterialsSection content={job.aiMaterials} />
+                <NotesSection content={job.aiClientNotes} />
               </div>
             </div>
           )}

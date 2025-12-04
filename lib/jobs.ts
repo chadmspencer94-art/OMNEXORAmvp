@@ -41,14 +41,33 @@ export interface CreateJobData {
 // AI Response Shape
 // ============================================================================
 
-interface AIJobPackResponse {
+interface QuoteLineItem {
+  description?: string;
+  rate?: string;
+  total?: string;
+  cost?: string;
+}
+
+interface QuoteResponse {
+  labour?: QuoteLineItem;
+  materials?: QuoteLineItem;
+  totalEstimate?: QuoteLineItem;
+}
+
+interface MaterialItem {
+  item: string;
+  quantity?: string;
+  estimatedCost?: string;
+}
+
+interface JobPackResponse {
   summary: string;
-  quote: string;
-  scopeOfWork: string;
-  inclusions: string;
-  exclusions: string;
-  materials: string;
-  clientNotes: string;
+  quote?: QuoteResponse;
+  scopeOfWork?: string | string[];
+  inclusions?: string[];
+  exclusions?: string[];
+  materials?: MaterialItem[];
+  clientNotes?: string;
 }
 
 // ============================================================================
@@ -156,12 +175,18 @@ ${job.notes || "No additional details provided"}
 Please respond with ONLY valid JSON in this exact format (no markdown, no code blocks, just the JSON object):
 {
   "summary": "A brief 2-3 sentence overview of the job for quick reference",
-  "quote": "A detailed quote breakdown with line items and total (be specific about pricing ranges based on typical WA rates)",
-  "scopeOfWork": "A detailed scope of work that clearly defines what will be done, written in a professional format suitable for client communication",
-  "inclusions": "A bullet-point list of what IS included in this quote",
-  "exclusions": "A bullet-point list of what is NOT included and may incur additional costs",
-  "materials": "A detailed materials list with estimated quantities",
-  "clientNotes": "Professional notes for the client about the job, payment terms, timeline expectations, and any important considerations"
+  "quote": {
+    "labour": { "description": "Labour description", "rate": "$XX/hr", "total": "$XXXX" },
+    "materials": { "description": "Materials description", "cost": "$XXXX" },
+    "totalEstimate": { "description": "Total job estimate", "total": "$XXXX - $XXXX" }
+  },
+  "scopeOfWork": ["Step 1 description", "Step 2 description", "..."],
+  "inclusions": ["Inclusion 1", "Inclusion 2", "..."],
+  "exclusions": ["Exclusion 1", "Exclusion 2", "..."],
+  "materials": [
+    { "item": "Material name", "quantity": "Amount needed", "estimatedCost": "$XX" }
+  ],
+  "clientNotes": "Professional notes for the client about payment terms, timeline, and important considerations"
 }`;
 
     const response = await openai.chat.completions.create({
@@ -177,8 +202,6 @@ Please respond with ONLY valid JSON in this exact format (no markdown, no code b
     const content = response.choices[0]?.message?.content || "";
 
     // Try to parse the JSON response
-    let aiData: AIJobPackResponse;
-    
     try {
       // Clean up potential markdown code blocks
       let cleanContent = content.trim();
@@ -193,30 +216,25 @@ Please respond with ONLY valid JSON in this exact format (no markdown, no code b
       }
       cleanContent = cleanContent.trim();
 
-      aiData = JSON.parse(cleanContent);
-    } catch {
-      // If JSON parsing fails, use the whole response as summary
-      console.warn("Failed to parse AI response as JSON, using as summary");
-      aiData = {
-        summary: content,
-        quote: "",
-        scopeOfWork: "",
-        inclusions: "",
-        exclusions: "",
-        materials: "",
-        clientNotes: "",
-      };
-    }
+      const parsed: JobPackResponse = JSON.parse(cleanContent);
 
-    // Update job with AI data
-    job.aiSummary = aiData.summary || "";
-    job.aiQuote = aiData.quote || "";
-    job.aiScopeOfWork = aiData.scopeOfWork || "";
-    job.aiInclusions = aiData.inclusions || "";
-    job.aiExclusions = aiData.exclusions || "";
-    job.aiMaterials = aiData.materials || "";
-    job.aiClientNotes = aiData.clientNotes || "";
-    job.status = "ai_complete";
+      // Map parsed fields onto the job with proper type handling
+      job.aiSummary = parsed.summary ?? "";
+      job.aiQuote = parsed.quote ? JSON.stringify(parsed.quote) : "";
+      job.aiScopeOfWork = Array.isArray(parsed.scopeOfWork)
+        ? parsed.scopeOfWork.join("\n")
+        : (parsed.scopeOfWork ?? "");
+      job.aiInclusions = parsed.inclusions ? parsed.inclusions.join("\n") : "";
+      job.aiExclusions = parsed.exclusions ? parsed.exclusions.join("\n") : "";
+      job.aiMaterials = parsed.materials ? JSON.stringify(parsed.materials) : "";
+      job.aiClientNotes = parsed.clientNotes ?? "";
+      job.status = "ai_complete";
+    } catch {
+      // If JSON parsing fails, set summary to raw text and mark as failed
+      console.warn("Failed to parse AI response as JSON");
+      job.aiSummary = content;
+      job.status = "ai_failed";
+    }
 
     await saveJob(job);
     return job;
