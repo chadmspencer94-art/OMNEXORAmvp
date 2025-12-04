@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -32,9 +33,24 @@ export default function LoginPage() {
         return;
       }
 
-      // Success - redirect to dashboard
-      router.push("/dashboard");
-      router.refresh();
+      // Success - redirect to original page or dashboard
+      // Validate redirect to prevent open redirect attacks
+      const redirectParam = searchParams.get("redirect");
+      let redirectTo = "/dashboard";
+      
+      if (redirectParam) {
+        // Only allow relative paths starting with / (not // or external URLs)
+        const isValidRedirect = 
+          redirectParam.startsWith("/") && 
+          !redirectParam.startsWith("//") &&
+          !redirectParam.includes(":");
+        
+        if (isValidRedirect) {
+          redirectTo = redirectParam;
+        }
+      }
+      
+      router.push(redirectTo);
     } catch {
       setError("An unexpected error occurred");
     } finally {
@@ -43,69 +59,83 @@ export default function LoginPage() {
   };
 
   return (
+    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
+        <p className="text-slate-600">Sign in to your OMNEXORA account</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+            Email Address
+          </label>
+          <input
+            type="email"
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
+            required
+            disabled={isLoading}
+          />
+        </div>
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+            Password
+          </label>
+          <input
+            type="password"
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
+            required
+            disabled={isLoading}
+          />
+        </div>
+        <button
+          type="submit"
+          className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isLoading}
+        >
+          {isLoading ? "Signing in..." : "Sign In"}
+        </button>
+      </form>
+
+      <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+        <p className="text-sm text-slate-600">
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="font-semibold text-amber-600 hover:text-amber-500">
+            Sign up
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-            <p className="text-slate-600">Sign in to your OMNEXORA account</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
-                required
-                disabled={isLoading}
-              />
+        <Suspense fallback={
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+            <div className="text-center">
+              <p className="text-slate-600">Loading...</p>
             </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
-                required
-                disabled={isLoading}
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              {isLoading ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
-
-          <div className="mt-8 pt-6 border-t border-slate-200 text-center">
-            <p className="text-sm text-slate-600">
-              Don&apos;t have an account?{" "}
-              <Link href="/register" className="font-semibold text-amber-600 hover:text-amber-500">
-                Sign up
-              </Link>
-            </p>
           </div>
-        </div>
+        }>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );

@@ -26,8 +26,17 @@ export type SafeUser = Omit<User, "passwordHash">;
 // Constants
 // ============================================================================
 
-const SESSION_COOKIE_NAME = "omx_session";
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
+export const SESSION_COOKIE_NAME = "omx_session";
+export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
+
+// Cookie options for session cookies
+export const SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: SESSION_TTL_SECONDS,
+};
 
 // ============================================================================
 // User Functions
@@ -47,12 +56,6 @@ export async function createUser(
   // Normalize email to lowercase
   const normalizedEmail = email.toLowerCase().trim();
 
-  // Check if user already exists
-  const existingUser = await kv.get<User>(`user:email:${normalizedEmail}`);
-  if (existingUser) {
-    throw new Error("User already exists");
-  }
-
   // Generate user ID and hash password
   const id = crypto.randomUUID();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -65,9 +68,22 @@ export async function createUser(
     createdAt,
   };
 
-  // Store user by email and by id
-  await kv.set(`user:email:${normalizedEmail}`, user);
-  await kv.set(`user:id:${id}`, user);
+  // Atomically set user by email only if it doesn't exist (prevents race condition)
+  // The 'nx' option makes this an atomic check-and-set operation
+  const wasSet = await kv.set(`user:email:${normalizedEmail}`, user, { nx: true });
+  
+  if (!wasSet) {
+    throw new Error("User already exists");
+  }
+
+  // Store user by id - rollback email entry if this fails
+  try {
+    await kv.set(`user:id:${id}`, user);
+  } catch (error) {
+    // Rollback: delete the email entry to maintain consistency
+    await kv.del(`user:email:${normalizedEmail}`);
+    throw error;
+  }
 
   // Return safe user without password hash
   const { passwordHash: _, ...safeUser } = user;
@@ -202,7 +218,4 @@ export async function clearSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
-
-// Export the cookie name for use in middleware
-export { SESSION_COOKIE_NAME };
 

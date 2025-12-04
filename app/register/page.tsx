@@ -47,7 +47,6 @@ export default function RegisterPage() {
 
       // Success - redirect to dashboard
       router.push("/dashboard");
-      router.refresh();
     } catch {
       setError("An unexpected error occurred");
     } finally {

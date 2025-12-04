@@ -1,0 +1,78 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createUser, createSession, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from "@/lib/auth";
+
+interface RegisterRequestBody {
+  email: string;
+  password: string;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = (await request.json()) as RegisterRequestBody;
+    const { email, password } = body;
+
+    // Validate input
+    if (!email || typeof email !== "string") {
+      return NextResponse.json(
+        { error: "Email is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!password || typeof password !== "string") {
+      return NextResponse.json(
+        { error: "Password is required" },
+        { status: 400 }
+      );
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 }
+      );
+    }
+
+    // Password length validation
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters" },
+        { status: 400 }
+      );
+    }
+
+    // Create the user
+    const user = await createUser(email, password);
+
+    // Create a session
+    const sessionId = await createSession(user.id);
+
+    // Create response and set the session cookie directly on it
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+      },
+    });
+
+    response.cookies.set(SESSION_COOKIE_NAME, sessionId, SESSION_COOKIE_OPTIONS);
+
+    return response;
+  } catch (error) {
+    if (error instanceof Error && error.message === "User already exists") {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 409 }
+      );
+    }
+
+    console.error("Registration error:", error);
+    return NextResponse.json(
+      { error: "An unexpected error occurred" },
+      { status: 500 }
+    );
+  }
+}
