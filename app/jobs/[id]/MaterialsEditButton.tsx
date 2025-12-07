@@ -6,17 +6,64 @@ import { useRouter } from "next/navigation";
 interface MaterialsEditButtonProps {
   jobId: string;
   currentOverrideText?: string | null;
+  aiMaterials?: string | null;
+}
+
+/**
+ * Formats AI materials JSON into a readable text format for editing
+ */
+function formatMaterialsForEditing(aiMaterials: string | null | undefined): string {
+  if (!aiMaterials) return "";
+  
+  try {
+    const materials = JSON.parse(aiMaterials);
+    if (Array.isArray(materials) && materials.length > 0) {
+      // Format as a readable list
+      return materials
+        .map((mat: { item?: string; quantity?: string; estimatedCost?: string }) => {
+          const parts: string[] = [];
+          if (mat.item) parts.push(mat.item);
+          if (mat.quantity) parts.push(`x ${mat.quantity}`);
+          if (mat.estimatedCost) parts.push(`- ${mat.estimatedCost}`);
+          return parts.length > 0 ? parts.join(" ") : "";
+        })
+        .filter((line: string) => line.trim())
+        .join("\n");
+    }
+  } catch {
+    // If parsing fails, return the raw content
+    return aiMaterials;
+  }
+  
+  return "";
 }
 
 export default function MaterialsEditButton({
   jobId,
   currentOverrideText,
+  aiMaterials,
 }: MaterialsEditButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [overrideText, setOverrideText] = useState(currentOverrideText || "");
+  
+  // Pre-fill with current override text, or if none exists, format the AI materials
+  const getInitialText = () => {
+    if (currentOverrideText && currentOverrideText.trim()) {
+      return currentOverrideText;
+    }
+    // If no override, format the AI materials for editing
+    return formatMaterialsForEditing(aiMaterials);
+  };
+  
+  const [overrideText, setOverrideText] = useState(getInitialText());
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  
+  // Update text when modal opens to ensure we have the latest content
+  const handleOpen = () => {
+    setOverrideText(getInitialText());
+    setIsOpen(true);
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -45,7 +92,13 @@ export default function MaterialsEditButton({
     }
   };
 
-  const handleClear = async () => {
+  const handleClear = () => {
+    // Just clear the textarea locally (don't save to server yet)
+    setOverrideText("");
+    setError("");
+  };
+
+  const handleClearAndSave = async () => {
     setIsSaving(true);
     setError("");
 
@@ -77,7 +130,7 @@ export default function MaterialsEditButton({
   return (
     <>
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={handleOpen}
         className="inline-flex items-center text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-2 py-1 rounded transition-colors"
       >
         <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,6 +164,11 @@ export default function MaterialsEditButton({
                 <p className="mt-2 text-xs text-slate-500">
                   Use this to refine or correct material descriptions and pricing.
                   This will replace the AI materials section when viewing, emailing, or downloading the job pack.
+                  {!currentOverrideText && aiMaterials && (
+                    <span className="block mt-1 text-amber-700">
+                      Current AI materials are pre-filled above. Make adjustments or clear to start fresh.
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -123,13 +181,22 @@ export default function MaterialsEditButton({
 
             <div className="px-6 py-4 border-t border-slate-200 flex justify-between">
               <div>
+                <button
+                  onClick={handleClear}
+                  disabled={isSaving}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  title="Clear the textarea (you can still save or cancel)"
+                >
+                  Clear
+                </button>
                 {currentOverrideText && (
                   <button
-                    onClick={handleClear}
+                    onClick={handleClearAndSave}
                     disabled={isSaving}
-                    className="px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    className="ml-2 px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    title="Remove override and revert to AI materials"
                   >
-                    Clear override
+                    Remove Override
                   </button>
                 )}
               </div>

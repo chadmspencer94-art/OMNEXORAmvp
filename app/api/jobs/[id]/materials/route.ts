@@ -41,7 +41,8 @@ export async function PATCH(
     }
 
     // Update the job with the new materials override
-    job.materialsOverrideText = materialsOverrideText || null;
+    // Convert empty strings to null for consistency
+    job.materialsOverrideText = (materialsOverrideText && materialsOverrideText.trim()) || null;
     job.updatedAt = new Date().toISOString();
 
     await saveJob(job);

@@ -156,7 +156,7 @@ export default async function DashboardPage() {
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Create New Job
+          {isTradie ? "Create New Job" : "Post a Job"}
         </Link>
       </div>
 
@@ -231,7 +231,7 @@ export default async function DashboardPage() {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-purple-600">Verifications</p>
+                  <p className="text-sm font-medium text-purple-600">ADMIN</p>
                   <p className="text-lg font-bold text-purple-900">
                     {pendingVerifications} pending
                   </p>

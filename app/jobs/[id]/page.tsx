@@ -16,6 +16,8 @@ import MaterialsEditButton from "./MaterialsEditButton";
 import DeleteJobButton from "./DeleteJobButton";
 import SwmsSection from "./SwmsSection";
 import SectionEditButton from "./SectionEditButton";
+import SpecDocButton from "./SpecDocButton";
+import JobDocumentsSection from "./JobDocumentsSection";
 import VerifiedBadge from "@/app/components/VerifiedBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
@@ -866,6 +868,10 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       materialsOverrideText={job.materialsOverrideText}
                       materialsAreRoughEstimate={job.materialsAreRoughEstimate}
                     />
+                    <SpecDocButton 
+                      jobId={job.id}
+                      hasScopeOfWork={!!job.aiScopeOfWork}
+                    />
                     <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
                       Powered by AI
                     </span>
@@ -946,7 +952,8 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     editButton={
                       <MaterialsEditButton 
                         jobId={job.id} 
-                        currentOverrideText={job.materialsOverrideText} 
+                        currentOverrideText={job.materialsOverrideText}
+                        aiMaterials={job.aiMaterials}
                       />
                     }
                   />
@@ -966,14 +973,18 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 </div>
               </div>
               
-              {/* SWMS Section - Placed near AI Job Pack details */}
+              {/* Job Documents Section - Replaces SWMS section */}
               <div className="mt-6">
-                <SwmsSection
+                <JobDocumentsSection
                   jobId={job.id}
-                  swmsText={job.swmsText ?? null}
                   jobTitle={job.title}
                   tradeType={job.tradeType}
-                  address={job.address || "Location not specified"}
+                  address={job.address}
+                  clientName={job.clientName}
+                  showWarning={
+                    job.aiReviewStatus === "confirmed" &&
+                    (job.clientStatus === "sent" || job.clientStatus === "accepted")
+                  }
                 />
               </div>
             </>
@@ -993,13 +1004,14 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 </p>
               </div>
               
-              {/* SWMS Section - Also visible for draft jobs */}
-              <SwmsSection
+              {/* Job Documents Section - Also visible for draft jobs */}
+              <JobDocumentsSection
                 jobId={job.id}
-                swmsText={job.swmsText ?? null}
                 jobTitle={job.title}
                 tradeType={job.tradeType}
-                address={job.address || "Location not specified"}
+                address={job.address}
+                clientName={job.clientName}
+                showWarning={false}
               />
             </div>
           )}

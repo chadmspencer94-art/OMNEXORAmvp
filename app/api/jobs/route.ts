@@ -47,29 +47,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate client name (required for new jobs)
-    if (!clientName || typeof clientName !== "string" || clientName.trim() === "") {
-      return NextResponse.json(
-        { error: "Client name is required" },
-        { status: 400 }
-      );
-    }
+    // Check if user is a client - clients don't need to provide client details
+    const isClient = user.role === "client";
 
-    // Validate client email (required for new jobs)
-    if (!clientEmail || typeof clientEmail !== "string" || clientEmail.trim() === "") {
-      return NextResponse.json(
-        { error: "Client email is required" },
-        { status: 400 }
-      );
-    }
+    // Validate client name (only required for tradies creating quotes)
+    if (!isClient) {
+      if (!clientName || typeof clientName !== "string" || clientName.trim() === "") {
+        return NextResponse.json(
+          { error: "Client name is required" },
+          { status: 400 }
+        );
+      }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(clientEmail.trim())) {
-      return NextResponse.json(
-        { error: "Please enter a valid email address" },
-        { status: 400 }
-      );
+      // Validate client email (only required for tradies)
+      if (!clientEmail || typeof clientEmail !== "string" || clientEmail.trim() === "") {
+        return NextResponse.json(
+          { error: "Client email is required" },
+          { status: 400 }
+        );
+      }
+
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(clientEmail.trim())) {
+        return NextResponse.json(
+          { error: "Please enter a valid email address" },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate trade type (if provided, must be valid; defaults to "Painter" if not provided)
@@ -84,27 +89,33 @@ export async function POST(request: Request) {
       ? tradeType 
       : "Painter";
 
-    // Parse and validate optional pricing fields
-    const parsedLabourRate = labourRatePerHour !== undefined && labourRatePerHour !== null && labourRatePerHour !== ""
+    // Parse and validate optional pricing fields (only relevant for tradies)
+    const parsedLabourRate = !isClient && labourRatePerHour !== undefined && labourRatePerHour !== null && labourRatePerHour !== ""
       ? Number(labourRatePerHour)
       : null;
-    const parsedHelperRate = helperRatePerHour !== undefined && helperRatePerHour !== null && helperRatePerHour !== ""
+    const parsedHelperRate = !isClient && helperRatePerHour !== undefined && helperRatePerHour !== null && helperRatePerHour !== ""
       ? Number(helperRatePerHour)
       : null;
 
-    // Validate rates are positive numbers if provided
-    if (parsedLabourRate !== null && (isNaN(parsedLabourRate) || parsedLabourRate <= 0)) {
-      return NextResponse.json(
-        { error: "Labour rate must be a positive number" },
-        { status: 400 }
-      );
+    // Validate rates are positive numbers if provided (only for tradies)
+    if (!isClient) {
+      if (parsedLabourRate !== null && (isNaN(parsedLabourRate) || parsedLabourRate <= 0)) {
+        return NextResponse.json(
+          { error: "Labour rate must be a positive number" },
+          { status: 400 }
+        );
+      }
+      if (parsedHelperRate !== null && (isNaN(parsedHelperRate) || parsedHelperRate <= 0)) {
+        return NextResponse.json(
+          { error: "Helper rate must be a positive number" },
+          { status: 400 }
+        );
+      }
     }
-    if (parsedHelperRate !== null && (isNaN(parsedHelperRate) || parsedHelperRate <= 0)) {
-      return NextResponse.json(
-        { error: "Helper rate must be a positive number" },
-        { status: 400 }
-      );
-    }
+    
+    // For clients, use their own email/name instead of requiring client details
+    const finalClientName = isClient ? (user.email.split("@")[0] || "Client") : clientName.trim();
+    const finalClientEmail = isClient ? user.email : clientEmail.trim().toLowerCase();
 
     // Prepare job data
     const jobData: CreateJobData = {
@@ -113,8 +124,8 @@ export async function POST(request: Request) {
       propertyType: propertyType.trim(),
       address: address?.trim() || undefined,
       notes: notes?.trim() || undefined,
-      clientName: clientName.trim(),
-      clientEmail: clientEmail.trim().toLowerCase(),
+      clientName: finalClientName,
+      clientEmail: finalClientEmail,
       labourRatePerHour: parsedLabourRate,
       helperRatePerHour: parsedHelperRate,
       materialsAreRoughEstimate: materialsAreRoughEstimate === true,
@@ -126,7 +137,7 @@ export async function POST(request: Request) {
     const impersonating = sessionId ? await isImpersonating() : false;
     const realAdmin = impersonating && sessionId ? await getRealUserFromSession(sessionId) : null;
 
-    // Create the job with ai_pending status
+    // Create the job
     const job = await createEmptyJob(user.id, jobData);
     jobId = job.id;
 
@@ -147,8 +158,16 @@ export async function POST(request: Request) {
       });
     }
 
-    // Generate AI job pack (pass user to load business profile rates)
-    const updatedJob = await generateJobPack(job, user);
+    // Only generate AI job pack for tradies (not for client job posts)
+    let updatedJob = job;
+    if (!isClient) {
+      // Generate AI job pack (pass user to load business profile rates)
+      updatedJob = await generateJobPack(job, user);
+    } else {
+      // For client posts, set status to draft (no AI generation)
+      updatedJob.status = "draft";
+      await saveJob(updatedJob);
+    }
 
     return NextResponse.json({ job: updatedJob }, { status: 200 });
   } catch (error) {
