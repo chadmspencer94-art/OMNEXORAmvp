@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
-import { getJobById, type Job, type JobStatus, type JobWorkflowStatus, type AIReviewStatus, type ClientStatus } from "@/lib/jobs";
+import { requireActiveUser } from "@/lib/auth";
+import { getJobById, type Job, type JobStatus, type JobWorkflowStatus, type AIReviewStatus, type ClientStatus, type EffectiveRates } from "@/lib/jobs";
+import { formatEffectiveRatesForDisplay, calculateEstimateRange } from "@/lib/pricing";
 import CopyForClientButton from "./CopyForClientButton";
 import EmailToClientButton from "./EmailToClientButton";
 import RegenerateButton from "./RegenerateButton";
@@ -13,6 +14,8 @@ import SendToClientButton from "./SendToClientButton";
 import JobPackPdfButton from "./JobPackPdfButton";
 import MaterialsEditButton from "./MaterialsEditButton";
 import DeleteJobButton from "./DeleteJobButton";
+import SwmsSection from "./SwmsSection";
+import SectionEditButton from "./SectionEditButton";
 import VerifiedBadge from "@/app/components/VerifiedBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
@@ -173,21 +176,24 @@ function SectionHeader({ title, icon }: { title: string; icon: React.ReactNode }
 // Section Components
 // ============================================================================
 
-function SummarySection({ content }: { content?: string }) {
+function SummarySection({ content, editButton }: { content?: string; editButton?: React.ReactNode }) {
   if (!content) return null;
 
   const paragraphs = content.split(/\n\n|\n/).filter(p => p.trim());
 
   return (
     <div className="border-b border-slate-200 pb-6">
-      <SectionHeader
-        title="Summary"
-        icon={
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        }
-      />
+      <div className="flex items-center justify-between">
+        <SectionHeader
+          title="Summary"
+          icon={
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          }
+        />
+        {editButton}
+      </div>
       <div className="pl-10 space-y-2">
         {paragraphs.map((p, i) => (
           <p key={i} className="text-slate-700 leading-relaxed">{p}</p>
@@ -197,7 +203,7 @@ function SummarySection({ content }: { content?: string }) {
   );
 }
 
-function PricingSection({ content }: { content?: string }) {
+function PricingSection({ content, effectiveRates }: { content?: string; effectiveRates?: EffectiveRates | null }) {
   if (!content) return null;
 
   let parsedQuote: ParsedQuote | null = null;
@@ -206,6 +212,12 @@ function PricingSection({ content }: { content?: string }) {
   } catch {
     // Parse failed, will show fallback
   }
+
+  // Format effective rates for display
+  const ratesDisplay = effectiveRates ? formatEffectiveRatesForDisplay(effectiveRates) : null;
+
+  // Calculate realistic estimate range
+  const estimateRange = calculateEstimateRange(content);
 
   return (
     <div className="border-b border-slate-200 pb-6">
@@ -218,6 +230,14 @@ function PricingSection({ content }: { content?: string }) {
         }
       />
       <div className="pl-10">
+        {/* Show "based on your rates" if effective rates are available */}
+        {ratesDisplay && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-700">
+              <span className="font-medium">Based on your rates:</span> {ratesDisplay}
+            </p>
+          </div>
+        )}
         {parsedQuote ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {parsedQuote.labour && (
@@ -256,9 +276,10 @@ function PricingSection({ content }: { content?: string }) {
                 {parsedQuote.totalEstimate.description && (
                   <p className="text-sm text-amber-700 mb-2">{parsedQuote.totalEstimate.description}</p>
                 )}
-                {parsedQuote.totalEstimate.totalJobEstimate && (
-                  <p className="text-lg font-bold text-amber-900 mt-2">{parsedQuote.totalEstimate.totalJobEstimate}</p>
-                )}
+                {/* Display realistic range instead of identical min/max */}
+                <p className="text-lg font-bold text-amber-900 mt-2">
+                  {estimateRange.formattedRange}
+                </p>
               </div>
             )}
           </div>
@@ -272,21 +293,24 @@ function PricingSection({ content }: { content?: string }) {
   );
 }
 
-function ScopeSection({ content }: { content?: string }) {
+function ScopeSection({ content, editButton }: { content?: string; editButton?: React.ReactNode }) {
   if (!content) return null;
 
   const lines = content.split("\n").filter(line => line.trim());
 
   return (
     <div className="border-b border-slate-200 pb-6">
-      <SectionHeader
-        title="Scope of Work"
-        icon={
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
-        }
-      />
+      <div className="flex items-center justify-between">
+        <SectionHeader
+          title="Scope of Work"
+          icon={
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+          }
+        />
+        {editButton}
+      </div>
       <div className="pl-10">
         {lines.length > 1 ? (
           <ol className="list-decimal list-inside space-y-2">
@@ -306,12 +330,14 @@ function ListSection({
   title, 
   content, 
   icon, 
-  variant = "check" 
+  variant = "check",
+  editButton,
 }: { 
   title: string; 
   content?: string; 
   icon: React.ReactNode;
   variant?: "check" | "x";
+  editButton?: React.ReactNode;
 }) {
   if (!content) return null;
 
@@ -320,7 +346,10 @@ function ListSection({
 
   return (
     <div className="border-b border-slate-200 pb-6">
-      <SectionHeader title={title} icon={icon} />
+      <div className="flex items-center justify-between">
+        <SectionHeader title={title} icon={icon} />
+        {editButton}
+      </div>
       <div className="pl-10">
         <ul className="space-y-2">
           {items.map((item, i) => (
@@ -442,21 +471,24 @@ function MaterialsSection({
   );
 }
 
-function NotesSection({ content }: { content?: string }) {
+function NotesSection({ content, editButton }: { content?: string; editButton?: React.ReactNode }) {
   if (!content) return null;
 
   const paragraphs = content.split(/\n\n|\n/).filter(p => p.trim());
 
   return (
     <div className="pb-0">
-      <SectionHeader
-        title="Client Notes"
-        icon={
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-        }
-      />
+      <div className="flex items-center justify-between">
+        <SectionHeader
+          title="Client Notes"
+          icon={
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+          }
+        />
+        {editButton}
+      </div>
       <div className="pl-10 space-y-2">
         {paragraphs.map((p, i) => (
           <p key={i} className="text-slate-700 leading-relaxed">{p}</p>
@@ -473,10 +505,7 @@ function NotesSection({ content }: { content?: string }) {
 export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const { id } = await params;
   
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect(`/login?redirect=/jobs/${id}`);
-  }
+  const user = await requireActiveUser(`/jobs/${id}`);
 
   const job = await getJobById(id);
   
@@ -512,16 +541,16 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
             </svg>
             <div>
               <p className="font-medium text-amber-800">
-                {verificationStatus === "pending_review" 
+                {(verificationStatus === "pending" || (verificationStatus as string) === "pending_review") 
                   ? "Verification in progress" 
                   : "Complete your business verification"}
               </p>
               <p className="text-sm text-amber-700 mt-1">
-                {verificationStatus === "pending_review"
+                {(verificationStatus === "pending" || (verificationStatus as string) === "pending_review")
                   ? "Your verification is being reviewed. You'll be able to email job packs once approved."
                   : "Verify your business to display your \"Verified Trade\" badge and email job packs directly to clients."}
               </p>
-              {verificationStatus !== "pending_review" && (
+              {verificationStatus !== "pending" && (verificationStatus as string) !== "pending_review" && (
                 <a
                   href="/settings/verification"
                   className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-amber-700 hover:text-amber-800"
@@ -686,14 +715,14 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   <p className="text-sm text-slate-500 mb-2">Business Status</p>
                   {verificationStatus === "verified" ? (
                     <VerifiedBadge />
-                  ) : verificationStatus === "pending_review" ? (
+                  ) : (verificationStatus === "pending" || (verificationStatus as string) === "pending_review") ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full border border-amber-300">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                       </svg>
                       Pending
                     </span>
-                  ) : verificationStatus === "rejected" ? (
+                  ) : (verificationStatus as string) === "rejected" ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full border border-red-300">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -721,6 +750,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
         {/* Main Content - AI Job Pack */}
         <div className="lg:col-span-2">
+          {/* SWMS UI START – job detail page */}
           {(job.status === "ai_pending" || job.status === "generating") && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
               <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -754,134 +784,223 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           )}
 
           {(job.status === "ai_complete" || job.status === "pending_regeneration") && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-              {/* Pending regeneration notice */}
-              {job.status === "pending_regeneration" && (
-                <div className="px-6 py-3 bg-orange-50 border-b border-orange-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span className="text-sm text-orange-700 font-medium">
-                      Job details changed – regenerate to update the AI job pack.
+            <>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                {/* Pending regeneration notice */}
+                {job.status === "pending_regeneration" && (
+                  <div className="px-6 py-3 bg-orange-50 border-b border-orange-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <span className="text-sm text-orange-700 font-medium">
+                        Job details changed – regenerate to update the AI job pack.
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                  <h2 className="text-lg font-semibold text-slate-900">AI Generated Job Pack</h2>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Only show regenerate button if AI pack is not confirmed */}
+                    {job.aiReviewStatus !== "confirmed" && (
+                      <RegenerateButton jobId={job.id} status={job.status} aiReviewStatus={job.aiReviewStatus} />
+                    )}
+                    {job.aiReviewStatus === "confirmed" && (
+                      <div className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                        <p className="font-medium mb-1">AI pack confirmed</p>
+                        <p>You can make manual adjustments, but you can&apos;t regenerate this pack. For major changes, create a new job or duplicate this one.</p>
+                      </div>
+                    )}
+                    <CopyForClientButton
+                      title={job.title}
+                      address={job.address}
+                      summary={job.aiSummary}
+                      scopeOfWork={job.aiScopeOfWork}
+                      inclusions={job.aiInclusions}
+                      exclusions={job.aiExclusions}
+                      quoteJson={job.aiQuote}
+                    />
+                    <EmailToClientButton
+                      title={job.title}
+                      clientEmail={job.clientEmail}
+                      clientName={job.clientName}
+                      address={job.address}
+                      summary={job.aiSummary}
+                      scopeOfWork={job.aiScopeOfWork}
+                      inclusions={job.aiInclusions}
+                      exclusions={job.aiExclusions}
+                      quoteJson={job.aiQuote}
+                      verificationStatus={user.verificationStatus || "unverified"}
+                    />
+                    <SendToClientButton
+                      jobId={job.id}
+                      jobTitle={job.title}
+                      clientEmail={job.clientEmail}
+                      clientName={job.clientName}
+                      sentToClientAt={job.sentToClientAt}
+                      verificationStatus={user.verificationStatus || "unverified"}
+                    />
+                    {/* Hint for draft status */}
+                    {(!job.clientStatus || job.clientStatus === "draft") && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        💡 Once you email the job pack, this job will move to &ldquo;Sent&rdquo; status.
+                      </p>
+                    )}
+                    <JobPackPdfButton
+                      jobId={job.id}
+                      jobTitle={job.title}
+                      jobCreatedAt={job.createdAt}
+                      tradeType={job.tradeType}
+                      propertyType={job.propertyType}
+                      address={job.address}
+                      clientName={job.clientName}
+                      notes={job.notes}
+                      aiSummary={job.aiSummary}
+                      aiQuote={job.aiQuote}
+                      aiScopeOfWork={job.aiScopeOfWork}
+                      aiInclusions={job.aiInclusions}
+                      aiExclusions={job.aiExclusions}
+                      aiMaterials={job.aiMaterials}
+                      aiClientNotes={job.aiClientNotes}
+                      materialsOverrideText={job.materialsOverrideText}
+                      materialsAreRoughEstimate={job.materialsAreRoughEstimate}
+                    />
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                      Powered by AI
                     </span>
                   </div>
                 </div>
-              )}
-              <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold text-slate-900">AI Generated Job Pack</h2>
-                <div className="flex flex-wrap items-center gap-3">
-                  <RegenerateButton jobId={job.id} status={job.status} />
-                  <CopyForClientButton
-                    title={job.title}
-                    address={job.address}
-                    summary={job.aiSummary}
-                    scopeOfWork={job.aiScopeOfWork}
-                    inclusions={job.aiInclusions}
-                    exclusions={job.aiExclusions}
-                    quoteJson={job.aiQuote}
+                <div className="p-6 space-y-6">
+                  <SummarySection 
+                    content={job.aiSummary}
+                    editButton={
+                      <SectionEditButton
+                        jobId={job.id}
+                        sectionName="summary"
+                        fieldName="aiSummary"
+                        currentValue={job.aiSummary}
+                        label="Summary"
+                        placeholder="Enter a brief summary of the job..."
+                      />
+                    }
                   />
-                  <EmailToClientButton
-                    title={job.title}
-                    clientEmail={job.clientEmail}
-                    clientName={job.clientName}
-                    address={job.address}
-                    summary={job.aiSummary}
-                    scopeOfWork={job.aiScopeOfWork}
-                    inclusions={job.aiInclusions}
-                    exclusions={job.aiExclusions}
-                    quoteJson={job.aiQuote}
-                    verificationStatus={user.verificationStatus || "unverified"}
+                  <PricingSection content={job.aiQuote} effectiveRates={job.effectiveRates} />
+                  <ScopeSection 
+                    content={job.aiScopeOfWork}
+                    editButton={
+                      <SectionEditButton
+                        jobId={job.id}
+                        sectionName="scope"
+                        fieldName="aiScopeOfWork"
+                        currentValue={job.aiScopeOfWork}
+                        label="Scope of Work"
+                        placeholder="Enter the scope of work, one item per line..."
+                      />
+                    }
                   />
-                  <SendToClientButton
-                    jobId={job.id}
-                    jobTitle={job.title}
-                    clientEmail={job.clientEmail}
-                    clientName={job.clientName}
-                    sentToClientAt={job.sentToClientAt}
-                    verificationStatus={user.verificationStatus || "unverified"}
+                  <ListSection
+                    title="Inclusions"
+                    content={job.aiInclusions}
+                    variant="check"
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    }
+                    editButton={
+                      <SectionEditButton
+                        jobId={job.id}
+                        sectionName="inclusions"
+                        fieldName="aiInclusions"
+                        currentValue={job.aiInclusions}
+                        label="Inclusions"
+                        placeholder="Enter what's included, one item per line..."
+                      />
+                    }
                   />
-                  {/* Hint for draft status */}
-                  {(!job.clientStatus || job.clientStatus === "draft") && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      💡 Once you email the job pack, this job will move to &ldquo;Sent&rdquo; status.
-                    </p>
-                  )}
-                  <JobPackPdfButton
-                    jobId={job.id}
-                    jobTitle={job.title}
-                    jobCreatedAt={job.createdAt}
-                    tradeType={job.tradeType}
-                    propertyType={job.propertyType}
-                    address={job.address}
-                    clientName={job.clientName}
-                    notes={job.notes}
-                    aiSummary={job.aiSummary}
-                    aiQuote={job.aiQuote}
-                    aiScopeOfWork={job.aiScopeOfWork}
-                    aiInclusions={job.aiInclusions}
-                    aiExclusions={job.aiExclusions}
-                    aiMaterials={job.aiMaterials}
-                    aiClientNotes={job.aiClientNotes}
-                    materialsOverrideText={job.materialsOverrideText}
-                    materialsAreRoughEstimate={job.materialsAreRoughEstimate}
+                  <ListSection
+                    title="Exclusions"
+                    content={job.aiExclusions}
+                    variant="x"
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    }
+                    editButton={
+                      <SectionEditButton
+                        jobId={job.id}
+                        sectionName="exclusions"
+                        fieldName="aiExclusions"
+                        currentValue={job.aiExclusions}
+                        label="Exclusions"
+                        placeholder="Enter what's not included, one item per line..."
+                      />
+                    }
                   />
-                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                    Powered by AI
-                  </span>
+                  <MaterialsSection 
+                    content={job.aiMaterials} 
+                    overrideText={job.materialsOverrideText}
+                    showRoughEstimateDisclaimer={job.materialsAreRoughEstimate}
+                    editButton={
+                      <MaterialsEditButton 
+                        jobId={job.id} 
+                        currentOverrideText={job.materialsOverrideText} 
+                      />
+                    }
+                  />
+                  <NotesSection 
+                    content={job.aiClientNotes}
+                    editButton={
+                      <SectionEditButton
+                        jobId={job.id}
+                        sectionName="client-notes"
+                        fieldName="aiClientNotes"
+                        currentValue={job.aiClientNotes}
+                        label="Client Notes"
+                        placeholder="Enter notes for the client (payment terms, timeline, access requirements, etc.)..."
+                      />
+                    }
+                  />
                 </div>
               </div>
-              <div className="p-6 space-y-6">
-                <SummarySection content={job.aiSummary} />
-                <PricingSection content={job.aiQuote} />
-                <ScopeSection content={job.aiScopeOfWork} />
-                <ListSection
-                  title="Inclusions"
-                  content={job.aiInclusions}
-                  variant="check"
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  }
+              
+              {/* SWMS Section - Placed near AI Job Pack details */}
+              <div className="mt-6">
+                <SwmsSection
+                  jobId={job.id}
+                  swmsText={job.swmsText ?? null}
+                  jobTitle={job.title}
+                  tradeType={job.tradeType}
+                  address={job.address || "Location not specified"}
                 />
-                <ListSection
-                  title="Exclusions"
-                  content={job.aiExclusions}
-                  variant="x"
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  }
-                />
-                <MaterialsSection 
-                  content={job.aiMaterials} 
-                  overrideText={job.materialsOverrideText}
-                  showRoughEstimateDisclaimer={job.materialsAreRoughEstimate}
-                  editButton={
-                    <MaterialsEditButton 
-                      jobId={job.id} 
-                      currentOverrideText={job.materialsOverrideText} 
-                    />
-                  }
-                />
-                <NotesSection content={job.aiClientNotes} />
               </div>
-            </div>
+            </>
           )}
 
           {job.status === "draft" && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
-              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
+                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">Draft Job</h3>
+                <p className="text-slate-600">
+                  This job hasn&apos;t been processed by AI yet.
+                </p>
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">Draft Job</h3>
-              <p className="text-slate-600">
-                This job hasn&apos;t been processed by AI yet.
-              </p>
+              
+              {/* SWMS Section - Also visible for draft jobs */}
+              <SwmsSection
+                jobId={job.id}
+                swmsText={job.swmsText ?? null}
+                jobTitle={job.title}
+                tradeType={job.tradeType}
+                address={job.address || "Location not specified"}
+              />
             </div>
           )}
         </div>

@@ -1,7 +1,15 @@
 import { getCurrentUser } from "@/lib/auth";
+import { unstable_noStore as noStore } from "next/cache";
 import NavbarClient from "./NavbarClient";
 
+// Force dynamic rendering to prevent static caching of auth state
+// This ensures the navbar always shows current user info
+export const dynamic = "force-dynamic";
+
 export default async function Navbar() {
+  // Prevent static caching - always fetch fresh user data
+  noStore();
+  
   let user = null;
   
   try {

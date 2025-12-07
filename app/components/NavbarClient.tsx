@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-type UserRole = "tradie" | "client";
-type VerificationStatus = "unverified" | "pending_review" | "verified" | "rejected";
+type UserRole = "tradie" | "builder" | "client" | "supplier" | "admin";
+// Support both new and legacy verification statuses for backwards compatibility
+type VerificationStatus = "unverified" | "pending" | "verified" | "pending_review" | "rejected";
 
 interface NavbarClientProps {
   user: {
@@ -29,16 +30,20 @@ function VerificationBadge({ role, status }: { role: UserRole; status: Verificat
         </span>
       );
     }
-    if (status === "pending_review") {
+    if (status === "pending" || status === "pending_review") {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-900/50 text-amber-400 text-xs font-medium rounded-full">
+        <Link
+          href="/settings/verification"
+          className="inline-flex items-center gap-1 px-2 py-1 bg-amber-900/50 text-amber-400 hover:text-amber-300 text-xs font-medium rounded-full transition-colors"
+        >
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
           </svg>
           Verification Pending
-        </span>
+        </Link>
       );
     }
+    // Handle legacy "rejected" status - show as unverified
     if (status === "rejected") {
       return (
         <Link
@@ -87,7 +92,19 @@ function VerificationBadge({ role, status }: { role: UserRole; status: Verificat
       </span>
     );
   }
-  // status === "unverified" or "pending_review" for client
+  // status === "unverified" or "pending"/"pending_review" for client
+  // Also handle legacy "rejected" as unverified
+  const statusStr = status as string;
+  if (statusStr === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 text-slate-400 text-xs font-medium rounded-full">
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+        </svg>
+        Not Verified
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 text-slate-400 text-xs font-medium rounded-full">
       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -98,11 +115,68 @@ function VerificationBadge({ role, status }: { role: UserRole; status: Verificat
   );
 }
 
-export default function NavbarClient({ user }: NavbarClientProps) {
+export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [user, setUser] = useState<NavbarClientProps["user"]>(initialUser);
+
+  // Check auth immediately on mount and whenever route changes
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { 
+          cache: "no-store",
+          credentials: "include"
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            setUser({
+              email: data.user.email,
+              role: data.user.role || "tradie",
+              verificationStatus: data.user.verificationStatus || "unverified",
+              verifiedAt: data.user.verifiedAt ?? null,
+              isAdmin: data.user.isAdmin ?? false,
+            });
+          } else {
+            // No user in response - definitely logged out
+            setUser(null);
+          }
+        } else {
+          // Not authenticated (401/403)
+          setUser(null);
+        }
+      } catch (error) {
+        // If check fails, assume logged out for safety
+        console.error("Auth check failed:", error);
+        setUser(null);
+      }
+    };
+
+    // Check auth on mount
+    checkAuth();
+    
+    // Also refresh when window gets focus (user might have logged in/out in another tab)
+    const handleFocus = () => {
+      checkAuth();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+
+  // Sync with server prop when it changes (from router.refresh() or navigation)
+  useEffect(() => {
+    setUser(initialUser);
+  }, [initialUser]);
+
+  // Close mobile menu when user logs out
+  useEffect(() => {
+    if (!user && mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
+  }, [user, mobileMenuOpen]);
 
   const isLoggedIn = !!user;
 
@@ -110,11 +184,15 @@ export default function NavbarClient({ user }: NavbarClientProps) {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/jobs", label: "Jobs" },
     { href: "/billing", label: "Billing" },
+    { href: "/settings", label: "Settings" },
   ];
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     setLogoutError(null);
+    // Immediately clear user state and close mobile menu for instant UI update
+    setUser(null);
+    setMobileMenuOpen(false);
     try {
       const response = await fetch("/api/auth/logout", {
         method: "POST",
@@ -123,14 +201,37 @@ export default function NavbarClient({ user }: NavbarClientProps) {
       if (!response.ok) {
         const data = await response.json();
         setLogoutError(data.error || "Logout failed");
+        setIsLoggingOut(false);
+        // Re-check auth to restore correct state if logout failed
+        const authResponse = await fetch("/api/auth/me", { cache: "no-store" });
+        if (authResponse.ok) {
+          const authData = await authResponse.json();
+          if (authData.user) {
+            setUser({
+              email: authData.user.email,
+              role: authData.user.role || "tradie",
+              verificationStatus: authData.user.verificationStatus || "unverified",
+              verifiedAt: authData.user.verifiedAt ?? null,
+              isAdmin: authData.user.isAdmin ?? false,
+            });
+          }
+        }
         return;
       }
 
-      router.push("/");
+      // Clear session cookie is handled by server
+      // Ensure user state is cleared and menu is closed
+      setUser(null);
+      setMobileMenuOpen(false);
+      // Redirect to login and refresh to update navbar state
+      router.replace("/login");
+      router.refresh();
     } catch {
       setLogoutError("An unexpected error occurred");
-    } finally {
       setIsLoggingOut(false);
+      // Ensure user state is cleared and menu is closed even on error
+      setUser(null);
+      setMobileMenuOpen(false);
     }
   };
 
@@ -139,15 +240,18 @@ export default function NavbarClient({ user }: NavbarClientProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center">
-            <span className="text-2xl font-bold text-white tracking-tight">
-              OMNEXORA
-            </span>
-          </Link>
+          <button
+            onClick={() => {
+              router.push(isLoggedIn ? "/dashboard" : "/");
+            }}
+            className="flex items-center text-2xl font-bold text-white tracking-tight hover:opacity-80 transition-opacity"
+          >
+            OMNEXORA
+          </button>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
-            {navLinks.map((link) => (
+            {isLoggedIn && navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -156,7 +260,7 @@ export default function NavbarClient({ user }: NavbarClientProps) {
                 {link.label}
               </Link>
             ))}
-            <div className="ml-4 pl-4 border-l border-slate-700 flex items-center space-x-3">
+            <div className={`ml-4 ${isLoggedIn ? "pl-4 border-l border-slate-700" : ""} flex items-center space-x-3`}>
               {logoutError && (
                 <span className="text-red-400 text-xs">{logoutError}</span>
               )}
@@ -165,7 +269,7 @@ export default function NavbarClient({ user }: NavbarClientProps) {
                   <VerificationBadge role={user.role} status={user.verificationStatus} />
                   {user.isAdmin && (
                     <Link
-                      href="/admin/verification"
+                      href="/admin/users"
                       className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors text-xs font-medium"
                     >
                       Admin
@@ -229,42 +333,43 @@ export default function NavbarClient({ user }: NavbarClientProps) {
       {mobileMenuOpen && (
         <div className="md:hidden bg-slate-800 border-t border-slate-700">
           <div className="px-4 py-3 space-y-1">
-            {navLinks.map((link) => (
-              <Link
+            {isLoggedIn && navLinks.map((link) => (
+              <button
                 key={link.href}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  router.push(link.href);
+                }}
+                className="w-full text-left px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium"
               >
                 {link.label}
-              </Link>
+              </button>
             ))}
-            <div className="pt-3 mt-3 border-t border-slate-700">
+            <div className={`${isLoggedIn ? "pt-3 mt-3 border-t border-slate-700" : ""}`}>
               {logoutError && (
                 <p className="px-4 py-2 text-red-400 text-sm">{logoutError}</p>
               )}
               {isLoggedIn ? (
                 <>
-                  <div className="px-4 py-2">
+                  <div className="px-4 py-2" onClick={() => setMobileMenuOpen(false)}>
                     <VerificationBadge role={user.role} status={user.verificationStatus} />
                   </div>
                   {user.isAdmin && (
-                    <Link
-                      href="/admin/verification"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block mx-4 my-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-center rounded-lg transition-colors text-sm font-medium"
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        router.push("/admin/users");
+                      }}
+                      className="w-full mx-4 my-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-center rounded-lg transition-colors text-sm font-medium"
                     >
                       Admin Panel
-                    </Link>
+                    </button>
                   )}
                   <p className="px-4 py-2 text-slate-400 text-sm truncate">
                     {user.email}
                   </p>
                   <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handleLogout();
-                    }}
+                    onClick={handleLogout}
                     disabled={isLoggingOut}
                     className="w-full text-left px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
                   >
@@ -272,13 +377,15 @@ export default function NavbarClient({ user }: NavbarClientProps) {
                   </button>
                 </>
               ) : (
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg transition-colors text-sm font-semibold text-center"
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push("/login");
+                  }}
+                  className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg transition-colors text-sm font-semibold text-center"
                 >
                   Login
-                </Link>
+                </button>
               )}
             </div>
           </div>

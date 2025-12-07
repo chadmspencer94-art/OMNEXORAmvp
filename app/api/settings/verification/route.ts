@@ -40,7 +40,9 @@ export async function POST(request: Request) {
 
     // Can't submit if already pending or verified
     const currentStatus = user.verificationStatus || "unverified";
-    if (currentStatus === "pending_review") {
+    // Check both new "pending" and legacy "pending_review" status
+    const statusStr = currentStatus as string;
+    if (statusStr === "pending" || statusStr === "pending_review") {
       return NextResponse.json(
         { error: "Your verification is already pending review" },
         { status: 400 }
@@ -107,10 +109,10 @@ export async function POST(request: Request) {
       verificationSubmittedAt: new Date().toISOString(),
     };
 
-    // Update user with business details and set status to pending_review
+    // Update user with business details and set status to pending
     const updatedUser = await updateUser(user.id, {
       businessDetails,
-      verificationStatus: "pending_review",
+      verificationStatus: "pending",
     });
 
     if (!updatedUser) {
@@ -121,7 +123,7 @@ export async function POST(request: Request) {
     }
 
     // Add user to verification pending index for admin review
-    await addUserToVerificationIndex(user.id, "pending_review");
+    await addUserToVerificationIndex(user.id, "pending");
 
     // Send notification email
     await sendNotification("tradie_verification_submitted", {
@@ -132,7 +134,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: "Verification submitted successfully",
-      verificationStatus: "pending_review",
+      verificationStatus: "pending",
     });
   } catch (error) {
     console.error("Verification submission error:", error);

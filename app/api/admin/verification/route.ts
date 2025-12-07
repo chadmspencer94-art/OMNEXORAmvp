@@ -28,8 +28,8 @@ export async function GET() {
       );
     }
 
-    // Get users with pending_review status (only those who have submitted verification)
-    const pendingReviewUsers = await getUsersByVerificationStatus("pending_review");
+    // Get users with pending status (map legacy "pending_review" to "pending")
+    const pendingReviewUsers = await getUsersByVerificationStatus("pending");
 
     return NextResponse.json({
       users: pendingReviewUsers,
@@ -93,7 +93,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (targetUser.verificationStatus !== "pending_review") {
+    // Accept both "pending" and legacy "pending_review" status
+    const status = targetUser.verificationStatus as string;
+    if (status !== "pending" && status !== "pending_review") {
       return NextResponse.json(
         { error: "User is not pending verification review" },
         { status: 400 }
@@ -111,8 +113,14 @@ export async function POST(request: Request) {
         },
       });
 
-      // Remove from pending index
-      await removeUserFromVerificationIndex(userId, "pending_review");
+      // Remove from pending index (handle both new and legacy status)
+      await removeUserFromVerificationIndex(userId, "pending");
+      // Also try legacy status for backwards compatibility
+      try {
+        await removeUserFromVerificationIndex(userId, "pending_review" as any);
+      } catch {
+        // Ignore if legacy index doesn't exist
+      }
 
       // Log approval
       console.log(`[ADMIN] User ${targetUser.email} verified by ${adminUser.email}`);
@@ -138,9 +146,10 @@ export async function POST(request: Request) {
         );
       }
 
-      // Update user to rejected
+      // Update user to unverified (rejected maps to unverified in simplified system)
       const updatedUser = await updateUser(userId, {
-        verificationStatus: "rejected",
+        verificationStatus: "unverified",
+        verifiedAt: null,
         businessDetails: {
           ...targetUser.businessDetails,
           verificationReviewedAt: new Date().toISOString(),
@@ -148,8 +157,14 @@ export async function POST(request: Request) {
         },
       });
 
-      // Remove from pending index
-      await removeUserFromVerificationIndex(userId, "pending_review");
+      // Remove from pending index (handle both new and legacy status)
+      await removeUserFromVerificationIndex(userId, "pending");
+      // Also try legacy status for backwards compatibility
+      try {
+        await removeUserFromVerificationIndex(userId, "pending_review" as any);
+      } catch {
+        // Ignore if legacy index doesn't exist
+      }
 
       // Log rejection
       console.log(`[ADMIN] User ${targetUser.email} rejected by ${adminUser.email}. Reason: ${reason.trim()}`);

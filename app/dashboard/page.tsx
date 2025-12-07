@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser, getUsersByVerificationStatus } from "@/lib/auth";
+import { requireActiveUser, getUsersByVerificationStatus } from "@/lib/auth";
 import { getJobsForUser, type Job, type JobStatus } from "@/lib/jobs";
 import { getUnresolvedFeedbackCount } from "@/lib/feedback";
 import DevVerifyButton from "./DevVerifyButton";
 import VerifiedBadge from "@/app/components/VerifiedBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
+import MatchingJobsSection from "./MatchingJobsSection";
 
 // Check if we're in development mode (for showing dev tools)
 const isDev = process.env.NODE_ENV !== "production";
@@ -62,11 +63,7 @@ function RecentJobRow({ job }: { job: Job }) {
 }
 
 export default async function DashboardPage() {
-  const user = await getCurrentUser();
-  
-  if (!user) {
-    redirect("/login?redirect=/dashboard");
-  }
+  const user = await requireActiveUser("/dashboard");
 
   const jobs = await getJobsForUser(user.id);
   
@@ -92,7 +89,7 @@ export default async function DashboardPage() {
   let unresolvedFeedback = 0;
   if (userIsAdmin) {
     try {
-      const pendingReviewUsers = await getUsersByVerificationStatus("pending_review");
+      const pendingReviewUsers = await getUsersByVerificationStatus("pending");
       pendingVerifications = pendingReviewUsers.length;
       unresolvedFeedback = await getUnresolvedFeedbackCount();
     } catch {
@@ -119,7 +116,7 @@ export default async function DashboardPage() {
               <p className="font-medium">Prototype mode</p>
               <p className="mt-1 text-amber-700">
                 Your account is not fully verified yet. Before public launch, OMNEXORA will confirm your business details (ABN, insurance, ID) so clients know they&apos;re dealing with legitimate trades.
-                {verificationStatus === "pending_review" ? (
+                {(verificationStatus === "pending" || (verificationStatus as string) === "pending_review") ? (
                   <span className="ml-1 font-medium">Your verification is currently being reviewed.</span>
                 ) : (
                   <a href="/settings/verification" className="ml-1 font-medium underline hover:text-amber-900">
@@ -310,6 +307,13 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Jobs in your service area - Only shown for tradies */}
+      {isTradie && (
+        <div className="mt-8">
+          <MatchingJobsSection />
+        </div>
+      )}
     </div>
   );
 }

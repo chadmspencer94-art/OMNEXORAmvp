@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, incrementUserJobCount, getRealUserFromSession, isImpersonating, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { cookies } from "next/headers";
+import { createAuditLog } from "@/lib/audit";
 import { createEmptyJob, generateJobPack, saveJob, type CreateJobData, type TradeType } from "@/lib/jobs";
 
 export async function POST(request: Request) {
@@ -118,12 +120,35 @@ export async function POST(request: Request) {
       materialsAreRoughEstimate: materialsAreRoughEstimate === true,
     };
 
+    // Get real admin if impersonating (for audit logging)
+    const cookieStore = await cookies();
+    const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    const impersonating = sessionId ? await isImpersonating() : false;
+    const realAdmin = impersonating && sessionId ? await getRealUserFromSession(sessionId) : null;
+
     // Create the job with ai_pending status
     const job = await createEmptyJob(user.id, jobData);
     jobId = job.id;
 
-    // Generate AI job pack
-    const updatedJob = await generateJobPack(job);
+    // Track activity and increment job count
+    incrementUserJobCount(user.id).catch((err) => {
+      console.error("Failed to increment job count:", err);
+    });
+
+    // Log audit if impersonating
+    if (impersonating && realAdmin) {
+      createAuditLog({
+        adminId: realAdmin.id,
+        actingAsUserId: user.id,
+        action: "JOB_CREATED_AS_USER",
+        metadata: { jobId: job.id, jobTitle: job.title },
+      }).catch((err) => {
+        console.error("Failed to create audit log:", err);
+      });
+    }
+
+    // Generate AI job pack (pass user to load business profile rates)
+    const updatedJob = await generateJobPack(job, user);
 
     return NextResponse.json({ job: updatedJob }, { status: 200 });
   } catch (error) {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus, ClipboardList } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/auth";
 import { getJobsForUser, type Job, type JobStatus, type JobWorkflowStatus, type ClientStatus } from "@/lib/jobs";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 
@@ -124,11 +124,7 @@ interface JobsPageProps {
 }
 
 export default async function JobsPage({ searchParams }: JobsPageProps) {
-  const user = await getCurrentUser();
-  
-  if (!user) {
-    redirect("/login?redirect=/jobs");
-  }
+  const user = await requireActiveUser("/jobs");
 
   const jobs = await getJobsForUser(user.id);
   const params = await searchParams;

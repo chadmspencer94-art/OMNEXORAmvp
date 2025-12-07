@@ -211,6 +211,27 @@ export default function VerificationPage() {
   if (userData?.verificationStatus === "verified") {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12">
+        {/* Navigation Tabs */}
+        <div className="mb-6 flex gap-3 border-b border-slate-200">
+          <Link
+            href="/settings"
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/settings/business-profile"
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            Business Profile
+          </Link>
+          <Link
+            href="/settings/verification"
+            className="px-4 py-2 text-sm font-medium text-amber-600 border-b-2 border-amber-500"
+          >
+            Verification
+          </Link>
+        </div>
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="p-8 text-center border-b border-slate-100">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -244,10 +265,31 @@ export default function VerificationPage() {
     );
   }
 
-  // If pending review, show info with submitted details
-  if (userData?.verificationStatus === "pending_review") {
+  // If pending review, show info with submitted details (handle both new and legacy status)
+  if (userData?.verificationStatus === "pending" || userData?.verificationStatus === "pending_review") {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12">
+        {/* Navigation Tabs */}
+        <div className="mb-6 flex gap-3 border-b border-slate-200">
+          <Link
+            href="/settings"
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/settings/business-profile"
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            Business Profile
+          </Link>
+          <Link
+            href="/settings/verification"
+            className="px-4 py-2 text-sm font-medium text-amber-600 border-b-2 border-amber-500"
+          >
+            Verification
+          </Link>
+        </div>
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="p-8 text-center border-b border-slate-100">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -281,7 +323,7 @@ export default function VerificationPage() {
     );
   }
 
-  // Show form for unverified or rejected users
+  // Show form for unverified users (including legacy "rejected" status)
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="mb-8">
@@ -300,7 +342,31 @@ export default function VerificationPage() {
         </p>
       </div>
 
-      {userData?.verificationStatus === "rejected" && (
+      {/* Navigation Tabs */}
+      <div className="mb-6 flex gap-3 border-b border-slate-200">
+        <Link
+          href="/settings"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+        >
+          Pricing
+        </Link>
+        <Link
+          href="/settings/business-profile"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+        >
+          Business Profile
+        </Link>
+        <Link
+          href="/settings/verification"
+          className="px-4 py-2 text-sm font-medium text-amber-600 border-b-2 border-amber-500"
+        >
+          Verification
+        </Link>
+      </div>
+
+      {/* Show message for legacy "rejected" status (now treated as unverified) */}
+      {((userData?.verificationStatus as string) === "rejected" ||
+        (userData?.verificationStatus === "unverified" && (userData?.businessDetails as any)?.verificationRejectionReason)) && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-start gap-3">
             <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

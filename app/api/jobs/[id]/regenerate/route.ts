@@ -26,6 +26,14 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Don't allow regeneration if AI pack is confirmed
+    if (job.aiReviewStatus === "confirmed") {
+      return NextResponse.json(
+        { error: "Cannot regenerate a confirmed job pack. For major changes, create a new job or duplicate this one." },
+        { status: 403 }
+      );
+    }
+
     // Don't allow regeneration if already generating or initial generation is pending
     if (job.status === "generating" || job.status === "ai_pending") {
       return NextResponse.json(
@@ -39,8 +47,8 @@ export async function POST(
     await saveJob(job);
 
     try {
-      // Generate the new job pack
-      const updatedJob = await generateJobPack(job);
+      // Generate the new job pack (pass user to load business profile rates)
+      const updatedJob = await generateJobPack(job, user);
       return NextResponse.json({ job: updatedJob });
     } catch (error) {
       // If generation fails, mark as failed

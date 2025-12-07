@@ -45,8 +45,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role (if provided)
-    const validRoles: UserRole[] = ["tradie", "client"];
-    const userRole: UserRole = role && validRoles.includes(role) ? role : "tradie";
+    // For self-signup, only allow tradie or client roles for security
+    // Admins can change roles later via the admin users page
+    const validSelfSignupRoles: UserRole[] = ["tradie", "client"];
+    const userRole: UserRole = role && validSelfSignupRoles.includes(role) ? role : "tradie";
 
     // Create the user
     const user = await createUser(email, password, userRole);

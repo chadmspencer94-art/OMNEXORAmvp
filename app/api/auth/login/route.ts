@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser, createSession, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from "@/lib/auth";
+import { verifyUser, createSession, updateLastLogin, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from "@/lib/auth";
 
 interface LoginRequestBody {
   email: string;
@@ -38,6 +38,11 @@ export async function POST(request: NextRequest) {
 
     // Create a session
     const sessionId = await createSession(user.id);
+
+    // Update last login timestamp (don't await - fire and forget for performance)
+    updateLastLogin(user.id).catch((err) => {
+      console.error("Failed to update last login:", err);
+    });
 
     // Create response and set the session cookie directly on it
     const response = NextResponse.json({

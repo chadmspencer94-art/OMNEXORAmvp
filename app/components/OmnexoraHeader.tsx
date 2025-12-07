@@ -1,7 +1,7 @@
 import VerifiedBadge from "./VerifiedBadge";
 
 interface OmnexoraHeaderProps {
-  verificationStatus?: "unverified" | "pending_review" | "verified" | "rejected";
+  verificationStatus?: "unverified" | "pending" | "verified" | "pending_review" | "rejected";
   showEarlyAccess?: boolean;
 }
 

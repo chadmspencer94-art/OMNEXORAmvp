@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle, Circle, Loader2, Bug, Lightbulb, HelpCircle, FileText } from "lucide-react";
-import type { Feedback, FeedbackCategory } from "@/lib/feedback";
+import type { Feedback, FeedbackCategory, FeedbackMessage } from "@/lib/feedback";
 
 interface FeedbackLogClientProps {
   initialFeedback: Feedback[];
+}
+
+interface FeedbackMessageWithRole extends FeedbackMessage {
+  authorRole?: string | null;
+  authorIsAdmin?: boolean;
 }
 
 const categoryIcons: Record<FeedbackCategory, React.ReactNode> = {
@@ -47,6 +52,8 @@ export default function FeedbackLogClient({ initialFeedback }: FeedbackLogClient
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<"all" | "open" | "resolved">("all");
+  const [feedbackMessages, setFeedbackMessages] = useState<Record<string, FeedbackMessageWithRole[]>>({});
+  const [loadingMessages, setLoadingMessages] = useState<Set<string>>(new Set());
 
   const handleToggleResolution = async (id: string, currentResolved: boolean) => {
     setLoadingIds((prev) => new Set(prev).add(id));
@@ -105,9 +112,35 @@ export default function FeedbackLogClient({ initialFeedback }: FeedbackLogClient
         next.delete(id);
       } else {
         next.add(id);
+        // Fetch messages when expanding
+        if (!feedbackMessages[id] && !loadingMessages.has(id)) {
+          fetchFeedbackMessages(id);
+        }
       }
       return next;
     });
+  };
+
+  const fetchFeedbackMessages = async (feedbackId: string) => {
+    setLoadingMessages((prev) => new Set(prev).add(feedbackId));
+    try {
+      const response = await fetch(`/api/admin/feedback/${feedbackId}/messages`);
+      if (response.ok) {
+        const data = await response.json();
+        setFeedbackMessages((prev) => ({
+          ...prev,
+          [feedbackId]: data.messages || [],
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch feedback messages:", error);
+    } finally {
+      setLoadingMessages((prev) => {
+        const next = new Set(prev);
+        next.delete(feedbackId);
+        return next;
+      });
+    }
   };
 
   const filteredFeedback = feedback.filter((f) => {
@@ -227,7 +260,7 @@ export default function FeedbackLogClient({ initialFeedback }: FeedbackLogClient
                         )}
                       </div>
 
-                      {/* Message */}
+                      {/* Initial Message */}
                       <div className="text-sm text-slate-700">
                         {isLongMessage && !isExpanded ? (
                           <>
@@ -253,6 +286,47 @@ export default function FeedbackLogClient({ initialFeedback }: FeedbackLogClient
                           </>
                         )}
                       </div>
+
+                      {/* Messages/Replies */}
+                      {isExpanded && (
+                        <div className="mt-4 pt-4 border-t border-slate-200">
+                          <div className="space-y-3">
+                            {loadingMessages.has(item.id) ? (
+                              <div className="text-xs text-slate-500">Loading messages...</div>
+                            ) : feedbackMessages[item.id]?.length > 0 ? (
+                              feedbackMessages[item.id].map((msg) => (
+                                <div
+                                  key={msg.id}
+                                  className={`p-3 rounded-lg ${
+                                    msg.authorIsAdmin
+                                      ? "bg-purple-50 border border-purple-200"
+                                      : "bg-slate-50 border border-slate-200"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-medium text-slate-900">
+                                      {msg.authorName || msg.authorEmail || "Unknown"}
+                                    </span>
+                                    {msg.authorIsAdmin && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-600 text-white">
+                                        Admin
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-slate-400">
+                                      {formatDate(msg.createdAt)}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                                    {msg.message}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-xs text-slate-500">No replies yet.</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

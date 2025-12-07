@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
+import { calculateEstimateRange } from "@/lib/pricing";
 
 interface TotalEstimateQuote {
   description?: string;
@@ -34,18 +35,9 @@ export default function CopyForClientButton({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    // Parse quote to get total estimate
-    let priceRange = "";
-    if (quoteJson) {
-      try {
-        const quote: ParsedQuote = JSON.parse(quoteJson);
-        if (quote.totalEstimate?.totalJobEstimate) {
-          priceRange = quote.totalEstimate.totalJobEstimate;
-        }
-      } catch {
-        // Ignore parse errors
-      }
-    }
+    // Calculate realistic estimate range
+    const estimateRange = calculateEstimateRange(quoteJson);
+    const priceRange = estimateRange.formattedRange !== "N/A" ? estimateRange.formattedRange : "";
 
     // Build scope of work as numbered list
     const scopeLines = scopeOfWork?.split("\n").filter((line) => line.trim()) || [];

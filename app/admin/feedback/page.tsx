@@ -1,15 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { requireActiveUser, isAdmin } from "@/lib/auth";
 import { getAllFeedback } from "@/lib/feedback";
 import FeedbackLogClient from "./FeedbackLogClient";
 
 export default async function AdminFeedbackPage() {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/login?redirect=/admin/feedback");
-  }
+  const user = await requireActiveUser("/admin/feedback");
 
   if (!isAdmin(user)) {
     redirect("/dashboard");
@@ -21,6 +17,12 @@ export default async function AdminFeedbackPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Admin Navigation */}
       <div className="mb-6 flex gap-3">
+        <Link
+          href="/admin/users"
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+        >
+          Users
+        </Link>
         <Link
           href="/admin/verification"
           className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"

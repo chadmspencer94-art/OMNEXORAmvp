@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function LoginForm() {
@@ -30,6 +30,7 @@ function LoginForm() {
 
       if (!response.ok) {
         setError(data.error || "Login failed");
+        setIsLoading(false);
         return;
       }
 
@@ -50,10 +51,11 @@ function LoginForm() {
         }
       }
       
-      router.push(redirectTo);
+      // Use replace to avoid adding to history, then refresh to update navbar
+      router.replace(redirectTo);
+      router.refresh();
     } catch {
       setError("An unexpected error occurred");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -123,7 +125,51 @@ function LoginForm() {
   );
 }
 
-export default function LoginPage() {
+// Force dynamic rendering to prevent static caching of auth state
+// This ensures the page always checks current auth status
+export const dynamic = "force-dynamic";
+
+function LoginPageClient() {
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
+
+  // Guard: Check if user is already logged in on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/me");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            // User is already logged in, redirect to dashboard
+            router.replace("/dashboard");
+            return;
+          }
+        }
+      } catch {
+        // If check fails, user is not logged in - show login form
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  if (isChecking) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+            <div className="text-center">
+              <p className="text-slate-600">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
       <div className="w-full max-w-md">
@@ -140,3 +186,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default LoginPageClient;

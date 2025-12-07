@@ -8,18 +8,25 @@ import type { JobStatus } from "@/lib/jobs";
 interface RegenerateButtonProps {
   jobId: string;
   status: JobStatus;
+  aiReviewStatus?: "pending" | "confirmed";
 }
 
-export default function RegenerateButton({ jobId, status }: RegenerateButtonProps) {
+export default function RegenerateButton({ jobId, status, aiReviewStatus }: RegenerateButtonProps) {
   const router = useRouter();
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState("");
 
   const isGenerating = status === "generating" || status === "ai_pending";
-  const canRegenerate = !isGenerating && !isRegenerating;
+  const isConfirmed = aiReviewStatus === "confirmed";
+  const canRegenerate = !isGenerating && !isRegenerating && !isConfirmed;
 
   const handleRegenerate = async () => {
-    if (!canRegenerate) return;
+    if (!canRegenerate) {
+      if (isConfirmed) {
+        setError("Cannot regenerate a confirmed job pack. For major changes, create a new job or duplicate this one.");
+      }
+      return;
+    }
 
     setError("");
     setIsRegenerating(true);

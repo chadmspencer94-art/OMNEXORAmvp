@@ -1,5 +1,10 @@
 import { kv } from "./kv";
 import { openai } from "./openai";
+import { getEffectiveRates, type EffectiveRates } from "./pricing";
+import type { SafeUser } from "./auth";
+
+// Re-export EffectiveRates for use in other files
+export type { EffectiveRates } from "./pricing";
 
 // ============================================================================
 // Types
@@ -45,6 +50,8 @@ export interface Job {
   labourRatePerHour?: number | null;
   helperRatePerHour?: number | null;
   materialsAreRoughEstimate?: boolean;
+  // Effective rates used for this job (stored after generation)
+  effectiveRates?: EffectiveRates | null;
   // Materials override (user-provided, replaces AI materials)
   materialsOverrideText?: string | null;
   // AI-generated fields
@@ -62,6 +69,9 @@ export interface Job {
   clientStatusUpdatedAt?: string | null;
   // Soft delete flag (job is hidden from user but data preserved)
   isDeleted?: boolean;
+  // SWMS (Safe Work Method Statement) fields
+  swmsText?: string | null;
+  swmsStatus?: "NOT_STARTED" | "GENERATING" | "READY" | "FAILED" | null;
 }
 
 export interface CreateJobData {
@@ -254,16 +264,70 @@ export async function softDeleteJob(jobId: string): Promise<Job | null> {
 //   return job;
 // }
 
+/**
+ * Gets all active jobs from all users (for matching/searching)
+ * Returns jobs that are not deleted and are in a visible state
+ * @param limit - Maximum number of jobs to return (default: 50)
+ * @returns Array of active jobs, sorted by createdAt descending
+ */
+export async function getAllActiveJobs(limit: number = 50): Promise<Job[]> {
+  // Get all users to find their jobs
+  const { getAllUsers } = await import("./auth");
+  const users = await getAllUsers();
+  
+  // Collect all job IDs from all users
+  const allJobIds: string[] = [];
+  for (const user of users) {
+    const userJobsKey = `user:${user.id}:jobs`;
+    const jobIds = await kv.lrange<string>(userJobsKey, 0, -1);
+    if (jobIds && jobIds.length > 0) {
+      allJobIds.push(...jobIds);
+    }
+  }
+  
+  if (allJobIds.length === 0) {
+    return [];
+  }
+  
+  // Load all jobs in parallel
+  const jobs = await Promise.all(
+    allJobIds.map((id) => kv.get<Job>(`job:${id}`))
+  );
+  
+  // Filter out:
+  // - Null values (deleted jobs)
+  // - Soft-deleted jobs
+  // - Jobs that are cancelled
+  const activeJobs = jobs
+    .filter((job): job is Job => job !== null)
+    .filter((job) => job.isDeleted !== true)
+    .filter((job) => job.jobStatus !== "cancelled")
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, limit);
+  
+  return activeJobs;
+}
+
 // ============================================================================
 // AI Job Pack Generator
 // ============================================================================
 
 /**
  * Generates an AI job pack for the given job
+ * @param job - The job to generate a pack for
+ * @param user - The user creating/owning the job (for loading business profile rates)
  */
-export async function generateJobPack(job: Job): Promise<Job> {
+export async function generateJobPack(job: Job, user?: SafeUser): Promise<Job> {
   try {
-    // Build labour rate instructions based on user-provided values or defaults
+    // Get effective rates (job override > business profile > pricing settings)
+    let effectiveRates: EffectiveRates = {};
+    if (user) {
+      effectiveRates = await getEffectiveRates({ user, job });
+      // Store effective rates on the job for future reference
+      job.effectiveRates = effectiveRates;
+    }
+
+    // Build labour rate instructions based on effective rates or defaults
     const defaultRates: Record<TradeType, string> = {
       Painter: "$50/hr",
       Plasterer: "$55-60/hr",
@@ -273,7 +337,13 @@ export async function generateJobPack(job: Job): Promise<Job> {
     };
 
     let labourRateInstructions = "";
-    if (job.labourRatePerHour) {
+    if (effectiveRates.hourlyRate) {
+      labourRateInstructions = `Use AUD $${effectiveRates.hourlyRate}/hour as the base labour rate for this job.`;
+      if (effectiveRates.helperHourlyRate) {
+        labourRateInstructions += ` Assume a second worker at AUD $${effectiveRates.helperHourlyRate}/hour where needed.`;
+      }
+    } else if (job.labourRatePerHour) {
+      // Fallback to job override if effective rates not available
       labourRateInstructions = `Use AUD $${job.labourRatePerHour}/hour as the base labour rate for this job.`;
       if (job.helperRatePerHour) {
         labourRateInstructions += ` Assume a second worker at AUD $${job.helperRatePerHour}/hour where needed.`;
@@ -319,19 +389,45 @@ ESTIMATING TIPS:
 
 Speak in clear, practical language that Aussie tradies understand. No fluff - just actionable info.`;
 
-    // Build pricing context section for the prompt
+    // Build pricing context section for the prompt using effective rates
     const pricingContextParts: string[] = [];
-    if (job.labourRatePerHour) {
-      pricingContextParts.push(`Labour rate: $${job.labourRatePerHour}/hr`);
+    
+    // Use effective rates if available, otherwise fall back to job overrides
+    const hourlyRate = effectiveRates.hourlyRate ?? job.labourRatePerHour;
+    const helperRate = effectiveRates.helperHourlyRate ?? job.helperRatePerHour;
+    const ratePerM2Interior = effectiveRates.ratePerM2Interior;
+    const ratePerM2Exterior = effectiveRates.ratePerM2Exterior;
+    const ratePerLmTrim = effectiveRates.ratePerLmTrim;
+    const calloutFee = effectiveRates.calloutFee;
+    const materialMarkup = effectiveRates.materialMarkupPercent;
+
+    if (hourlyRate) {
+      pricingContextParts.push(`Labour rate: $${hourlyRate}/hr`);
     }
-    if (job.helperRatePerHour) {
-      pricingContextParts.push(`Helper/2nd worker rate: $${job.helperRatePerHour}/hr`);
+    if (helperRate) {
+      pricingContextParts.push(`Helper/2nd worker rate: $${helperRate}/hr`);
+    }
+    if (ratePerM2Interior) {
+      pricingContextParts.push(`Interior rate: $${ratePerM2Interior}/m²`);
+    }
+    if (ratePerM2Exterior) {
+      pricingContextParts.push(`Exterior rate: $${ratePerM2Exterior}/m²`);
+    }
+    if (ratePerLmTrim) {
+      pricingContextParts.push(`Linear metre rate (trim/handrail): $${ratePerLmTrim}/lm`);
+    }
+    if (calloutFee) {
+      pricingContextParts.push(`Callout fee: $${calloutFee}`);
+    }
+    if (materialMarkup !== undefined && materialMarkup !== null) {
+      pricingContextParts.push(`Material markup: ${materialMarkup}%`);
     }
     if (job.materialsAreRoughEstimate) {
       pricingContextParts.push(`Materials: Treat all material prices as rough estimates only`);
     }
+    
     const pricingContext = pricingContextParts.length > 0
-      ? `**Pricing Context:**\n${pricingContextParts.join("\n")}`
+      ? `**Pricing Context:**\n${pricingContextParts.join("\n")}\n\nIMPORTANT: Use these exact rates when calculating labour costs, materials costs, and total estimates.`
       : "**Pricing Context:** Use typical WA rates for this trade";
 
     const userPrompt = `Generate a complete job pack for this ${job.tradeType.toLowerCase()} job:
@@ -435,6 +531,127 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
   } catch (error) {
     console.error("Error generating job pack:", error);
     job.status = "ai_failed";
+    await saveJob(job);
+    throw error;
+  }
+}
+
+/**
+ * Generates a SWMS (Safe Work Method Statement) for the given job
+ * @param job - The job to generate a SWMS for
+ * @param user - The user creating/owning the job (for loading business profile)
+ */
+export async function generateSWMS(job: Job, user?: SafeUser): Promise<Job> {
+  try {
+    // Set status to generating
+    job.swmsStatus = "GENERATING";
+    await saveJob(job);
+
+    // Load user business profile from Prisma if available
+    let userPrimaryTrade: string | null = null;
+    let userTradeTypes: string | null = null;
+    
+    if (user) {
+      try {
+        const { prisma } = await import("./prisma");
+        const prismaUser = await prisma.user.findUnique({
+          where: { id: user.id },
+        });
+        if (prismaUser) {
+          // Type assertion needed because Prisma types may not be fully up to date
+          const userData = prismaUser as any;
+          userPrimaryTrade = userData.primaryTrade || null;
+          userTradeTypes = userData.tradeTypes || null;
+        }
+      } catch (error) {
+        console.warn("Failed to load Prisma user for SWMS:", error);
+      }
+    }
+
+    const tradeType = userPrimaryTrade || job.tradeType;
+    const tradeTypes = userTradeTypes ? userTradeTypes.split(",").map(t => t.trim()).join(", ") : null;
+
+    const systemPrompt = `You are an expert safety consultant specialising in Australian construction and trades work safety compliance. You create comprehensive Safe Work Method Statements (SWMS) that comply with Australian Work Health and Safety (WHS) regulations.
+
+Your SWMS documents must be:
+- Clear, structured, and professional
+- Compliant with Australian WHS standards
+- Specific to the trade and work type described
+- Practical and actionable for tradies on site
+- Well-formatted with clear headings and sections
+
+Format your response as structured text with clear sections using headings and bullet points.`;
+
+    const userPrompt = `Generate a comprehensive Safe Work Method Statement (SWMS) for this ${job.tradeType.toLowerCase()} job:
+
+**Job Title:** ${job.title}
+**Trade Type:** ${job.tradeType}${tradeTypes ? ` (Specialisations: ${tradeTypes})` : ""}
+**Property Type:** ${job.propertyType}
+**Location:** ${job.address || "Western Australia"}
+
+${job.aiScopeOfWork ? `**Scope of Work:**\n${job.aiScopeOfWork}` : ""}
+
+${job.notes ? `**Additional Job Details:**\n${job.notes}` : ""}
+
+Create a complete SWMS document with the following sections:
+
+1. **Scope of Works**
+   - Clear description of the work to be performed
+   - Location and site details
+   - Duration and timing considerations
+
+2. **Key Hazards**
+   - List all identified hazards relevant to this trade and work type
+   - Include physical, chemical, environmental, and ergonomic hazards
+   - Be specific to the work described
+
+3. **Risk Controls**
+   - For each hazard, specify control measures
+   - Include engineering controls, administrative controls, and PPE
+   - Reference Australian standards where relevant
+
+4. **Personal Protective Equipment (PPE) Required**
+   - List all required PPE items
+   - Specify when and where each item must be worn
+   - Include any special requirements
+
+5. **Step-by-Step Work Process**
+   - Detailed sequence of work steps
+   - Include safety controls embedded in each step
+   - Reference hazards and controls from earlier sections
+
+6. **Emergency Procedures**
+   - First aid procedures
+   - Emergency contact information
+   - Incident reporting requirements
+   - Evacuation procedures if applicable
+
+Format the response as clear, structured text with section headings. Use bullet points and numbered lists where appropriate. Make it professional and suitable for site use.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 3000,
+    });
+
+    const content = response.choices[0]?.message?.content || "";
+
+    if (content.trim()) {
+      job.swmsText = content.trim();
+      job.swmsStatus = "READY";
+    } else {
+      job.swmsStatus = "FAILED";
+    }
+
+    await saveJob(job);
+    return job;
+  } catch (error) {
+    console.error("Error generating SWMS:", error);
+    job.swmsStatus = "FAILED";
     await saveJob(job);
     throw error;
   }

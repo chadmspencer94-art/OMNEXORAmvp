@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { jsPDF } from "jspdf";
 import { Download, Loader2 } from "lucide-react";
+import { calculateEstimateRange } from "@/lib/pricing";
 
 interface LabourQuote {
   description?: string;
@@ -243,10 +244,10 @@ export default function JobPackPdfButton({
             doc.setFont("helvetica", "bold");
             doc.setFontSize(12);
             doc.text("Total Estimate", margin + 4, y + 6);
-            if (quote.totalEstimate.totalJobEstimate) {
-              doc.setFontSize(14);
-              doc.text(quote.totalEstimate.totalJobEstimate, margin + 4, y + 14);
-            }
+            // Use calculated range instead of original totalJobEstimate
+            const estimateRange = calculateEstimateRange(aiQuote);
+            doc.setFontSize(14);
+            doc.text(estimateRange.formattedRange, margin + 4, y + 14);
             y += 26;
           }
         } catch {

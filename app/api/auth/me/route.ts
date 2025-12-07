@@ -12,7 +12,7 @@ export async function GET() {
       );
     }
 
-    // Return safe user data including role, verification status, and admin flag
+    // Return safe user data including role, verification status, admin flag, and pricing settings
     return NextResponse.json({
       user: {
         id: user.id,
@@ -23,6 +23,10 @@ export async function GET() {
         verifiedAt: user.verifiedAt ?? null,
         isAdmin: user.isAdmin ?? false,
         businessDetails: user.businessDetails,
+        hourlyRate: user.hourlyRate ?? null,
+        dayRate: user.dayRate ?? null,
+        materialMarkupPercent: user.materialMarkupPercent ?? null,
+        roughEstimateOnly: user.roughEstimateOnly ?? null,
       },
     });
   } catch (error) {

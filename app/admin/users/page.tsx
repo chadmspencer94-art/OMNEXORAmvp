@@ -1,0 +1,737 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+interface User {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: string;
+  role: string;
+  verificationStatus: string;
+  verifiedAt: string | null;
+  isAdmin: boolean;
+  // Plan fields
+  planTier?: string;
+  planStatus?: string;
+  trialEndsAt?: string | null;
+  // Account status
+  accountStatus?: string;
+  isBanned?: boolean;
+  // Activity fields
+  lastLoginAt?: string | null;
+  lastActivityAt?: string | null;
+  totalJobs?: number;
+  totalJobPacks?: number;
+  businessDetails?: {
+    businessName?: string;
+    tradingName?: string;
+    abn?: string;
+    tradeTypes?: string[];
+    serviceArea?: string;
+    serviceAreaCity?: string;
+    serviceAreaRadiusKm?: number;
+  };
+  businessName?: string;
+}
+
+export default function AdminUsersPage() {
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [error, setError] = useState("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [verificationFilter, setVerificationFilter] = useState<string>("all");
+  const [planStatusFilter, setPlanStatusFilter] = useState<string>("all");
+  const [accountStatusFilter, setAccountStatusFilter] = useState<string>("all");
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/users");
+      if (response.ok) {
+        const data = await response.json();
+        setIsAdmin(true);
+        const allUsers = data.users || [];
+        setUsers(allUsers);
+        setFilteredUsers(allUsers);
+      } else if (response.status === 403) {
+        setIsAdmin(false);
+      } else {
+        router.push("/login");
+      }
+    } catch {
+      setError("Failed to load users");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router]);
+
+  // Fetch current user ID on mount
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch("/api/auth/me");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            setCurrentUserId(data.user.id);
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    };
+    fetchCurrentUser();
+  }, []);
+
+  // Update user via API
+  const updateUserField = async (field: string, value: any) => {
+    if (!selectedUser) return;
+
+    setIsUpdating(true);
+    setUpdateError(null);
+
+    try {
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ [field]: value }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setUpdateError(data.error || "Could not update user. Please try again.");
+        return;
+      }
+
+      const data = await response.json();
+      const updatedUser = data.user;
+
+      // Update selectedUser state
+      setSelectedUser(updatedUser);
+
+      // Update user in the list
+      setUsers((prevUsers) =>
+        prevUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+      );
+
+      setUpdateError(null);
+    } catch (err) {
+      setUpdateError("Could not update user. Please try again.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleToggleAdmin = () => {
+    if (!selectedUser) return;
+    updateUserField("isAdmin", !selectedUser.isAdmin);
+  };
+
+  const handlePlanStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    updateUserField("planStatus", e.target.value);
+  };
+
+  // Filter users based on search and filters
+  useEffect(() => {
+    let filtered = [...users];
+
+    // Search filter (email, name, business name)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((user) => {
+        const email = user.email?.toLowerCase() || "";
+        const name = user.name?.toLowerCase() || user.email?.split("@")[0]?.toLowerCase() || "";
+        const businessName = user.businessName?.toLowerCase() || user.businessDetails?.businessName?.toLowerCase() || "";
+        return email.includes(query) || name.includes(query) || businessName.includes(query);
+      });
+    }
+
+    // Verification status filter
+    if (verificationFilter !== "all") {
+      filtered = filtered.filter((user) => user.verificationStatus === verificationFilter);
+    }
+
+    // Plan status filter
+    if (planStatusFilter !== "all") {
+      filtered = filtered.filter((user) => user.planStatus === planStatusFilter);
+    }
+
+    // Account status filter
+    if (accountStatusFilter !== "all") {
+      filtered = filtered.filter((user) => {
+        const status = user.accountStatus || (user.isBanned ? "BANNED" : "ACTIVE");
+        return status === accountStatusFilter;
+      });
+    }
+
+    setFilteredUsers(filtered);
+  }, [users, searchQuery, verificationFilter, planStatusFilter, accountStatusFilter]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "bg-purple-100 text-purple-700 border-purple-300";
+      case "builder":
+        return "bg-blue-100 text-blue-700 border-blue-300";
+      case "tradie":
+        return "bg-green-100 text-green-700 border-green-300";
+      case "client":
+        return "bg-amber-100 text-amber-700 border-amber-300";
+      case "supplier":
+        return "bg-slate-100 text-slate-700 border-slate-300";
+      default:
+        return "bg-slate-100 text-slate-700 border-slate-300";
+    }
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case "verified":
+        return "bg-green-100 text-green-700 border-green-300";
+      case "pending":
+        return "bg-amber-100 text-amber-700 border-amber-300";
+      case "unverified":
+        return "bg-slate-100 text-slate-500 border-slate-300";
+      default:
+        return "bg-slate-100 text-slate-500 border-slate-300";
+    }
+  };
+
+  const getPlanTierBadgeColor = (tier?: string) => {
+    switch (tier) {
+      case "FOUNDER":
+        return "bg-purple-100 text-purple-700 border-purple-300";
+      case "PRO":
+        return "bg-blue-100 text-blue-700 border-blue-300";
+      case "BUSINESS":
+        return "bg-indigo-100 text-indigo-700 border-indigo-300";
+      case "TRIAL":
+        return "bg-amber-100 text-amber-700 border-amber-300";
+      case "FREE":
+        return "bg-slate-100 text-slate-500 border-slate-300";
+      default:
+        return "bg-slate-100 text-slate-500 border-slate-300";
+    }
+  };
+
+  const getPlanStatusBadgeColor = (status?: string) => {
+    switch (status) {
+      case "ACTIVE":
+        return "bg-green-100 text-green-700 border-green-300";
+      case "TRIAL":
+        return "bg-amber-100 text-amber-700 border-amber-300";
+      case "PAST_DUE":
+        return "bg-red-100 text-red-700 border-red-300";
+      case "CANCELLED":
+        return "bg-slate-100 text-slate-500 border-slate-300";
+      case "SUSPENDED":
+        return "bg-amber-100 text-amber-700 border-amber-300";
+      default:
+        return "bg-slate-100 text-slate-500 border-slate-300";
+    }
+  };
+
+  const formatLastLogin = (dateString: string | null | undefined) => {
+    if (!dateString) return "Never logged in";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="text-slate-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+          <h1 className="text-xl font-semibold text-slate-900 mb-2">Access Denied</h1>
+          <p className="text-slate-600 mb-6">
+            You don&apos;t have permission to access this page.
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Admin Navigation */}
+      <div className="mb-6 flex gap-3">
+        <span className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg">
+          Users
+        </span>
+        <Link
+          href="/admin/verification"
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+        >
+          Verifications
+        </Link>
+        <Link
+          href="/admin/feedback"
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+        >
+          Feedback Log
+        </Link>
+      </div>
+
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">All Users</h1>
+        <p className="text-slate-600">
+          Manage all registered users in the system. {users.length} total user{users.length !== 1 ? "s" : ""}.
+          {filteredUsers.length !== users.length && ` (${filteredUsers.length} shown)`}
+        </p>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="mb-6 space-y-4">
+        <div className="flex gap-4 flex-wrap">
+          {/* Search */}
+          <div className="flex-1 min-w-[200px]">
+            <input
+              type="text"
+              placeholder="Search users…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Verification Status Filter */}
+          <select
+            value={verificationFilter}
+            onChange={(e) => setVerificationFilter(e.target.value)}
+            className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          >
+            <option value="all">All Verification Status</option>
+            <option value="verified">Verified</option>
+            <option value="pending">Pending</option>
+            <option value="unverified">Unverified</option>
+          </select>
+
+          {/* Plan Status Filter */}
+          <select
+            value={planStatusFilter}
+            onChange={(e) => setPlanStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          >
+            <option value="all">All Plan Status</option>
+            <option value="ACTIVE">Active</option>
+            <option value="TRIAL">Trial</option>
+            <option value="PAST_DUE">Past Due</option>
+            <option value="CANCELLED">Cancelled</option>
+            <option value="SUSPENDED">Suspended</option>
+          </select>
+
+          {/* Account Status Filter */}
+          <select
+            value={accountStatusFilter}
+            onChange={(e) => setAccountStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          >
+            <option value="all">All Account Status</option>
+            <option value="ACTIVE">Active</option>
+            <option value="SUSPENDED">Suspended</option>
+            <option value="BANNED">Banned</option>
+          </select>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+          <button
+            onClick={() => setError("")}
+            className="ml-2 text-red-500 hover:text-red-700"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {filteredUsers.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">
+            {users.length === 0 ? "No Users Yet" : "No Users Match Filters"}
+          </h2>
+          <p className="text-slate-600">
+            {users.length === 0
+              ? "No users have registered yet."
+              : "Try adjusting your search or filter criteria."}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Plan
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Last Login
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredUsers.map((user) => {
+                  const accountStatus = user.accountStatus || (user.isBanned ? "BANNED" : "ACTIVE");
+
+                  return (
+                    <tr
+                      key={user.id}
+                      className="hover:bg-slate-50 cursor-pointer"
+                      onClick={() => setSelectedUser(user)}
+                    >
+                      <td className="px-4 py-4">
+                        <div className="text-sm font-medium text-slate-900">{user.email}</div>
+                        {user.businessName && (
+                          <div className="text-xs text-slate-500 mt-0.5">{user.businessName}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                          user.isAdmin || user.role === "admin"
+                            ? "bg-purple-100 text-purple-700 border-purple-300"
+                            : "bg-slate-100 text-slate-700 border-slate-300"
+                        }`}>
+                          {user.isAdmin || user.role === "admin" ? "Admin" : "User"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getPlanTierBadgeColor(user.planTier)}`}>
+                            {user.planTier || "FREE"}
+                          </span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getPlanStatusBadgeColor(user.planStatus)}`}>
+                            {user.planStatus || "TRIAL"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getStatusBadgeColor(user.verificationStatus)}`}>
+                            {user.verificationStatus === "pending" ? "Pending" : user.verificationStatus === "verified" ? "Verified" : "Unverified"}
+                          </span>
+                          {accountStatus !== "ACTIVE" && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                              accountStatus === "BANNED" || user.isBanned
+                                ? "bg-red-100 text-red-700 border-red-300"
+                                : "bg-amber-100 text-amber-700 border-amber-300"
+                            }`}>
+                              {accountStatus === "BANNED" ? "Banned" : "Suspended"}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-xs text-slate-600">
+                          {formatLastLogin(user.lastLoginAt)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedUser(user);
+                          }}
+                          className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* User Detail Modal */}
+      {selectedUser && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedUser(null)}
+        >
+          <div
+            className="bg-white rounded-xl border border-slate-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900">User Details</h2>
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</label>
+                <p className="mt-1 text-sm text-slate-900">{selectedUser.email}</p>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">User ID</label>
+                <p className="mt-1 text-sm font-mono text-slate-600">{selectedUser.id}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</label>
+                  <p className="mt-1">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(selectedUser.role)}`}>
+                      {selectedUser.role}
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Verification Status</label>
+                  <p className="mt-1">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadgeColor(selectedUser.verificationStatus)}`}>
+                      {selectedUser.verificationStatus === "pending" ? "Pending" : selectedUser.verificationStatus === "verified" ? "Verified" : "Unverified"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Plan Tier</label>
+                  <p className="mt-1">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPlanTierBadgeColor(selectedUser.planTier)}`}>
+                      {selectedUser.planTier || "FREE"}
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Plan Status</label>
+                  <p className="mt-1">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPlanStatusBadgeColor(selectedUser.planStatus)}`}>
+                      {selectedUser.planStatus || "TRIAL"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              {selectedUser.trialEndsAt && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Trial Ends At</label>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {new Date(selectedUser.trialEndsAt).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Created At</label>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {new Date(selectedUser.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Verified At</label>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {selectedUser.verifiedAt ? new Date(selectedUser.verifiedAt).toLocaleString() : "Not verified"}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Last Login</label>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {selectedUser.lastLoginAt ? new Date(selectedUser.lastLoginAt).toLocaleString() : "Never"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Last Activity</label>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {selectedUser.lastActivityAt ? new Date(selectedUser.lastActivityAt).toLocaleString() : "Never"}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Jobs</label>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {selectedUser.totalJobs ?? 0}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Admin</label>
+                  <p className="mt-1">
+                    {selectedUser.isAdmin ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-300">
+                        Yes
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-300">
+                        No
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              {selectedUser.businessDetails && (
+                <div className="pt-4 border-t border-slate-200">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Business Details</label>
+                  <div className="mt-2 space-y-2">
+                    {selectedUser.businessDetails.businessName && (
+                      <div>
+                        <span className="text-xs text-slate-500">Business Name: </span>
+                        <span className="text-sm text-slate-900">{selectedUser.businessDetails.businessName}</span>
+                      </div>
+                    )}
+                    {selectedUser.businessDetails.tradingName && (
+                      <div>
+                        <span className="text-xs text-slate-500">Trading Name: </span>
+                        <span className="text-sm text-slate-900">{selectedUser.businessDetails.tradingName}</span>
+                      </div>
+                    )}
+                    {selectedUser.businessDetails.abn && (
+                      <div>
+                        <span className="text-xs text-slate-500">ABN: </span>
+                        <span className="text-sm font-mono text-slate-900">{selectedUser.businessDetails.abn}</span>
+                      </div>
+                    )}
+                    {selectedUser.businessDetails.tradeTypes && selectedUser.businessDetails.tradeTypes.length > 0 && (
+                      <div>
+                        <span className="text-xs text-slate-500">Trade Types: </span>
+                        <span className="text-sm text-slate-900">{selectedUser.businessDetails.tradeTypes.join(", ")}</span>
+                      </div>
+                    )}
+                    {selectedUser.businessDetails.serviceArea && (
+                      <div>
+                        <span className="text-xs text-slate-500">Service Area: </span>
+                        <span className="text-sm text-slate-900">{selectedUser.businessDetails.serviceArea}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Admin Controls */}
+              <div className="pt-4 border-t border-slate-200">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 block">
+                  Admin Controls
+                </label>
+                <div className="space-y-4">
+                  {/* Admin Status Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Admin Status</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {selectedUser.isAdmin ? "User has admin privileges" : "User does not have admin privileges"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleToggleAdmin}
+                      disabled={isUpdating || (currentUserId === selectedUser.id && selectedUser.isAdmin)}
+                      className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                        selectedUser.isAdmin
+                          ? "bg-red-100 hover:bg-red-200 text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          : "bg-purple-100 hover:bg-purple-200 text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      }`}
+                    >
+                      {isUpdating
+                        ? "..."
+                        : selectedUser.isAdmin
+                        ? currentUserId === selectedUser.id
+                          ? "Cannot Remove Own Admin"
+                          : "Remove Admin"
+                        : "Make Admin"}
+                    </button>
+                  </div>
+
+                  {/* Plan Status */}
+                  <div>
+                    <label className="text-sm font-medium text-slate-900 mb-2 block">Plan Status</label>
+                    <select
+                      value={selectedUser.planStatus || "TRIAL"}
+                      onChange={handlePlanStatusChange}
+                      disabled={isUpdating}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="TRIAL">TRIAL</option>
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="PAST_DUE">PAST_DUE</option>
+                      <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                  </div>
+
+                  {/* Error Message */}
+                  {updateError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                      {updateError}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

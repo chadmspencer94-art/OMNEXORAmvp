@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { requireActiveUser } from "@/lib/auth";
 
-export default function BillingPage() {
+export default async function BillingPage() {
+  await requireActiveUser("/billing");
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}

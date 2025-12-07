@@ -1,0 +1,72 @@
+// Prisma Schema for OMNEXORA MVP
+// NOTE: Using SQLite locally; migrations were created with sqlite.
+// 
+// SETUP INSTRUCTIONS:
+// 1. Install Prisma: npm install prisma @prisma/client
+// 2. Set DATABASE_URL in .env.local (e.g., file:./dev.db)
+// 3. After modifying this schema, run:
+//    npx prisma migrate dev --name add_user_ban_fields
+//    npx prisma generate
+//
+// This will create the database tables and generate the Prisma Client.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  passwordHash String
+  
+  createdAt DateTime @default(now())
+  
+  // Role and verification
+  role              String  @default("tradie")
+  verificationStatus String @default("unverified")
+  verifiedAt        DateTime?
+  
+  // Admin control
+  isBanned      Boolean @default(false)
+  accountStatus String  @default("ACTIVE")
+  
+  // Plan and billing
+  planTier    String   @default("FREE")
+  planStatus  String   @default("TRIAL")
+  trialEndsAt DateTime?
+  
+  // Activity tracking
+  lastLoginAt    DateTime?
+  lastActivityAt DateTime?
+  totalJobs      Int      @default(0)
+  totalJobPacks  Int      @default(0)
+  
+  // Business details (flattened from businessDetails object)
+  businessName        String?
+  tradingName         String?
+  abn                 String?
+  tradeTypes  String?   // store comma-separated list for now
+  serviceArea         String?
+  serviceAreaCity     String?
+  serviceAreaRadiusKm Int?
+  
+  // Business Profile fields (for quoting and job matching)
+  primaryTrade        String?   // e.g. "Painter", "Plumber"
+  doesResidential     Boolean   @default(true)
+  doesCommercial      Boolean   @default(false)
+  doesStrata          Boolean   @default(false)
+  serviceRadiusKm     Int?      // typical max distance they travel from base
+  servicePostcodes    String?   // comma/line separated postcodes/suburbs, free text
+  hourlyRate          Int?      // hourly rate in dollars (stored as Int)
+  calloutFee          Int?      // callout fee in dollars
+  ratePerM2Interior   Int?      // rate per square metre interior
+  ratePerM2Exterior   Int?      // rate per square metre exterior
+  ratePerLmTrim       Int?      // rate per linear metre (e.g. trims, handrails)
+  
+  @@map("users")
+}

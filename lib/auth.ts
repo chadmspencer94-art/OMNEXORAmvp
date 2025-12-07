@@ -6,8 +6,14 @@ import { cookies } from "next/headers";
 // Types
 // ============================================================================
 
-export type UserRole = "tradie" | "client";
-export type VerificationStatus = "unverified" | "pending_review" | "verified" | "rejected";
+export type UserRole = "tradie" | "builder" | "client" | "supplier" | "admin";
+export type VerificationStatus = "unverified" | "pending" | "verified";
+// Legacy statuses for backwards compatibility (mapped in normalizeUser)
+type LegacyVerificationStatus = "pending_review" | "rejected";
+
+// Plan and billing types
+export type PlanTier = "FREE" | "TRIAL" | "FOUNDER" | "PRO" | "BUSINESS";
+export type PlanStatus = "ACTIVE" | "TRIAL" | "PAST_DUE" | "CANCELLED";
 
 export interface TradieBusinessDetails {
   businessName?: string;
@@ -15,6 +21,9 @@ export interface TradieBusinessDetails {
   abn?: string;
   tradeTypes?: string[];
   serviceArea?: string;
+  // Service area details (for admin filtering)
+  serviceAreaCity?: string;
+  serviceAreaRadiusKm?: number;
   // Insurance and licence info (prototype fields)
   insuranceProvider?: string;
   insuranceExpiry?: string;
@@ -41,12 +50,34 @@ export interface User {
   isAdmin: boolean;
   // Business details (for tradies)
   businessDetails?: TradieBusinessDetails;
+  // Pricing settings (for tradies)
+  hourlyRate?: number | null;
+  dayRate?: number | null;
+  materialMarkupPercent?: number | null;
+  roughEstimateOnly?: boolean | null;
+  // Plan and billing (new fields)
+  planTier?: PlanTier;
+  planStatus?: PlanStatus;
+  trialEndsAt?: string | null;
+  // Account status and ban
+  accountStatus?: "ACTIVE" | "SUSPENDED" | "BANNED";
+  isBanned?: boolean;
+  // Activity tracking (new fields)
+  lastLoginAt?: string | null;
+  lastActivityAt?: string | null;
+  totalJobs?: number;
+  totalJobPacks?: number;
+  // Admin notes (internal only)
+  adminNotes?: string;
 }
 
 export interface Session {
   id: string;
   userId: string;
   createdAt: string;
+  // Impersonation support - if set, admin is acting as this user
+  actingAsUserId?: string | null;
+  realAdminId?: string | null; // Original admin ID for audit trail
 }
 
 // Safe user object without password hash
@@ -83,14 +114,14 @@ const ADMIN_EMAILS: string[] = [
 
 /**
  * Checks if a user has admin privileges.
- * Checks both the stored isAdmin flag and the ADMIN_EMAILS list.
+ * Checks role="admin", the stored isAdmin flag, and the ADMIN_EMAILS list.
  * @param user - The user to check (SafeUser or User)
  * @returns True if the user is an admin
  */
 export function isAdmin(user: SafeUser | null): boolean {
   if (!user) return false;
-  // Check both the stored flag and the email list for backwards compatibility
-  return user.isAdmin === true || ADMIN_EMAILS.includes(user.email.toLowerCase());
+  // Check role first, then stored flag, then email list for backwards compatibility
+  return user.role === "admin" || user.isAdmin === true || ADMIN_EMAILS.includes(user.email.toLowerCase());
 }
 
 // ============================================================================
@@ -125,11 +156,37 @@ function normalizeUser(rawUser: Partial<User> & { id: string; email: string; pas
   const email = rawUser.email.toLowerCase();
   const isPrimaryAdmin = email === PRIMARY_ADMIN_EMAIL;
   
-  // For the primary admin, force isAdmin=true and verificationStatus="verified"
-  const isAdminFlag = isPrimaryAdmin ? true : (rawUser.isAdmin ?? false);
-  const verificationStatus: VerificationStatus = isPrimaryAdmin 
-    ? "verified" 
-    : (rawUser.verificationStatus || "unverified");
+  // Normalize role - handle legacy roles and ensure valid role
+  // FORCE primary admin to always have "admin" role
+  let role: UserRole = isPrimaryAdmin ? "admin" : (rawUser.role || "tradie");
+  // Map legacy roles if needed (backwards compatibility)
+  if (role !== "tradie" && role !== "builder" && role !== "client" && role !== "supplier" && role !== "admin") {
+    role = "tradie"; // Default fallback
+  }
+  
+  // If role is "admin", user is automatically an admin
+  const isAdminFromRole = role === "admin";
+  
+  // For the primary admin, force isAdmin=true, role="admin", and verificationStatus="verified"
+  const isAdminFlag = isPrimaryAdmin || isAdminFromRole ? true : (rawUser.isAdmin ?? false);
+  
+  // Normalize verification status - map legacy statuses
+  let verificationStatus: VerificationStatus;
+  const rawStatus = rawUser.verificationStatus as VerificationStatus | LegacyVerificationStatus | undefined;
+  if (isPrimaryAdmin) {
+    verificationStatus = "verified";
+  } else if (!rawStatus) {
+    verificationStatus = "unverified";
+  } else if (rawStatus === "pending_review" || rawStatus === "pending") {
+    verificationStatus = "pending";
+  } else if (rawStatus === "rejected") {
+    verificationStatus = "unverified"; // Map rejected back to unverified
+  } else if (rawStatus === "verified") {
+    verificationStatus = "verified";
+  } else {
+    verificationStatus = "unverified"; // Default fallback
+  }
+  
   const verifiedAt = isPrimaryAdmin 
     ? (rawUser.verifiedAt || new Date().toISOString())
     : (rawUser.verifiedAt ?? null);
@@ -139,11 +196,30 @@ function normalizeUser(rawUser: Partial<User> & { id: string; email: string; pas
     email: rawUser.email,
     passwordHash: rawUser.passwordHash,
     createdAt: rawUser.createdAt,
-    role: rawUser.role || "tradie",
+    role,
     verificationStatus,
     verifiedAt,
     isAdmin: isAdminFlag,
     businessDetails: rawUser.businessDetails,
+    // Pricing settings (preserve existing values, no defaults here - handled in UI)
+    hourlyRate: rawUser.hourlyRate ?? null,
+    dayRate: rawUser.dayRate ?? null,
+    materialMarkupPercent: rawUser.materialMarkupPercent ?? null,
+    roughEstimateOnly: rawUser.roughEstimateOnly ?? null,
+    // Plan and billing (defaults for new fields)
+    planTier: rawUser.planTier ?? "FREE",
+    planStatus: rawUser.planStatus ?? "TRIAL",
+    trialEndsAt: rawUser.trialEndsAt ?? null,
+    // Account status and ban (defaults)
+    accountStatus: rawUser.accountStatus ?? (rawUser.isBanned ? "BANNED" : "ACTIVE"),
+    isBanned: rawUser.isBanned ?? false,
+    // Activity tracking (defaults)
+    lastLoginAt: rawUser.lastLoginAt ?? null,
+    lastActivityAt: rawUser.lastActivityAt ?? null,
+    totalJobs: rawUser.totalJobs ?? 0,
+    totalJobPacks: rawUser.totalJobPacks ?? 0,
+    // Admin notes
+    adminNotes: rawUser.adminNotes,
   };
 }
 
@@ -172,7 +248,8 @@ export async function createUser(
   const isPrimaryAdmin = normalizedEmail === PRIMARY_ADMIN_EMAIL;
   const isTestVerified = TEST_VERIFIED_EMAILS.includes(normalizedEmail);
   
-  // Determine verification status and admin flag
+  // FORCE primary admin to always have "admin" role, verified status, and admin flag
+  const finalRole: UserRole = isPrimaryAdmin ? "admin" : role;
   const verificationStatus: VerificationStatus = (isPrimaryAdmin || isTestVerified)
     ? "verified"
     : "unverified";
@@ -184,10 +261,19 @@ export async function createUser(
     email: normalizedEmail,
     passwordHash,
     createdAt,
-    role,
+    role: finalRole,
     verificationStatus,
     verifiedAt,
     isAdmin: isAdminFlag,
+    // Default plan for new users
+    planTier: "FREE",
+    planStatus: "TRIAL",
+    trialEndsAt: null,
+    // Initialize activity tracking
+    lastLoginAt: null,
+    lastActivityAt: null,
+    totalJobs: 0,
+    totalJobPacks: 0,
   };
 
   // Atomically set user by email only if it doesn't exist (prevents race condition)
@@ -201,6 +287,8 @@ export async function createUser(
   // Store user by id - rollback email entry if this fails
   try {
     await kv.set(`user:id:${id}`, user);
+    // Add to users index for admin listing
+    await kv.lpush("users:all", id);
   } catch (error) {
     // Rollback: delete the email entry to maintain consistency
     await kv.del(`user:email:${normalizedEmail}`);
@@ -293,6 +381,11 @@ export async function updateUser(
     ...updates,
   };
 
+  // If role is being updated to "admin", ensure isAdmin is true
+  if (updates.role === "admin") {
+    updatedUser.isAdmin = true;
+  }
+
   // Update both user:id and user:email entries
   await kv.set(`user:id:${userId}`, updatedUser);
   await kv.set(`user:email:${user.email}`, updatedUser);
@@ -313,11 +406,25 @@ export async function getUsersByVerificationStatus(
   // For now, we'll store a list of user IDs that need review
   const userIds = await kv.lrange<string>(`admin:verification:${status}`, 0, -1) || [];
   
+  // Also check legacy "pending_review" status if looking for "pending"
+  let legacyUserIds: string[] = [];
+  if (status === "pending") {
+    legacyUserIds = await kv.lrange<string>(`admin:verification:pending_review`, 0, -1) || [];
+  }
+  
+  // Combine and deduplicate
+  const allUserIds = [...new Set([...userIds, ...legacyUserIds])];
+  
   const users: SafeUser[] = [];
-  for (const id of userIds) {
+  for (const id of allUserIds) {
     const user = await getSafeUserById(id);
-    if (user && user.verificationStatus === status) {
-      users.push(user);
+    if (user) {
+      // Normalize status - map "pending_review" to "pending" for comparison
+      const userStatusStr = user.verificationStatus as string;
+      const normalizedStatus = userStatusStr === "pending_review" ? "pending" : user.verificationStatus;
+      if (normalizedStatus === status) {
+        users.push(user);
+      }
     }
   }
   
@@ -342,6 +449,41 @@ export async function removeUserFromVerificationIndex(
   status: VerificationStatus
 ): Promise<void> {
   await kv.lrem(`admin:verification:${status}`, 0, userId);
+}
+
+/**
+ * Gets all users in the system (for admin)
+ * Uses an index list maintained in KV. If index doesn't exist, returns empty array.
+ * 
+ * IMPORTANT: This relies on the "users:all" index being maintained.
+ * - New users are automatically added to the index in createUser()
+ * - If you need to rebuild the index (e.g., for legacy users), you'll need to:
+ *   1. Scan all user:email:* keys OR user:id:* keys (if possible in your KV setup)
+ *   2. Add their IDs to the "users:all" list
+ * 
+ * Note: This is a simplified implementation - in production, use proper indexing or a database
+ */
+export async function getAllUsers(): Promise<SafeUser[]> {
+  // Get all user IDs from the index
+  // This index is maintained automatically when users are created via createUser()
+  const userIds = await kv.lrange<string>("users:all", 0, -1) || [];
+  
+  if (userIds.length === 0) {
+    // Index might be empty - could mean no users, or index not initialized
+    // In production, you might want to log this or rebuild the index
+    return [];
+  }
+  
+  // Load all users in parallel
+  const users = await Promise.all(
+    userIds.map((id) => getSafeUserById(id))
+  );
+  
+  // Filter out nulls (users that were deleted or don't exist anymore)
+  // and sort by createdAt descending (newest first)
+  return users
+    .filter((user): user is SafeUser => user !== null)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 // ============================================================================
@@ -371,6 +513,7 @@ export async function createSession(userId: string): Promise<string> {
 
 /**
  * Gets a user from a session ID
+ * Supports impersonation: if actingAsUserId is set, returns that user instead
  * @param sessionId - The session ID
  * @returns The user if session is valid, null otherwise
  */
@@ -383,8 +526,11 @@ export async function getUserFromSession(
     return null;
   }
 
+  // If impersonating, return the impersonated user
+  const targetUserId = session.actingAsUserId || session.userId;
+
   // Load user by id (may be an older record missing newer fields)
-  const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${session.userId}`);
+  const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${targetUserId}`);
   if (!rawUser) {
     return null;
   }
@@ -393,6 +539,31 @@ export async function getUserFromSession(
   const user = normalizeUser(rawUser);
 
   // Return safe user without password hash
+  const { passwordHash: _, ...safeUser } = user;
+  return safeUser;
+}
+
+/**
+ * Gets the real admin user (not impersonated) from a session
+ * Used for audit logging when impersonating
+ * @param sessionId - The session ID
+ * @returns The real admin user or null
+ */
+export async function getRealUserFromSession(
+  sessionId: string
+): Promise<SafeUser | null> {
+  const session = await kv.get<Session>(`session:${sessionId}`);
+  if (!session) {
+    return null;
+  }
+
+  // Always return the real user (not the impersonated one)
+  const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${session.userId}`);
+  if (!rawUser) {
+    return null;
+  }
+
+  const user = normalizeUser(rawUser);
   const { passwordHash: _, ...safeUser } = user;
   return safeUser;
 }
@@ -411,6 +582,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
 
 /**
  * Gets the current logged-in user from the session cookie
+ * Supports impersonation - returns the impersonated user if active
  * @returns The current user or null if not logged in
  */
 export async function getCurrentUser(): Promise<SafeUser | null> {
@@ -422,6 +594,65 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
   }
 
   return getUserFromSession(sessionId);
+}
+
+/**
+ * Checks if the current session is impersonating another user
+ * @returns true if impersonating, false otherwise
+ */
+export async function isImpersonating(): Promise<boolean> {
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  if (!sessionId) {
+    return false;
+  }
+
+  const session = await kv.get<Session>(`session:${sessionId}`);
+  return !!(session?.actingAsUserId);
+}
+
+/**
+ * Server-side helper to assert admin privileges
+ * Throws an error if user is not an admin/support
+ * @param user - The user to check
+ * @throws Error if user is not admin
+ */
+export function assertAdmin(user: SafeUser | null): void {
+  if (!user || !isAdmin(user)) {
+    throw new Error("Unauthorized: Admin access required");
+  }
+}
+
+/**
+ * Requires an active (non-suspended) user
+ * Redirects to login if not authenticated, or to account-suspended if suspended
+ * @param redirectTo - Optional redirect path to append to login redirect
+ * @returns The active user (never null, redirects if issues)
+ */
+export async function requireActiveUser(redirectTo?: string): Promise<SafeUser> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    const { redirect } = await import("next/navigation");
+    const loginPath = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login";
+    redirect(loginPath);
+    // redirect() never returns, but TypeScript doesn't know that
+    throw new Error("Redirected to login");
+  }
+
+  // Check if account is suspended (planStatus can be a string, not just PlanStatus enum)
+  // SUSPENDED is a valid status that can be set by admins, even though it's not in the PlanStatus type
+  const planStatus = user.planStatus as string | undefined;
+  if (planStatus === "SUSPENDED") {
+    const { redirect } = await import("next/navigation");
+    redirect("/account-suspended");
+    // redirect() never returns, but TypeScript doesn't know that
+    throw new Error("Redirected to account-suspended");
+  }
+
+  // At this point, user is guaranteed to be non-null and not suspended
+  return user;
 }
 
 /**
@@ -445,5 +676,92 @@ export async function setSessionCookie(sessionId: string): Promise<void> {
 export async function clearSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
+}
+
+/**
+ * Starts impersonation - sets actingAsUserId in session
+ * @param sessionId - The admin's session ID
+ * @param targetUserId - The user ID to impersonate
+ * @returns Updated session or null if failed
+ */
+export async function startImpersonation(
+  sessionId: string,
+  targetUserId: string
+): Promise<Session | null> {
+  const session = await kv.get<Session>(`session:${sessionId}`);
+  if (!session) {
+    return null;
+  }
+
+  // Verify the session belongs to an admin
+  const adminUser = await getUserById(session.userId);
+  if (!adminUser || !isAdmin(adminUser as SafeUser)) {
+    return null;
+  }
+
+  // Update session with impersonation data
+  const updatedSession: Session = {
+    ...session,
+    actingAsUserId: targetUserId,
+    realAdminId: session.userId, // Store original admin ID
+  };
+
+  await kv.set(`session:${sessionId}`, updatedSession, { ex: SESSION_TTL_SECONDS });
+
+  return updatedSession;
+}
+
+/**
+ * Stops impersonation - clears actingAsUserId from session
+ * @param sessionId - The admin's session ID
+ * @returns Updated session or null if failed
+ */
+export async function stopImpersonation(sessionId: string): Promise<Session | null> {
+  const session = await kv.get<Session>(`session:${sessionId}`);
+  if (!session) {
+    return null;
+  }
+
+  // Clear impersonation data
+  const updatedSession: Session = {
+    ...session,
+    actingAsUserId: null,
+    realAdminId: null,
+  };
+
+  await kv.set(`session:${sessionId}`, updatedSession, { ex: SESSION_TTL_SECONDS });
+
+  return updatedSession;
+}
+
+/**
+ * Updates user's last login timestamp
+ */
+export async function updateLastLogin(userId: string): Promise<void> {
+  await updateUser(userId, {
+    lastLoginAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Updates user's last activity timestamp
+ */
+export async function updateLastActivity(userId: string): Promise<void> {
+  await updateUser(userId, {
+    lastActivityAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Increments user's job count
+ */
+export async function incrementUserJobCount(userId: string): Promise<void> {
+  const user = await getUserById(userId);
+  if (!user) return;
+
+  await updateUser(userId, {
+    totalJobs: (user.totalJobs || 0) + 1,
+    lastActivityAt: new Date().toISOString(),
+  });
 }
 
