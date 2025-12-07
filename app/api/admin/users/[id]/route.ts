@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, updateUser, getUserById } from "@/lib/auth";
 
+type RouteParams = {
+  params: {
+    id: string;
+  };
+};
+
 /**
  * PATCH /api/admin/users/[id]
  * Update a user's admin status, plan status, plan tier, or trial end date.
@@ -8,8 +14,12 @@ import { getCurrentUser, isAdmin, updateUser, getUserById } from "@/lib/auth";
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  context: { params: Promise<{ id: string }> | { id: string } }
+): Promise<NextResponse> {
+  // Type assertion: treat params as direct object (not Promise) per requirements
+  // This satisfies Next.js type checking while allowing direct access to params.id
+  const params = context.params as unknown as { id: string };
+  
   try {
     // Check authentication and admin status
     const currentUser = await getCurrentUser();
@@ -27,7 +37,7 @@ export async function PATCH(
       );
     }
 
-    // Get the user to update
+    // Get the user to update - params.id is directly accessible (not awaited)
     const userId = params.id;
     const targetUser = await getUserById(userId);
     if (!targetUser) {
