@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
 import { openai } from "@/lib/openai";
 
@@ -12,6 +12,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current user
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json(
@@ -20,6 +21,7 @@ export async function POST(
       );
     }
 
+    // Get job ID from params
     const { id } = await params;
     const job = await getJobById(id);
 
@@ -30,83 +32,104 @@ export async function POST(
       );
     }
 
+    // Check if user owns the job or is an admin
     if (job.userId !== user.id && !isAdmin(user)) {
       return NextResponse.json(
-        { error: "Forbidden. You don't have permission to generate this document." },
+        { error: "Forbidden. You don't have permission to generate documents for this job." },
         { status: 403 }
       );
     }
 
-    // Load business profile data
+    // Block clients from generating documents
+    if (isClient(user)) {
+      return NextResponse.json(
+        { error: "Clients can only post jobs. Document generation is available to verified trades and businesses." },
+        { status: 403 }
+      );
+    }
+
+    // Load business profile data if available
     let businessName = "";
+    let abn = "";
     try {
       const { prisma } = await import("@/lib/prisma");
       const prismaUser = await prisma.user.findUnique({
-        where: { email: user.email },
+        where: { id: user.id },
         select: {
           businessName: true,
+          abn: true,
         },
       });
       if (prismaUser) {
         businessName = prismaUser.businessName || "";
+        abn = prismaUser.abn || "";
       }
-    } catch (error) {
-      console.warn("Failed to load business profile:", error);
+    } catch {
+      // Continue without business profile data
     }
 
-    const systemPrompt = `You are an expert in Australian construction and trades contract administration. Generate a professional Extension of Time (EOT) notice.
+    // Build EOT prompt
+    const systemPrompt = `You are an expert in Australian construction and trades contract administration. Your task is to generate a professional Extension of Time (EOT) notice for a specific job.
 
-The document must be structured clearly with the following sections:
+The EOT notice must be structured clearly with the following sections:
 
 1. **Job and Contractor Details**
-   - Contractor business name (if available)
    - Job title and reference
-   - Client name and property address
-   - Date of EOT notice
+   - Contractor business name and ABN (if available)
+   - Client name and contact details
+   - Property address
 
 2. **Cause of Delay**
    - Clear description of the cause(s) of delay
-   - Examples: weather conditions, client delays, access issues, supplier delays, unforeseen site conditions
+   - Common causes include: weather conditions, client delays, access issues, supplier/material delays, unforeseen site conditions, variations, etc.
    - Be specific and factual
 
 3. **Period of Extension Requested**
-   - Number of days extension requested
-   - Note if this is to be confirmed
+   - Number of additional days requested
+   - Clear statement of the extension period
 
 4. **Indicative Revised Completion Date**
-   - Proposed new completion date (clearly marked as indicative)
-   - Note that this is subject to confirmation
+   - Calculate and state the revised completion date
+   - Note that this is indicative and subject to confirmation
+   - Reference the original completion date if available
 
-5. **Statement**
-   - Reference to fair and reasonable adjustment to program
-   - Acknowledgment that this is a formal EOT request
+5. **Statement Referencing Fair and Reasonable Adjustment**
+   - Statement that the extension is a fair and reasonable adjustment to the program
+   - Reference to Australian construction industry standards
+   - Professional and courteous tone
 
 6. **Signature Section**
-   - Lines for contractor signature, name, date
-   - Lines for client signature, name, date (if required)
+   - Contractor signature line with name and date
+   - Space for client acknowledgment
 
-Format as clear, structured text with headings and bullet points. Use Australian terminology and context. Make it professional and suitable for client communication.`;
+Format the response as clear, structured text with section headings. Use bullet points where appropriate. Make it professional and suitable for Australian residential/commercial construction context.`;
 
+    // Build user prompt with job details
     const tradeInfo = job.tradeType || "general trade";
     const propertyInfo = job.propertyType || "property";
     const location = job.address || "Western Australia";
-    const jobScope = job.aiScopeOfWork || job.notes || job.title || "general tasks";
-    const clientInfo = job.clientName ? `Client: ${job.clientName}${job.clientEmail ? ` (${job.clientEmail})` : ""}` : "";
+    const clientInfo = job.clientName ? `Client: ${job.clientName}${job.clientEmail ? ` (${job.clientEmail})` : ""}` : "Client details not specified";
+    
+    // Calculate dates (rough estimate)
+    const createdAt = new Date(job.createdAt);
+    const estimatedCompletion = new Date(createdAt);
+    estimatedCompletion.setDate(estimatedCompletion.getDate() + 14); // Rough 2-week estimate
 
-    const userPrompt = `Generate an Extension of Time (EOT) notice for this ${tradeInfo} job.
+    const userPrompt = `Generate an Extension of Time (EOT) notice for a ${tradeInfo} job.
 
 **Job Title:** ${job.title}
 **Trade Type:** ${tradeInfo}
 **Property Type:** ${propertyInfo}
 **Location:** ${location}
-${clientInfo ? `**${clientInfo}**` : ""}
-**Job Scope:** ${jobScope}
+**${clientInfo}**
+**Job Created:** ${createdAt.toLocaleDateString("en-AU")}
+**Estimated Original Completion:** ${estimatedCompletion.toLocaleDateString("en-AU")}
+${businessName ? `**Contractor Business Name:** ${businessName}` : ""}
+${abn ? `**ABN:** ${abn}` : ""}
 
-**Contractor Details:**
-${businessName ? `Business Name: ${businessName}` : ""}
+Create a professional EOT notice that clearly explains the delay cause and requests a reasonable extension. Use Australian construction terminology and formatting.`;
 
-Generate a complete EOT notice. If specific days or dates are not provided, use clear placeholders (e.g., "[Days to be confirmed]" or "[Date to be determined]") that the user can fill in.`;
-
+    // Call OpenAI
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -117,9 +140,9 @@ Generate a complete EOT notice. If specific days or dates are not provided, use 
       max_tokens: 3000,
     });
 
-    const content = response.choices[0]?.message?.content || "";
+    const documentContent = response.choices[0]?.message?.content || "";
 
-    if (!content.trim()) {
+    if (!documentContent.trim()) {
       return NextResponse.json(
         { error: "Failed to generate EOT notice" },
         { status: 500 }
@@ -130,7 +153,7 @@ Generate a complete EOT notice. If specific days or dates are not provided, use 
       {
         success: true,
         title: `Extension of Time Notice – ${job.title}`,
-        body: content.trim(),
+        body: documentContent.trim(),
       },
       { status: 200 }
     );

@@ -11,6 +11,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const resetSuccess = searchParams.get("reset") === "success";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +69,11 @@ function LoginForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {searchParams.get("reset") === "success" && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+            Password reset successful! You can now sign in with your new password.
+          </div>
+        )}
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
             {error}
@@ -90,9 +96,17 @@ function LoginForm() {
           />
         </div>
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
-            Password
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-sm text-amber-600 hover:text-amber-500 font-medium"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <input
             type="password"
             id="password"

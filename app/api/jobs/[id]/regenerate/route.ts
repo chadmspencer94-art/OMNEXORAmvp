@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isClient } from "@/lib/auth";
 import { getJobById, saveJob, generateJobPack } from "@/lib/jobs";
 
 /**
@@ -13,6 +13,14 @@ export async function POST(
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Block clients from regenerating AI job packs
+    if (isClient(user)) {
+      return NextResponse.json(
+        { error: "Clients can only post jobs. AI job pack generation is available to verified trades and businesses." },
+        { status: 403 }
+      );
     }
 
     const { id } = await params;

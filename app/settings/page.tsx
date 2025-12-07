@@ -146,6 +146,12 @@ export default function SettingsPage() {
         >
           Verification
         </Link>
+        <Link
+          href="/settings/signature"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+        >
+          Signature
+        </Link>
       </div>
 
       {/* Success Message */}

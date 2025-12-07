@@ -83,8 +83,32 @@ export default function JobPackPdfButton({
     });
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     setIsGenerating(true);
+
+    // Fetch client signature if exists (for job owners/trades)
+    let clientSignature: {
+      signedName: string;
+      signedAt: string;
+      signatureImage: string | null;
+    } | null = null;
+
+    try {
+      const sigResponse = await fetch(`/api/jobs/${jobId}/sign-document?docType=QUOTE&includeImage=true`);
+      if (sigResponse.ok) {
+        const sigData = await sigResponse.json();
+        if (sigData.success && sigData.signature) {
+          clientSignature = {
+            signedName: sigData.signature.signedName,
+            signedAt: sigData.signature.signedAt,
+            signatureImage: sigData.signature.signatureImage || null,
+          };
+        }
+      }
+    } catch (sigError) {
+      console.warn("Failed to load signature for PDF:", sigError);
+      // Continue without signature
+    }
 
     try {
       const doc = new jsPDF();
@@ -414,6 +438,53 @@ export default function JobPackPdfButton({
       if (notes) {
         addSectionHeading("Job Details");
         addWrappedText(notes, 10);
+      }
+
+      // =========================================
+      // CLIENT ACCEPTANCE & SIGNATURE
+      // =========================================
+      if (clientSignature) {
+        checkNewPage(60);
+        y += 10;
+        addSectionHeading("Client Acceptance");
+        
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        addWrappedText(`Signed by: ${clientSignature.signedName}`, 11);
+        addWrappedText(`Role: Client`, 11);
+        addWrappedText(
+          `Signed at: ${new Date(clientSignature.signedAt).toLocaleString("en-AU", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`,
+          11
+        );
+
+        // Add signature image if available
+        if (clientSignature.signatureImage) {
+          try {
+            checkNewPage(50);
+            y += 8;
+            // Add signature image (scale to reasonable size)
+            const imgWidth = 80;
+            const imgHeight = 30;
+            doc.addImage(
+              clientSignature.signatureImage,
+              "PNG",
+              margin,
+              y,
+              imgWidth,
+              imgHeight
+            );
+            y += imgHeight + 5;
+          } catch (imgError) {
+            console.warn("Failed to add signature image to PDF:", imgError);
+            // Continue without image
+          }
+        }
       }
 
       // =========================================

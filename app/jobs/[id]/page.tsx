@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { requireActiveUser } from "@/lib/auth";
 import { getJobById, type Job, type JobStatus, type JobWorkflowStatus, type AIReviewStatus, type ClientStatus, type EffectiveRates } from "@/lib/jobs";
+import type { UserRole } from "@/lib/auth";
 import { formatEffectiveRatesForDisplay, calculateEstimateRange } from "@/lib/pricing";
 import CopyForClientButton from "./CopyForClientButton";
 import EmailToClientButton from "./EmailToClientButton";
@@ -14,10 +15,11 @@ import SendToClientButton from "./SendToClientButton";
 import JobPackPdfButton from "./JobPackPdfButton";
 import MaterialsEditButton from "./MaterialsEditButton";
 import DeleteJobButton from "./DeleteJobButton";
-import SwmsSection from "./SwmsSection";
 import SectionEditButton from "./SectionEditButton";
 import SpecDocButton from "./SpecDocButton";
 import JobDocumentsSection from "./JobDocumentsSection";
+import ClientQuoteReview from "./ClientQuoteReview";
+import ClientSignatureStatus from "./ClientSignatureStatus";
 import VerifiedBadge from "@/app/components/VerifiedBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
@@ -527,7 +529,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   // Get verification status (with default for older users)
   const verificationStatus = user.verificationStatus || "unverified";
-  const userRole = user.role || "tradie";
+  const userRole: UserRole = (user.role || "tradie") as UserRole;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -750,10 +752,82 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           </div>
         </div>
 
-        {/* Main Content - AI Job Pack */}
+        {/* Main Content - AI Job Pack or Client View */}
         <div className="lg:col-span-2">
-          {/* SWMS UI START – job detail page */}
-          {(job.status === "ai_pending" || job.status === "generating") && (
+          {/* Client View - Simplified job posting view */}
+          {userRole === "client" ? (
+            <div className="space-y-6">
+              {/* Job Details Card */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+                <h2 className="text-2xl font-semibold text-slate-900 mb-6">Your Job Posting</h2>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-slate-900 mb-4">Job Details</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm text-slate-500 mb-1">Title</p>
+                        <p className="text-slate-900 font-medium">{job.title}</p>
+                      </div>
+                      {job.address && (
+                        <div>
+                          <p className="text-sm text-slate-500 mb-1">Location</p>
+                          <p className="text-slate-900 font-medium">{job.address}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm text-slate-500 mb-1">Trade Type</p>
+                        <p className="text-slate-900 font-medium">{job.tradeType}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500 mb-1">Property Type</p>
+                        <p className="text-slate-900 font-medium">{job.propertyType}</p>
+                      </div>
+                      {job.notes && (
+                        <div>
+                          <p className="text-sm text-slate-500 mb-1">Description</p>
+                          <p className="text-slate-700 whitespace-pre-wrap">{job.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="pt-6 border-t border-slate-200">
+                    <h3 className="text-lg font-medium text-slate-900 mb-4">Status</h3>
+                    <div className="flex items-center gap-2">
+                      <JobWorkflowStatusBadge status={job.jobStatus || "pending"} />
+                      {job.jobStatus === "pending" && (
+                        <p className="text-sm text-slate-600">Your job posting is awaiting tradie responses.</p>
+                      )}
+                      {job.jobStatus === "booked" && (
+                        <p className="text-sm text-slate-600">A tradie has been assigned to this job.</p>
+                      )}
+                      {job.jobStatus === "completed" && (
+                        <p className="text-sm text-slate-600">This job has been completed.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quote Review & Signing (only show if AI pack exists) */}
+              {(job.status === "ai_complete" || job.status === "pending_regeneration") && (
+                <ClientQuoteReview
+                  jobId={job.id}
+                  jobTitle={job.title}
+                  address={job.address}
+                  aiSummary={job.aiSummary}
+                  aiQuote={job.aiQuote}
+                  aiScopeOfWork={job.aiScopeOfWork}
+                  aiInclusions={job.aiInclusions}
+                  aiExclusions={job.aiExclusions}
+                  aiClientNotes={job.aiClientNotes}
+                />
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Trade/Business View - Full AI Job Pack */}
+              {/* SWMS UI START – job detail page */}
+              {(job.status === "ai_pending" || job.status === "generating") && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
               <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-10 h-10 text-amber-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -801,20 +875,21 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     </div>
                   </div>
                 )}
-                <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
-                  <h2 className="text-lg font-semibold text-slate-900">AI Generated Job Pack</h2>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* Only show regenerate button if AI pack is not confirmed */}
-                    {job.aiReviewStatus !== "confirmed" && (
-                      <RegenerateButton jobId={job.id} status={job.status} aiReviewStatus={job.aiReviewStatus} />
-                    )}
-                    {job.aiReviewStatus === "confirmed" && (
-                      <div className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
-                        <p className="font-medium mb-1">AI pack confirmed</p>
-                        <p>You can make manual adjustments, but you can&apos;t regenerate this pack. For major changes, create a new job or duplicate this one.</p>
-                      </div>
-                    )}
-                    <CopyForClientButton
+                <div className="px-6 py-4 border-b border-slate-200">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                    <h2 className="text-lg font-semibold text-slate-900">AI Generated Job Pack</h2>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Only show regenerate button if AI pack is not confirmed */}
+                      {job.aiReviewStatus !== "confirmed" && (
+                        <RegenerateButton jobId={job.id} status={job.status} aiReviewStatus={job.aiReviewStatus} />
+                      )}
+                      {job.aiReviewStatus === "confirmed" && (
+                        <div className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                          <p className="font-medium mb-1">AI pack confirmed</p>
+                          <p>You can make manual adjustments, but you can&apos;t regenerate this pack. For major changes, create a new job or duplicate this one.</p>
+                        </div>
+                      )}
+                      <CopyForClientButton
                       title={job.title}
                       address={job.address}
                       summary={job.aiSummary}
@@ -872,9 +947,19 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       jobId={job.id}
                       hasScopeOfWork={!!job.aiScopeOfWork}
                     />
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                      Powered by AI
-                    </span>
+                      <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                        Powered by AI
+                      </span>
+                    </div>
+                  </div>
+                  {/* Client Signature Status */}
+                  <div className="mt-3">
+                    <ClientSignatureStatus
+                      jobId={job.id}
+                      docType="QUOTE"
+                      docKey={null}
+                      label="quote"
+                    />
                   </div>
                 </div>
                 <div className="p-6 space-y-6">
@@ -990,7 +1075,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
             </>
           )}
 
-          {job.status === "draft" && (
+          {job.status === "draft" && (userRole as string) !== "client" && (
             <div className="space-y-6">
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
                 <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1014,6 +1099,8 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 showWarning={false}
               />
             </div>
+          )}
+            </>
           )}
         </div>
       </div>

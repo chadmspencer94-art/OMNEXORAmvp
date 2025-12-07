@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
 import { openai } from "@/lib/openai";
-import { calculateEstimateRange } from "@/lib/pricing";
 
 /**
  * POST /api/jobs/[id]/progress-claim
@@ -13,6 +12,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current user
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json(
@@ -21,6 +21,7 @@ export async function POST(
       );
     }
 
+    // Get job ID from params
     const { id } = await params;
     const job = await getJobById(id);
 
@@ -31,21 +32,30 @@ export async function POST(
       );
     }
 
+    // Check if user owns the job or is an admin
     if (job.userId !== user.id && !isAdmin(user)) {
       return NextResponse.json(
-        { error: "Forbidden. You don't have permission to generate this document." },
+        { error: "Forbidden. You don't have permission to generate documents for this job." },
         { status: 403 }
       );
     }
 
-    // Load business profile data
+    // Block clients from generating documents
+    if (isClient(user)) {
+      return NextResponse.json(
+        { error: "Clients can only post jobs. Document generation is available to verified trades and businesses." },
+        { status: 403 }
+      );
+    }
+
+    // Load business profile data if available
     let businessName = "";
     let abn = "";
     let businessAddress = "";
     try {
       const { prisma } = await import("@/lib/prisma");
       const prismaUser = await prisma.user.findUnique({
-        where: { email: user.email },
+        where: { id: user.id },
         select: {
           businessName: true,
           abn: true,
@@ -57,81 +67,89 @@ export async function POST(
         abn = prismaUser.abn || "";
         businessAddress = prismaUser.serviceArea || "";
       }
-    } catch (error) {
-      console.warn("Failed to load business profile:", error);
+    } catch {
+      // Continue without business profile data
     }
 
-    // Get pricing estimate if available
-    let pricingInfo = "";
-    if (job.aiQuote) {
-      const estimateRange = calculateEstimateRange(job.aiQuote);
-      if (estimateRange.formattedRange && estimateRange.formattedRange !== "N/A") {
-        pricingInfo = `\n**Estimated Total:** ${estimateRange.formattedRange}`;
-      }
-    }
+    // Build Progress Claim prompt
+    const systemPrompt = `You are an expert in Australian construction and trades invoicing and contract administration. Your task is to generate a professional Progress Claim / Tax Invoice document for a specific job.
 
-    const systemPrompt = `You are an expert in Australian construction and trades invoicing and progress claims. Generate a professional Progress Claim / Tax Invoice document.
-
-The document must be structured clearly with the following sections:
+The Progress Claim document must be structured clearly with the following sections:
 
 1. **Contractor Details**
    - Business name
    - ABN (if available)
-   - Contact details (address, phone, email - use placeholders if not provided)
-   - Bank account details (use placeholder if not provided)
+   - Contact details (email, phone if available)
+   - Business address (if available)
+   - Bank details section (use placeholder if not available)
 
 2. **Client Details**
    - Client name
-   - Client email/address (if available)
+   - Client email
+   - Property address
 
-3. **Invoice/Claim Details**
-   - Job reference
-   - Claim number (e.g., "Progress Claim 1" or "Tax Invoice #001")
-   - Invoice date
-   - Due date (based on payment terms)
+3. **Job Reference**
+   - Job title
+   - Job reference/ID
+   - Invoice/Claim number (e.g., "Progress Claim 1" or "Invoice #001")
 
-4. **Claim Summary Table** (as formatted text, not a real table)
-   - Contract / Estimated value
-   - Previous claims total
-   - This claim amount
-   - Balance to complete
-   - Use clear labels and formatting
+4. **Claim Summary Table (as formatted text)**
+   Create a clear table showing:
+   - Contract / Estimated Value: [amount]
+   - Previous Claims Total: [amount or $0.00]
+   - This Claim Amount: [amount]
+   - Balance to Complete: [amount]
+   - Include GST breakdown if applicable
 
 5. **Payment Terms**
-   - Payment terms (e.g., 7 days, 14 days, or as agreed)
-   - Payment method (bank transfer, etc.)
-   - Include bank details placeholder if not provided
+   - Payment terms (e.g., "Payment due within 14 days" or "7 days EOM")
+   - Payment method (e.g., "Bank transfer to account details below")
+   - Include bank account details section (use placeholders if not available)
 
-6. **Description of Work**
-   - Brief description of work completed or claimed
-   - Reference to job scope
+6. **Work Description**
+   - Brief description of work completed or progress made
+   - Reference to original scope
 
-Use any pricing data provided. Where amounts are missing, generate clearly labelled placeholders (e.g., "[Contract Value: $X,XXX]" or "[This Claim: $XXX]") that the user can edit.
+Format the response as clear, structured text with section headings. Use formatted text tables (using dashes, pipes, or spacing) for the claim summary. Make it professional and suitable for Australian tax invoice requirements. Include placeholders clearly marked (e.g., "[Amount to be confirmed]") where exact figures are not available.`;
 
-Format as clear, structured text with headings and sections. Use Australian terminology and context. Make it professional and suitable for client invoicing.`;
-
+    // Build user prompt with job details
     const tradeInfo = job.tradeType || "general trade";
     const propertyInfo = job.propertyType || "property";
     const location = job.address || "Western Australia";
-    const jobScope = job.aiScopeOfWork || job.notes || job.title || "general tasks";
-    const clientInfo = job.clientName ? `Client: ${job.clientName}${job.clientEmail ? ` (${job.clientEmail})` : ""}` : "";
+    const clientInfo = job.clientName ? `Client: ${job.clientName}${job.clientEmail ? ` (${job.clientEmail})` : ""}` : "Client details not specified";
+    
+    // Get pricing info if available
+    let pricingInfo = "";
+    let estimatedTotal = "";
+    if (job.aiQuote) {
+      try {
+        const quote = JSON.parse(job.aiQuote);
+        if (quote.totalEstimate?.totalJobEstimate) {
+          estimatedTotal = quote.totalEstimate.totalJobEstimate;
+          pricingInfo = `\n\nOriginal quote estimate: ${estimatedTotal}`;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
 
-    const userPrompt = `Generate a Progress Claim / Tax Invoice for this ${tradeInfo} job.
+    const userPrompt = `Generate a Progress Claim / Tax Invoice for a ${tradeInfo} job.
 
 **Job Title:** ${job.title}
+**Job ID/Reference:** ${job.id.slice(0, 8)}
 **Trade Type:** ${tradeInfo}
 **Property Type:** ${propertyInfo}
 **Location:** ${location}
-${clientInfo ? `**${clientInfo}**` : ""}
-**Job Scope:** ${jobScope}${pricingInfo}
+**${clientInfo}**
+${pricingInfo}
+${businessName ? `**Contractor Business Name:** ${businessName}` : ""}
+${abn ? `**ABN:** ${abn}` : ""}
+${businessAddress ? `**Business Address:** ${businessAddress}` : ""}
+**Contractor Email:** ${user.email}
 
-**Contractor Details:**
-${businessName ? `Business Name: ${businessName}` : ""}
-${abn ? `ABN: ${abn}` : ""}
-${businessAddress ? `Address: ${businessAddress}` : ""}
+Create a professional Progress Claim / Tax Invoice that includes all required sections. Use placeholders for amounts and bank details if not available. Use Australian tax invoice formatting and terminology.`;
 
-Generate a complete progress claim/invoice. Use placeholders for amounts and bank details that need to be filled in.`;
-
+    // Call OpenAI
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -142,11 +160,11 @@ Generate a complete progress claim/invoice. Use placeholders for amounts and ban
       max_tokens: 3000,
     });
 
-    const content = response.choices[0]?.message?.content || "";
+    const documentContent = response.choices[0]?.message?.content || "";
 
-    if (!content.trim()) {
+    if (!documentContent.trim()) {
       return NextResponse.json(
-        { error: "Failed to generate progress claim" },
+        { error: "Failed to generate Progress Claim" },
         { status: 500 }
       );
     }
@@ -155,14 +173,14 @@ Generate a complete progress claim/invoice. Use placeholders for amounts and ban
       {
         success: true,
         title: `Progress Claim / Tax Invoice – ${job.title}`,
-        body: content.trim(),
+        body: documentContent.trim(),
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error generating progress claim:", error);
+    console.error("Error generating Progress Claim:", error);
     return NextResponse.json(
-      { error: "Failed to generate progress claim. Please try again." },
+      { error: "Failed to generate Progress Claim. Please try again." },
       { status: 500 }
     );
   }

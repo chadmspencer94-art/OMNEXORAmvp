@@ -179,13 +179,21 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   }, [user, mobileMenuOpen]);
 
   const isLoggedIn = !!user;
+  const isClient = user?.role === "client";
 
-  const navLinks = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/jobs", label: "Jobs" },
-    { href: "/billing", label: "Billing" },
-    { href: "/settings", label: "Settings" },
-  ];
+  // Role-aware navigation links
+  const navLinks = isClient
+    ? [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/jobs", label: "Jobs" },
+        { href: "/settings", label: "Settings" },
+      ]
+    : [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/jobs", label: "Jobs" },
+        { href: "/billing", label: "Billing" },
+        { href: "/settings", label: "Settings" },
+      ];
 
   const handleLogout = async () => {
     setIsLoggingOut(true);

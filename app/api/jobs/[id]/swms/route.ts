@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
 import { openai } from "@/lib/openai";
 
@@ -152,6 +152,14 @@ export async function POST(
     if (job.userId !== user.id && !isAdmin(user)) {
       return NextResponse.json(
         { error: "Forbidden. You don't have permission to generate SWMS for this job." },
+        { status: 403 }
+      );
+    }
+
+    // Block clients from generating SWMS
+    if (isClient(user)) {
+      return NextResponse.json(
+        { error: "Clients can only post jobs. SWMS generation is available to verified trades and businesses." },
         { status: 403 }
       );
     }

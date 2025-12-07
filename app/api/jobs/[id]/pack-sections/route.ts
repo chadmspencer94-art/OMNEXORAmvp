@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isClient } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
 
 /**
@@ -17,6 +17,14 @@ export async function PATCH(
       return NextResponse.json(
         { error: "Unauthorized. Please log in." },
         { status: 401 }
+      );
+    }
+
+    // Block clients from editing AI job pack sections
+    if (isClient(user)) {
+      return NextResponse.json(
+        { error: "Clients can only post jobs. AI job pack editing is available to verified trades and businesses." },
+        { status: 403 }
       );
     }
 

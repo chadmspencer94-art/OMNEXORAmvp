@@ -124,6 +124,26 @@ export function isAdmin(user: SafeUser | null): boolean {
   return user.role === "admin" || user.isAdmin === true || ADMIN_EMAILS.includes(user.email.toLowerCase());
 }
 
+/**
+ * Checks if a user is a client
+ * @param user - The user to check
+ * @returns true if user is a client, false otherwise
+ */
+export function isClient(user: SafeUser | null): boolean {
+  if (!user) return false;
+  return user.role === "client";
+}
+
+/**
+ * Checks if a user is a trade/builder/business (not a client)
+ * @param user - The user to check
+ * @returns true if user is a trade/builder/business, false otherwise
+ */
+export function isTradeOrBusiness(user: SafeUser | null): boolean {
+  if (!user) return false;
+  return user.role === "tradie" || user.role === "builder" || user.role === "supplier" || user.role === "admin";
+}
+
 // ============================================================================
 // Test Verified Emails
 // ============================================================================

@@ -68,5 +68,45 @@ model User {
   ratePerM2Exterior   Int?      // rate per square metre exterior
   ratePerLmTrim       Int?      // rate per linear metre (e.g. trims, handrails)
   
+  // Digital signature (for document signing)
+  signatureImage      String?   // Data URL or image path for user signature
+  signatureUpdatedAt  DateTime? // Last update timestamp
+  
+  // Password reset tokens
+  passwordResetTokens PasswordResetToken[]
+  
+  // Job document signatures (as signer)
+  jobDocumentSignatures JobDocumentSignature[]
+  
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String   // hashed version of the token
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@map("password_reset_tokens")
+}
+
+model JobDocumentSignature {
+  id            String   @id @default(cuid())
+  jobId         String
+  signedById    String?
+  signedBy      User?    @relation(fields: [signedById], references: [id], onDelete: SetNull)
+  signedName    String   // full name as typed by client
+  role          String   // e.g. "CLIENT" (reserve for future like "BUILDER_CLIENT")
+  docType       String   // e.g. "QUOTE" | "VARIATION" | "EOT" | "HANDOVER"
+  docKey        String?  // optional: variation ID or document identifier if available
+  signatureImage String? // data URL or path for client's drawn signature
+  ipAddress     String?  // capture best effort for audit
+  userAgent     String?  // best effort for audit
+  signedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  
+  @@map("job_document_signatures")
+  @@index([jobId, docType, docKey])
 }

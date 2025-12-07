@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
 import { openai } from "@/lib/openai";
 
@@ -12,6 +12,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current user
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json(
@@ -20,6 +21,7 @@ export async function POST(
       );
     }
 
+    // Get job ID from params
     const { id } = await params;
     const job = await getJobById(id);
 
@@ -30,19 +32,28 @@ export async function POST(
       );
     }
 
+    // Check if user owns the job or is an admin
     if (job.userId !== user.id && !isAdmin(user)) {
       return NextResponse.json(
-        { error: "Forbidden. You don't have permission to generate this document." },
+        { error: "Forbidden. You don't have permission to generate documents for this job." },
         { status: 403 }
       );
     }
 
-    // Load business profile data
+    // Block clients from generating documents
+    if (isClient(user)) {
+      return NextResponse.json(
+        { error: "Clients can only post jobs. Document generation is available to verified trades and businesses." },
+        { status: 403 }
+      );
+    }
+
+    // Load business profile data if available
     let businessName = "";
     try {
       const { prisma } = await import("@/lib/prisma");
       const prismaUser = await prisma.user.findUnique({
-        where: { email: user.email },
+        where: { id: user.id },
         select: {
           businessName: true,
         },
@@ -50,71 +61,77 @@ export async function POST(
       if (prismaUser) {
         businessName = prismaUser.businessName || "";
       }
-    } catch (error) {
-      console.warn("Failed to load business profile:", error);
+    } catch {
+      // Continue without business profile data
     }
 
-    const systemPrompt = `You are an expert in Australian construction and trades project completion and handover. Generate a professional Handover & Practical Completion checklist.
+    // Build Handover prompt
+    const systemPrompt = `You are an expert in Australian construction and trades project completion and handover procedures. Your task is to generate a professional Handover & Practical Completion checklist for a specific job.
 
-The document must be structured clearly with the following sections:
+The Handover document must be structured clearly with the following sections:
 
 1. **Job Details**
-   - Project name/title
+   - Project/job title
    - Property address
-   - Client name
-   - Date of practical completion
+   - Client name and contact details
+   - Trade type
 
 2. **Statement of Practical Completion**
-   - Statement that works are practically complete subject to minor defects
-   - Note that the works are substantially complete and ready for use
+   - Clear statement that works are practically complete subject to minor defects
+   - Reference to Australian construction standards
+   - Date of practical completion
 
-3. **Completion Checklist** (comprehensive list with checkboxes as text)
-   Include items relevant to the trade type, such as:
+3. **Checklist Items**
+   Create a comprehensive checklist relevant to the trade type, including items such as:
    - All areas completed as per scope
    - Surfaces cleaned and prepared
    - Rubbish and materials removed
-   - Site left clean and tidy
    - Client walkthrough completed
    - Touch-ups completed (if applicable)
-   - Keys/fobs returned (if applicable)
+   - Keys/fobs/access returned (if applicable)
+   - Final inspection completed
    - Any trade-specific completion items
 
-4. **Defects/Outstanding Items** (if any)
-   - List any minor defects or items to be completed
-   - Note that these do not prevent practical completion
+4. **Space for Client Comments**
+   - Section for client to note any defects or concerns
+   - Space for additional notes
 
-5. **Client Comments Section**
-   - Space for client to note any observations or comments
+5. **Practical Completion Date**
+   - Date field for recording completion date
 
-6. **Practical Completion Date**
-   - Date field for practical completion
+6. **Signature Lines**
+   - Contractor signature line with name and date
+   - Client signature line with name and date
+   - Space for acknowledgment of practical completion
 
-7. **Signature Lines**
-   - Contractor signature, name, date
-   - Client signature, name, date
+Format the response as clear, structured text with section headings. Use checkboxes (☐) for checklist items. Make it professional and suitable for Australian residential/commercial construction context.`;
 
-Format as clear, structured text with headings and a checklist format. Use Australian terminology and context. Make it professional and suitable for client signing.`;
-
+    // Build user prompt with job details
     const tradeInfo = job.tradeType || "general trade";
     const propertyInfo = job.propertyType || "property";
     const location = job.address || "Western Australia";
-    const jobScope = job.aiScopeOfWork || job.notes || job.title || "general tasks";
-    const clientInfo = job.clientName ? `Client: ${job.clientName}${job.clientEmail ? ` (${job.clientEmail})` : ""}` : "";
+    const clientInfo = job.clientName ? `Client: ${job.clientName}${job.clientEmail ? ` (${job.clientEmail})` : ""}` : "Client details not specified";
+    const jobScope = job.aiScopeOfWork || job.notes || job.title || "general tasks for the trade";
+    
+    // Include inclusions/exclusions if available
+    let inclusionsInfo = "";
+    if (job.aiInclusions) {
+      inclusionsInfo = `\n\nIncluded items:\n${job.aiInclusions}`;
+    }
 
-    const userPrompt = `Generate a Handover & Practical Completion checklist for this ${tradeInfo} job.
+    const userPrompt = `Generate a Handover & Practical Completion checklist for a ${tradeInfo} job.
 
 **Job Title:** ${job.title}
 **Trade Type:** ${tradeInfo}
 **Property Type:** ${propertyInfo}
 **Location:** ${location}
-${clientInfo ? `**${clientInfo}**` : ""}
-**Job Scope:** ${jobScope}
+**${clientInfo}**
+**Scope of Work:** ${jobScope}${inclusionsInfo}
+${businessName ? `**Contractor Business Name:** ${businessName}` : ""}
 
-**Contractor Details:**
-${businessName ? `Business Name: ${businessName}` : ""}
+Create a comprehensive handover checklist that is specific to ${tradeInfo} work. Include all relevant completion items for this trade type. Use Australian construction terminology and formatting.`;
 
-Generate a complete handover checklist. Include trade-specific completion items relevant to ${tradeInfo} work.`;
-
+    // Call OpenAI
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -125,11 +142,11 @@ Generate a complete handover checklist. Include trade-specific completion items 
       max_tokens: 3000,
     });
 
-    const content = response.choices[0]?.message?.content || "";
+    const documentContent = response.choices[0]?.message?.content || "";
 
-    if (!content.trim()) {
+    if (!documentContent.trim()) {
       return NextResponse.json(
-        { error: "Failed to generate handover checklist" },
+        { error: "Failed to generate Handover checklist" },
         { status: 500 }
       );
     }
@@ -138,14 +155,14 @@ Generate a complete handover checklist. Include trade-specific completion items 
       {
         success: true,
         title: `Handover & Practical Completion – ${job.title}`,
-        body: content.trim(),
+        body: documentContent.trim(),
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error generating handover:", error);
+    console.error("Error generating Handover:", error);
     return NextResponse.json(
-      { error: "Failed to generate handover checklist. Please try again." },
+      { error: "Failed to generate Handover checklist. Please try again." },
       { status: 500 }
     );
   }
