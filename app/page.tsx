@@ -12,10 +12,13 @@ export default function Home() {
           <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium text-amber-700 bg-amber-100 rounded-full">
             Built for Australian Tradies
           </span>
-          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6 leading-tight">
+          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-4 leading-tight">
             OMNEXORA
             <span className="block text-amber-500 mt-2">AI Job Packs for Tradies</span>
           </h1>
+          <p className="text-xl sm:text-2xl font-semibold text-slate-700 mb-6 max-w-xl mx-auto leading-relaxed">
+            win back time for what most matters
+          </p>
           <p className="text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
             Generate professional job packs in minutes. From quotes to scope of work, 
             let AI handle the paperwork so you can focus on what you do best.

@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "OMNEXORA - AI Job Packs for Tradies",
-  description: "Generate AI-powered job packs for Australian tradies",
+  description: "Generate AI-powered job packs for Australian tradies to cut admin and win back time for what most matters",
 };
 
 export default function RootLayout({
