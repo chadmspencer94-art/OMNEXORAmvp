@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
-import { requireActiveUser } from "@/lib/auth";
+import { requireActiveUser, isAdmin } from "@/lib/auth";
 import { getJobById, type Job, type JobStatus, type JobWorkflowStatus, type AIReviewStatus, type ClientStatus, type EffectiveRates } from "@/lib/jobs";
 import type { UserRole } from "@/lib/auth";
 import { formatEffectiveRatesForDisplay, calculateEstimateRange } from "@/lib/pricing";
+import { formatDateTimeForDisplay } from "@/lib/format";
 import CopyForClientButton from "./CopyForClientButton";
 import EmailToClientButton from "./EmailToClientButton";
 import RegenerateButton from "./RegenerateButton";
@@ -18,11 +19,23 @@ import DeleteJobButton from "./DeleteJobButton";
 import SectionEditButton from "./SectionEditButton";
 import SpecDocButton from "./SpecDocButton";
 import JobDocumentsSection from "./JobDocumentsSection";
+import SafetySection from "./SafetySection";
 import ClientQuoteReview from "./ClientQuoteReview";
 import ClientSignatureStatus from "./ClientSignatureStatus";
+import ClientSignatureDisplay from "./ClientSignatureDisplay";
+import DuplicateJobButton from "./DuplicateJobButton";
+import SaveAsTemplateButton from "./SaveAsTemplateButton";
+import ClientDetailsEntry from "./ClientDetailsEntry";
+import QuoteHistoryPanel from "./QuoteHistoryPanel";
+import ScheduleSection from "./ScheduleSection";
+import SuggestedTradiesPanel from "./SuggestedTradiesPanel";
+import JobAssignmentPanel from "./JobAssignmentPanel";
+import MaterialsManagementSection from "./MaterialsManagementSection";
+import AttachmentsSection from "./AttachmentsSection";
 import VerifiedBadge from "@/app/components/VerifiedBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
+import AIWarningBanner from "@/app/components/AIWarningBanner";
 
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
@@ -207,7 +220,21 @@ function SummarySection({ content, editButton }: { content?: string; editButton?
   );
 }
 
-function PricingSection({ content, effectiveRates }: { content?: string; effectiveRates?: EffectiveRates | null }) {
+function PricingSection({ 
+  content, 
+  effectiveRates,
+  quoteNumber,
+  quoteVersion,
+  quoteExpiryAt,
+  quoteLastSentAt,
+}: { 
+  content?: string; 
+  effectiveRates?: EffectiveRates | null;
+  quoteNumber?: string | null;
+  quoteVersion?: number | null;
+  quoteExpiryAt?: string | null;
+  quoteLastSentAt?: string | null;
+}) {
   if (!content) return null;
 
   let parsedQuote: ParsedQuote | null = null;
@@ -223,6 +250,15 @@ function PricingSection({ content, effectiveRates }: { content?: string; effecti
   // Calculate realistic estimate range
   const estimateRange = calculateEstimateRange(content);
 
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleDateString("en-AU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   return (
     <div className="border-b border-slate-200 pb-6">
       <SectionHeader
@@ -234,6 +270,40 @@ function PricingSection({ content, effectiveRates }: { content?: string; effecti
         }
       />
       <div className="pl-10">
+        {/* Quote metadata */}
+        {(quoteNumber || quoteVersion || quoteExpiryAt || quoteLastSentAt) && (
+          <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1 text-sm">
+            {quoteNumber && (
+              <div>
+                <span className="text-slate-500">Quote #:</span>{" "}
+                <span className="font-medium text-slate-900">{quoteNumber}</span>
+              </div>
+            )}
+            {quoteVersion != null && (
+              <div>
+                <span className="text-slate-500">Version:</span>{" "}
+                <span className="font-medium text-slate-900">v{quoteVersion}</span>
+              </div>
+            )}
+            {quoteLastSentAt && (
+              <div>
+                <span className="text-slate-500">Last sent:</span>{" "}
+                <span className="font-medium text-slate-900">{formatDate(quoteLastSentAt)}</span>
+              </div>
+            )}
+            {quoteExpiryAt && (
+              <div>
+                <span className="text-slate-500">Valid until:</span>{" "}
+                <span className={`font-medium ${
+                  new Date(quoteExpiryAt) < new Date() ? "text-red-600" : "text-slate-900"
+                }`}>
+                  {formatDate(quoteExpiryAt)}
+                  {new Date(quoteExpiryAt) < new Date() && " (Expired)"}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         {/* Show "based on your rates" if effective rates are available */}
         {ratesDisplay && (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -517,8 +587,11 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
     notFound();
   }
 
-  // Security check - ensure user owns this job
-  if (job.userId !== user.id) {
+  // Security check - ensure user owns this job OR is admin viewing a client job
+  const userIsAdmin = isAdmin(user);
+  const isClientJob = job.leadSource === "CLIENT_PORTAL" || job.assignmentStatus === "UNASSIGNED";
+  
+  if (job.userId !== user.id && !(userIsAdmin && isClientJob)) {
     redirect("/jobs");
   }
 
@@ -530,6 +603,21 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   // Get verification status (with default for older users)
   const verificationStatus = user.verificationStatus || "unverified";
   const userRole: UserRole = (user.role || "tradie") as UserRole;
+  const isVerified = verificationStatus === "verified";
+
+  // For client view, get tradie verification status
+  let tradieVerificationStatus: string | null = null;
+  if (userRole === "client") {
+    // Fetch the tradie's verification status from Prisma
+    try {
+      const { getUserVerification } = await import("@/lib/verification");
+      const tradieVerification = await getUserVerification(job.userId);
+      tradieVerificationStatus = tradieVerification?.status || null;
+    } catch (err) {
+      // Silently fail - don't break the page
+      console.warn("Failed to fetch tradie verification status:", err);
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -655,7 +743,44 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     <span className="text-xs text-emerald-600 font-medium">🎉 Won job!</span>
                   )}
                 </div>
-                {job.clientStatusUpdatedAt && (
+                {job.clientStatus === "accepted" && job.clientAcceptedAt && (
+                  <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <p className="font-semibold text-emerald-900 mb-2">Client Acceptance</p>
+                    <div className="space-y-1 text-sm text-emerald-700">
+                      <p><span className="font-medium">Status:</span> Accepted</p>
+                      <p><span className="font-medium">When:</span> {formatDate(job.clientAcceptedAt)}</p>
+                      {job.clientAcceptedByName && (
+                        <p><span className="font-medium">Accepted by:</span> {job.clientAcceptedByName}</p>
+                      )}
+                      {job.quoteNumber && job.clientAcceptedQuoteVer && (
+                        <p><span className="font-medium">Quote:</span> {job.quoteNumber} v{job.clientAcceptedQuoteVer}</p>
+                      )}
+                      {job.clientAcceptanceNote && (
+                        <div className="mt-2 pt-2 border-t border-emerald-200">
+                          <p className="font-medium">Client note:</p>
+                          <p className="text-emerald-600 whitespace-pre-wrap">{job.clientAcceptanceNote}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {job.clientStatus === "declined" && job.clientDeclinedAt && (
+                  <div className="mt-2 text-xs text-slate-600">
+                    <p className="font-medium">Declined</p>
+                    <p>on {formatDate(job.clientDeclinedAt)}</p>
+                  </div>
+                )}
+                {job.clientStatus === "sent" && (
+                  <div className="mt-2 text-xs text-slate-500">
+                    <p>Awaiting client decision</p>
+                  </div>
+                )}
+                {(!job.clientStatus || job.clientStatus === "draft") && (
+                  <div className="mt-2 text-xs text-slate-500">
+                    <p>Not sent to client yet</p>
+                  </div>
+                )}
+                {job.clientStatusUpdatedAt && job.clientStatus !== "accepted" && job.clientStatus !== "declined" && (
                   <p className="text-xs text-slate-400 mt-1">
                     Updated: {formatDate(job.clientStatusUpdatedAt)}
                   </p>
@@ -671,10 +796,32 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 <StatusBadge status={job.status} />
               </div>
 
+              {/* Verified Account Badge (for tradie view) */}
+              {isVerified && userRole !== "client" && (
+                <div className="pt-4 border-t border-slate-200">
+                  <div className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 border border-emerald-300">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span>Verified account</span>
+                  </div>
+                </div>
+              )}
+
               {/* Client Details */}
               {(job.clientName || job.clientEmail) && (
                 <div className="pt-4 border-t border-slate-200">
-                  <p className="text-sm text-slate-500 mb-2 font-medium">Client</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-slate-500 font-medium">Client</p>
+                    {job.clientId && userRole !== "client" && (
+                      <Link
+                        href={`/clients/${job.clientId}`}
+                        className="text-xs text-amber-600 hover:text-amber-700 font-medium"
+                      >
+                        View profile →
+                      </Link>
+                    )}
+                  </div>
                   {job.clientName && (
                     <p className="text-slate-900 font-medium">{job.clientName}</p>
                   )}
@@ -688,6 +835,19 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   )}
                 </div>
               )}
+
+              {/* Schedule Section - Only for tradie/business users */}
+              {userRole !== "client" && (
+                <div className="pt-4 border-t border-slate-200">
+                  <ScheduleSection
+                    jobId={job.id}
+                    scheduledStartAt={job.scheduledStartAt}
+                    scheduledEndAt={job.scheduledEndAt}
+                    scheduleNotes={job.scheduleNotes}
+                  />
+                </div>
+              )}
+
               <div className="pt-4 border-t border-slate-200">
                 <p className="text-sm text-slate-500 mb-1">Trade Type</p>
                 <p className="text-slate-900 font-medium">{job.tradeType}</p>
@@ -741,8 +901,16 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 </div>
               )}
 
-              {/* Remove Job Action */}
+              {/* Job Actions */}
               <div className="pt-4 border-t border-slate-200 space-y-3">
+                {/* Save as Template Button - Only for non-client users */}
+                {userRole !== "client" && (
+                  <SaveAsTemplateButton job={job} />
+                )}
+                {/* Duplicate Job Button - Only for non-client users */}
+                {userRole !== "client" && (
+                  <DuplicateJobButton jobId={job.id} />
+                )}
                 <DeleteJobButton jobId={job.id} />
                 <div>
                   <FeedbackButton jobId={job.id} variant="compact" />
@@ -790,6 +958,28 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       )}
                     </div>
                   </div>
+
+                  {/* Scheduled Date/Time - Read-only for clients */}
+                  {(job.scheduledStartAt || job.scheduledEndAt) && (
+                    <div className="pt-6 border-t border-slate-200">
+                      <h3 className="text-lg font-medium text-slate-900 mb-4">Scheduled Date & Time</h3>
+                      <div className="space-y-3">
+                        {job.scheduledStartAt && (
+                          <div>
+                            <p className="text-sm text-slate-500 mb-1">Start</p>
+                            <p className="text-slate-900 font-medium">{formatDateTimeForDisplay(job.scheduledStartAt)}</p>
+                          </div>
+                        )}
+                        {job.scheduledEndAt && (
+                          <div>
+                            <p className="text-sm text-slate-500 mb-1">End</p>
+                            <p className="text-slate-900 font-medium">{formatDateTimeForDisplay(job.scheduledEndAt)}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="pt-6 border-t border-slate-200">
                     <h3 className="text-lg font-medium text-slate-900 mb-4">Status</h3>
                     <div className="flex items-center gap-2">
@@ -820,6 +1010,13 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   aiInclusions={job.aiInclusions}
                   aiExclusions={job.aiExclusions}
                   aiClientNotes={job.aiClientNotes}
+                  clientStatus={job.clientStatus}
+                  clientAcceptedAt={job.clientAcceptedAt}
+                  clientDeclinedAt={job.clientDeclinedAt}
+                  clientSignedName={job.clientSignedName}
+                  clientSignedEmail={job.clientSignedEmail}
+                  userEmail={user.email}
+                  tradieVerificationStatus={tradieVerificationStatus}
                 />
               )}
             </div>
@@ -879,14 +1076,29 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
                     <h2 className="text-lg font-semibold text-slate-900">AI Generated Job Pack</h2>
                     <div className="flex flex-wrap items-center gap-3">
-                      {/* Only show regenerate button if AI pack is not confirmed */}
-                      {job.aiReviewStatus !== "confirmed" && (
-                        <RegenerateButton jobId={job.id} status={job.status} aiReviewStatus={job.aiReviewStatus} />
+                      {/* Duplicate Job Button - Always available for non-client users */}
+                      <DuplicateJobButton jobId={job.id} />
+                      {/* Only show regenerate button if AI pack is not confirmed and client hasn't accepted */}
+                      {job.aiReviewStatus !== "confirmed" && job.clientStatus !== "accepted" && (
+                        <RegenerateButton 
+                          jobId={job.id} 
+                          status={job.status} 
+                          aiReviewStatus={job.aiReviewStatus}
+                          clientStatus={job.clientStatus}
+                        />
                       )}
-                      {job.aiReviewStatus === "confirmed" && (
+                      {(job.aiReviewStatus === "confirmed" || job.clientStatus === "accepted") && (
                         <div className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
-                          <p className="font-medium mb-1">AI pack confirmed</p>
-                          <p>You can make manual adjustments, but you can&apos;t regenerate this pack. For major changes, create a new job or duplicate this one.</p>
+                          <p className="font-medium mb-1">
+                            {job.clientStatus === "accepted" 
+                              ? "Quote signed by client" 
+                              : "AI pack confirmed"}
+                          </p>
+                          <p>
+                            {job.clientStatus === "accepted"
+                              ? "This pack has been signed by the client. Create a variation instead of regenerating the original scope."
+                              : "You can make manual adjustments, but you can't regenerate this pack. For major changes, create a new job or duplicate this one."}
+                          </p>
                         </div>
                       )}
                       <CopyForClientButton
@@ -942,13 +1154,26 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       aiClientNotes={job.aiClientNotes}
                       materialsOverrideText={job.materialsOverrideText}
                       materialsAreRoughEstimate={job.materialsAreRoughEstimate}
+                      materialsTotal={job.materialsTotal ?? null}
+                      clientSignatureId={job.clientSignatureId}
+                      clientSignedName={job.clientSignedName}
+                      clientSignedEmail={job.clientSignedEmail}
+                      clientAcceptedAt={job.clientAcceptedAt}
+                      clientAcceptedByName={job.clientAcceptedByName}
+                      clientAcceptanceNote={job.clientAcceptanceNote}
+                      clientAcceptedQuoteVer={job.clientAcceptedQuoteVer}
+                      quoteNumber={job.quoteNumber}
                     />
                     <SpecDocButton 
                       jobId={job.id}
                       hasScopeOfWork={!!job.aiScopeOfWork}
                     />
-                      <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                        Powered by AI
+                    <SpecDocButton 
+                      jobId={job.id}
+                      hasScopeOfWork={!!job.aiScopeOfWork}
+                    />
+                      <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded-full border border-amber-300" title="AI-generated content must be reviewed and verified for compliance with Australian laws and regulations">
+                        ⚠️ AI-Generated - Review Required
                       </span>
                     </div>
                   </div>
@@ -961,6 +1186,33 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       label="quote"
                     />
                   </div>
+                </div>
+                {/* Client Details Entry - Show if AI complete but no client details */}
+                {(!job.clientName || !job.clientEmail) && (
+                  <div className="px-6 pt-6">
+                    <ClientDetailsEntry
+                      jobId={job.id}
+                      currentClientName={job.clientName}
+                      currentClientEmail={job.clientEmail}
+                      onSave={async (clientName, clientEmail) => {
+                        const response = await fetch(`/api/jobs/${job.id}/client-details`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ clientName, clientEmail }),
+                        });
+                        if (!response.ok) {
+                          const data = await response.json();
+                          throw new Error(data.error || "Failed to save client details");
+                        }
+                        // Refresh the page to show updated details
+                        window.location.reload();
+                      }}
+                    />
+                  </div>
+                )}
+                {/* AI Warning Banner */}
+                <div className="px-6 pt-6">
+                  <AIWarningBanner />
                 </div>
                 <div className="p-6 space-y-6">
                   <SummarySection 
@@ -976,7 +1228,14 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       />
                     }
                   />
-                  <PricingSection content={job.aiQuote} effectiveRates={job.effectiveRates} />
+                  <PricingSection 
+                    content={job.aiQuote} 
+                    effectiveRates={job.effectiveRates}
+                    quoteNumber={job.quoteNumber}
+                    quoteVersion={job.quoteVersion}
+                    quoteExpiryAt={job.quoteExpiryAt}
+                    quoteLastSentAt={job.quoteLastSentAt}
+                  />
                   <ScopeSection 
                     content={job.aiScopeOfWork}
                     editButton={
@@ -1057,6 +1316,24 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   />
                 </div>
               </div>
+
+              {/* Attachments Section - Only for tradie/business users */}
+              <div className="mt-6">
+                <AttachmentsSection jobId={job.id} />
+              </div>
+
+              {/* Client Signature Display (for trade view) */}
+              {job.clientStatus === "accepted" && (
+                <div className="mt-6">
+                  <ClientSignatureDisplay
+                    jobId={job.id}
+                    clientSignatureId={job.clientSignatureId}
+                    clientSignedName={job.clientSignedName}
+                    clientSignedEmail={job.clientSignedEmail}
+                    clientAcceptedAt={job.clientAcceptedAt}
+                  />
+                </div>
+              )}
               
               {/* Job Documents Section - Replaces SWMS section */}
               <div className="mt-6">
@@ -1070,8 +1347,29 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     job.aiReviewStatus === "confirmed" &&
                     (job.clientStatus === "sent" || job.clientStatus === "accepted")
                   }
+                  job={job}
                 />
               </div>
+
+              {/* Safety Section - Tradie/Business only */}
+              {(userRole as string) !== "client" && (
+                <div className="mt-6">
+                  <SafetySection
+                    jobId={job.id}
+                    jobTitle={job.title}
+                    tradeType={job.tradeType}
+                    address={job.address}
+                    businessName={user.businessDetails?.businessName || user.businessDetails?.tradingName}
+                  />
+                </div>
+              )}
+
+              {/* Suggested Tradies Panel - Admin only */}
+              {userIsAdmin && (
+                <div className="mt-6">
+                  <SuggestedTradiesPanel jobId={job.id} />
+                </div>
+              )}
             </>
           )}
 
@@ -1098,6 +1396,38 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 clientName={job.clientName}
                 showWarning={false}
               />
+
+              {/* Safety Section - Tradie/Business only */}
+              <div className="mt-6">
+                <SafetySection
+                  jobId={job.id}
+                  jobTitle={job.title}
+                  tradeType={job.tradeType}
+                  address={job.address}
+                  businessName={user.businessDetails?.businessName || user.businessDetails?.tradingName}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Admin Assignment Panel - Show for client jobs that need assignment */}
+          {userIsAdmin && isClientJob && job.assignmentStatus !== "ASSIGNED" && (
+            <div className="mt-6">
+              <JobAssignmentPanel
+                jobId={job.id}
+                currentUserId={user.id}
+                assignmentStatus={job.assignmentStatus}
+              />
+            </div>
+          )}
+
+          {/* Client Job Assignment Banner - Show for tradies viewing assigned client jobs */}
+          {!userIsAdmin && (userRole as string) !== "client" && job.leadSource === "CLIENT_PORTAL" && job.assignedAt && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <p className="text-sm text-blue-800">
+                <strong>Client Job:</strong> This job was posted by a client and assigned to you on{" "}
+                {formatDateTimeForDisplay(job.assignedAt)}.
+              </p>
             </div>
           )}
             </>

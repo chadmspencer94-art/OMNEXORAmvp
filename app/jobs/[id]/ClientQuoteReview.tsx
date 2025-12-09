@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Check, FileText } from "lucide-react";
-import ClientSignatureModal from "./ClientSignatureModal";
+import { Loader2, Check, FileText, XCircle } from "lucide-react";
+import QuoteAcceptanceModal from "./QuoteAcceptanceModal";
 import { calculateEstimateRange } from "@/lib/pricing";
 
 interface ClientQuoteReviewProps {
@@ -15,14 +15,13 @@ interface ClientQuoteReviewProps {
   aiInclusions?: string;
   aiExclusions?: string;
   aiClientNotes?: string;
-}
-
-interface SignatureStatus {
-  id: string;
-  signedName: string;
-  signedAt: string;
-  docType: string;
-  hasSignatureImage: boolean;
+  clientStatus?: string;
+  clientAcceptedAt?: string | null;
+  clientDeclinedAt?: string | null;
+  clientSignedName?: string | null;
+  clientSignedEmail?: string | null;
+  userEmail: string;
+  tradieVerificationStatus?: string | null;
 }
 
 export default function ClientQuoteReview({
@@ -35,41 +34,50 @@ export default function ClientQuoteReview({
   aiInclusions,
   aiExclusions,
   aiClientNotes,
+  clientStatus,
+  clientAcceptedAt,
+  clientDeclinedAt,
+  clientSignedName,
+  clientSignedEmail,
+  userEmail,
+  tradieVerificationStatus,
 }: ClientQuoteReviewProps) {
-  const [signatureStatus, setSignatureStatus] = useState<SignatureStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showSignModal, setShowSignModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [showDeclineConfirm, setShowDeclineConfirm] = useState(false);
+  const [isDeclining, setIsDeclining] = useState(false);
+  const [error, setError] = useState("");
 
-  // Load signature status
-  useEffect(() => {
-    async function loadSignature() {
-      try {
-        const response = await fetch(`/api/jobs/${jobId}/sign-document?docType=QUOTE`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.signature) {
-            setSignatureStatus(data.signature);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to load signature status:", error);
-      } finally {
-        setIsLoading(false);
+  const handleAcceptSuccess = () => {
+    // Reload the page to show updated status
+    window.location.reload();
+  };
+
+  const handleDecline = async () => {
+    setIsDeclining(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/decline`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to decline quote.");
       }
-    }
-    loadSignature();
-  }, [jobId]);
 
-  const handleSignSuccess = () => {
-    // Reload signature status
-    fetch(`/api/jobs/${jobId}/sign-document?docType=QUOTE`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.signature) {
-          setSignatureStatus(data.signature);
-        }
-      })
-      .catch(console.error);
+      // Reload the page to show updated status
+      window.location.reload();
+    } catch (err: any) {
+      console.error("Error declining quote:", err);
+      setError(err.message || "An unexpected error occurred. Please try again.");
+      setIsDeclining(false);
+    }
   };
 
   // Calculate estimate range for display
@@ -89,8 +97,22 @@ ${aiSummary ? `\nSummary:\n${aiSummary}` : ""}`;
     );
   }
 
+  const isTradieVerified = tradieVerificationStatus === "verified";
+
   return (
     <>
+      {/* Verified Badge for Client View */}
+      {isTradieVerified && (
+        <div className="mb-4 flex items-center gap-2">
+          <div className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 border border-emerald-300">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <span>Verified by OMNEXORA</span>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-6 py-4 border-b border-slate-200">
           <h2 className="text-xl font-semibold text-slate-900">Review & Accept Quote</h2>
@@ -160,19 +182,26 @@ ${aiSummary ? `\nSummary:\n${aiSummary}` : ""}`;
             </div>
           )}
 
-          {/* Signature Status */}
+          {/* Acceptance/Decline Actions */}
           <div className="pt-6 border-t border-slate-200">
-            {signatureStatus ? (
+            {clientStatus === "accepted" && clientAcceptedAt ? (
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                 <div className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium text-green-900 mb-1">Quote Accepted & Signed</p>
+                    {clientSignedName && (
+                      <p className="text-sm text-green-700">
+                        Signed by: {clientSignedName}
+                      </p>
+                    )}
+                    {clientSignedEmail && (
+                      <p className="text-sm text-green-700">
+                        Email: {clientSignedEmail}
+                      </p>
+                    )}
                     <p className="text-sm text-green-700">
-                      Signed by: {signatureStatus.signedName}
-                    </p>
-                    <p className="text-sm text-green-700">
-                      Signed on: {new Date(signatureStatus.signedAt).toLocaleString("en-AU", {
+                      Accepted on: {new Date(clientAcceptedAt).toLocaleString("en-AU", {
                         day: "numeric",
                         month: "long",
                         year: "numeric",
@@ -183,36 +212,112 @@ ${aiSummary ? `\nSummary:\n${aiSummary}` : ""}`;
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : clientStatus === "declined" && clientDeclinedAt ? (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-red-900 mb-1">Quote Declined</p>
+                    <p className="text-sm text-red-700">
+                      Declined on: {new Date(clientDeclinedAt).toLocaleString("en-AU", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (clientStatus === "sent" || clientStatus === "draft") ? (
               <div className="space-y-4">
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-sm text-amber-800 mb-4">
                     Please review the quote above. If you agree with the terms, click below to accept and sign.
                   </p>
-                  <button
-                    onClick={() => setShowSignModal(true)}
-                    className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <FileText className="w-5 h-5" />
-                    Accept & Sign Quote
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setShowAcceptModal(true)}
+                      className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FileText className="w-5 h-5" />
+                      Accept & Sign Quote
+                    </button>
+                    <button
+                      onClick={() => setShowDeclineConfirm(true)}
+                      className="px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-900 font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+                      disabled={isDeclining}
+                    >
+                      <XCircle className="w-5 h-5" />
+                      Decline Quote
+                    </button>
+                  </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
 
-      <ClientSignatureModal
-        isOpen={showSignModal}
-        onClose={() => setShowSignModal(false)}
-        onSuccess={handleSignSuccess}
+      {/* Accept Modal */}
+      <QuoteAcceptanceModal
+        isOpen={showAcceptModal}
+        onClose={() => setShowAcceptModal(false)}
+        onSuccess={handleAcceptSuccess}
         jobId={jobId}
-        docType="QUOTE"
-        docKey={null}
-        documentTitle="Job Quote"
-        documentSummary={documentSummary}
+        userEmail={userEmail}
       />
+
+      {/* Decline Confirmation Modal */}
+      {showDeclineConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-75 p-4">
+          <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-xl font-bold text-slate-900">Decline Quote?</h3>
+            <p className="mb-6 text-slate-600">
+              Are you sure you want to decline this quote? This action cannot be undone.
+            </p>
+            {error && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeclineConfirm(false);
+                  setError("");
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                disabled={isDeclining}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDecline}
+                className="inline-flex items-center rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isDeclining}
+              >
+                {isDeclining ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Declining...
+                  </>
+                ) : (
+                  "Yes, Decline Quote"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

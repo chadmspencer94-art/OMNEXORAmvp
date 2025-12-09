@@ -48,8 +48,11 @@ export interface Job {
   clientEmail?: string;
   // Pricing context (optional user-provided rates)
   labourRatePerHour?: number | null;
-  helperRatePerHour?: number | null;
+  helperRatePerHour?: number | null; // Legacy field - kept for backwards compatibility
+  helpers?: JobHelper[]; // New: array of helpers with names and rates
   materialsAreRoughEstimate?: boolean;
+  // Rate template reference (optional)
+  rateTemplateId?: string | null;
   // Effective rates used for this job (stored after generation)
   effectiveRates?: EffectiveRates | null;
   // Materials override (user-provided, replaces AI materials)
@@ -67,11 +70,66 @@ export interface Job {
   // Client-facing status pipeline
   clientStatus?: ClientStatus;
   clientStatusUpdatedAt?: string | null;
+  // Client acceptance/decline tracking
+  clientAcceptedAt?: string | null;
+  clientDeclinedAt?: string | null;
+  clientSignatureId?: string | null; // FK to Signature model in Prisma
+  clientSignedName?: string | null;
+  clientSignedEmail?: string | null;
+  // Enhanced acceptance details (tied to quote version)
+  clientAcceptedByName?: string | null; // typed full name as "signature"
+  clientAcceptanceNote?: string | null; // optional note from client
+  clientAcceptedQuoteVer?: number | null; // which quote version was accepted
   // Soft delete flag (job is hidden from user but data preserved)
   isDeleted?: boolean;
   // SWMS (Safe Work Method Statement) fields
   swmsText?: string | null;
   swmsStatus?: "NOT_STARTED" | "GENERATING" | "READY" | "FAILED" | null;
+  swmsConfirmed?: boolean;
+  // Document fields (variation, EOT, progress claim, handover, maintenance)
+  variationText?: string | null;
+  variationConfirmed?: boolean;
+  eotText?: string | null;
+  eotConfirmed?: boolean;
+  progressClaimText?: string | null;
+  progressClaimConfirmed?: boolean;
+  handoverText?: string | null;
+  handoverConfirmed?: boolean;
+  maintenanceText?: string | null;
+  maintenanceConfirmed?: boolean;
+  // Scheduling fields
+  scheduledStartAt?: string | null; // ISO string
+  scheduledEndAt?: string | null; // ISO string
+  scheduleNotes?: string | null; // Optional notes about scheduling (e.g., "Client prefers mornings", "Access via rear driveway")
+  // Materials totals (aggregated from JobMaterial line items)
+  materialsSubtotal?: number | null; // sum of JobMaterial lineTotals (pre-markup)
+  materialsMarkupTotal?: number | null; // amount added from markup
+  materialsTotal?: number | null; // final materials cost used in quotes
+  // Numeric quote breakdown (optional, computed during quote generation)
+  labourHoursEstimate?: number | null;
+  labourSubtotal?: number | null;
+  subtotal?: number | null; // labour + materials
+  gstAmount?: number | null;
+  totalInclGst?: number | null;
+  // Quote metadata
+  quoteNumber?: string | null; // e.g. "Q-2024-0012"
+  quoteVersion?: number | null; // current version number (1, 2, 3, ...)
+  quoteExpiryAt?: string | null; // ISO string - when the current quote expires
+  quoteLastSentAt?: string | null; // ISO string - last time a quote email was sent
+  // Assignment metadata (for client job assignment workflow)
+  assignedByUserId?: string | null; // admin/user who assigned the job
+  assignedAt?: string | null; // ISO string - when the job was assigned to a tradie
+  assignmentStatus?: string | null; // e.g. "UNASSIGNED", "ASSIGNED", "DECLINED_BY_TRADIE"
+  leadSource?: string | null; // e.g. "CLIENT_PORTAL", "MANUAL", etc.
+  clientUserId?: string | null; // original client user ID (for client-posted jobs)
+  // Client CRM link (for tradie-created jobs)
+  clientId?: string | null; // FK to Client model in Prisma (for CRM linking)
+}
+
+export interface JobHelper {
+  id: string; // Unique ID for this helper (for React keys)
+  name?: string; // Optional helper name/role (e.g., "Second Painter", "Apprentice")
+  ratePerHour: number; // Required hourly rate
 }
 
 export interface CreateJobData {
@@ -83,8 +141,10 @@ export interface CreateJobData {
   clientName?: string;
   clientEmail?: string;
   labourRatePerHour?: number | null;
-  helperRatePerHour?: number | null;
+  helperRatePerHour?: number | null; // Legacy - kept for backwards compatibility
+  helpers?: JobHelper[]; // New: array of helpers
   materialsAreRoughEstimate?: boolean;
+  rateTemplateId?: string | null;
 }
 
 export interface UpdateJobData {
@@ -96,7 +156,8 @@ export interface UpdateJobData {
   clientName?: string;
   clientEmail?: string;
   labourRatePerHour?: number | null;
-  helperRatePerHour?: number | null;
+  helperRatePerHour?: number | null; // Legacy - kept for backwards compatibility
+  helpers?: JobHelper[]; // New: array of helpers
   materialsAreRoughEstimate?: boolean;
 }
 
@@ -170,13 +231,21 @@ export async function createEmptyJob(
     clientName: data.clientName,
     clientEmail: data.clientEmail,
     labourRatePerHour: data.labourRatePerHour ?? null,
-    helperRatePerHour: data.helperRatePerHour ?? null,
+    helperRatePerHour: data.helperRatePerHour ?? null, // Legacy - kept for backwards compatibility
+    helpers: data.helpers && data.helpers.length > 0 ? data.helpers : undefined, // New: array of helpers
     materialsAreRoughEstimate: data.materialsAreRoughEstimate ?? false,
+    rateTemplateId: data.rateTemplateId ?? null,
     status: "ai_pending",
     jobStatus: "pending",
     aiReviewStatus: "pending",
     clientStatus: "draft",
     clientStatusUpdatedAt: now,
+    // Assignment fields (will be set based on job creator)
+    assignedByUserId: null,
+    assignedAt: null,
+    assignmentStatus: null,
+    leadSource: null,
+    clientUserId: null,
   };
 
   // Store the job
@@ -215,22 +284,94 @@ export async function getJobById(id: string): Promise<Job | null> {
  * Gets all jobs for a user, sorted by createdAt descending
  */
 export async function getJobsForUser(userId: string, includeDeleted: boolean = false): Promise<Job[]> {
-  const userJobsKey = `user:${userId}:jobs`;
-  // Use lrange to get all job IDs from the Redis list (0 to -1 means all elements)
-  const jobIds = await kv.lrange<string>(userJobsKey, 0, -1);
+  return getJobsForUserPaginated(userId, includeDeleted).then((result) => result.items);
+}
 
-  if (!jobIds || jobIds.length === 0) {
-    return [];
+/**
+ * Gets paginated jobs for a user, sorted by createdAt descending
+ */
+export async function getJobsForUserPaginated(
+  userId: string,
+  includeDeleted: boolean = false,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ items: Job[]; page: number; pageSize: number; totalItems: number; totalPages: number }> {
+  const userJobsKey = `user:${userId}:jobs`;
+  // Get all job IDs from the Redis list
+  const allJobIds = await kv.lrange<string>(userJobsKey, 0, -1) || [];
+
+  if (allJobIds.length === 0) {
+    return { items: [], page, pageSize, totalItems: 0, totalPages: 0 };
   }
 
-  // Load all jobs in parallel
-  const jobs = await Promise.all(
-    jobIds.map((id) => kv.get<Job>(`job:${id}`))
+  // Load all jobs in parallel (we need all to filter and sort)
+  const allJobs = await Promise.all(
+    allJobIds.map((id) => kv.get<Job>(`job:${id}`))
   );
 
-  // Filter out any null values, filter out deleted jobs (unless includeDeleted), and sort by createdAt descending
-  return jobs
+  // Filter out nulls and deleted jobs, then sort
+  const validJobs = allJobs
     .filter((job): job is Job => job !== null)
+    .filter((job) => includeDeleted || job.isDeleted !== true)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const totalItems = validJobs.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const skip = (page - 1) * pageSize;
+  const take = pageSize;
+
+  // Apply pagination
+  const paginatedJobs = validJobs.slice(skip, skip + take);
+
+  return {
+    items: paginatedJobs,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+  };
+}
+
+/**
+ * Gets all jobs for a client (by clientEmail), sorted by createdAt descending
+ * This is used for client dashboards to show jobs they've posted
+ * 
+ * Note: This implementation scans all user job lists. In production, you'd maintain
+ * a client:email:jobs index similar to user:userId:jobs for better performance.
+ */
+export async function getJobsForClient(clientEmail: string, includeDeleted: boolean = false): Promise<Job[]> {
+  // Normalize email to lowercase for consistent matching
+  const normalizedEmail = clientEmail.toLowerCase().trim();
+  
+  // Get all user IDs from the users:all index
+  const { getAllUsers } = await import("./auth");
+  const allUsers = await getAllUsers();
+  
+  // Collect all job IDs from all users
+  const allJobIds = new Set<string>();
+  for (const user of allUsers) {
+    const userJobsKey = `user:${user.id}:jobs`;
+    const jobIds = await kv.lrange<string>(userJobsKey, 0, -1);
+    if (jobIds) {
+      jobIds.forEach(id => allJobIds.add(id));
+    }
+  }
+  
+  // Load all jobs in parallel
+  const allJobs = await Promise.all(
+    Array.from(allJobIds).map((id) => kv.get<Job>(`job:${id}`))
+  );
+  
+  // Filter jobs where clientEmail matches (case-insensitive)
+  const clientJobs = allJobs
+    .filter((job): job is Job => job !== null)
+    .filter((job) => {
+      if (!job.clientEmail) return false;
+      return job.clientEmail.toLowerCase().trim() === normalizedEmail;
+    });
+
+  // Filter out deleted jobs (unless includeDeleted) and sort by createdAt descending
+  return clientJobs
     .filter((job) => includeDeleted || job.isDeleted !== true)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
@@ -263,6 +404,133 @@ export async function softDeleteJob(jobId: string): Promise<Job | null> {
 //   await saveJob(job);
 //   return job;
 // }
+
+/**
+ * Clones a job for a user, creating a new job with the same core details and job pack content.
+ * Resets statuses, client acceptance, and signatures to safe initial states.
+ * Does NOT clone safety docs, variations, or other related documents.
+ * 
+ * @param options - Object containing jobId and userId
+ * @returns The newly created cloned job
+ * @throws Error if job not found or user doesn't own the job
+ */
+export async function cloneJobForUser(options: {
+  jobId: string;
+  userId: string;
+}): Promise<Job> {
+  const { jobId, userId } = options;
+
+  // 1. Load the source job and ensure it belongs to this user
+  const sourceJob = await getJobById(jobId);
+  if (!sourceJob) {
+    throw new Error(`Job with ID ${jobId} not found`);
+  }
+
+  if (sourceJob.userId !== userId) {
+    throw new Error(`User ${userId} does not own job ${jobId}`);
+  }
+
+  // 2. Build a new job data object
+  const now = new Date().toISOString();
+  const newId = crypto.randomUUID();
+  
+  // Adjust title to indicate it's a copy
+  const newTitle = sourceJob.title.length > 0
+    ? `${sourceJob.title} (Copy)`
+    : "Untitled job (Copy)";
+
+  // Create the cloned job
+  const clonedJob: Job = {
+    id: newId,
+    userId: userId,
+    createdAt: now,
+    updatedAt: now,
+    
+    // Copy core fields
+    title: newTitle,
+    tradeType: sourceJob.tradeType,
+    propertyType: sourceJob.propertyType,
+    address: sourceJob.address,
+    notes: sourceJob.notes,
+    clientName: sourceJob.clientName,
+    clientEmail: sourceJob.clientEmail,
+    
+    // Copy pricing context
+    labourRatePerHour: sourceJob.labourRatePerHour,
+    helperRatePerHour: sourceJob.helperRatePerHour, // Legacy
+    helpers: sourceJob.helpers ? sourceJob.helpers.map(h => ({ ...h })) : undefined, // Deep copy helpers array
+    materialsAreRoughEstimate: sourceJob.materialsAreRoughEstimate,
+    rateTemplateId: sourceJob.rateTemplateId, // Copy rate template reference
+    effectiveRates: sourceJob.effectiveRates,
+    materialsOverrideText: sourceJob.materialsOverrideText,
+    
+    // Copy pricing snapshot fields (preserve calculated values)
+    materialsSubtotal: sourceJob.materialsSubtotal,
+    materialsMarkupTotal: sourceJob.materialsMarkupTotal,
+    materialsTotal: sourceJob.materialsTotal,
+    labourHoursEstimate: sourceJob.labourHoursEstimate,
+    labourSubtotal: sourceJob.labourSubtotal,
+    subtotal: sourceJob.subtotal,
+    gstAmount: sourceJob.gstAmount,
+    totalInclGst: sourceJob.totalInclGst,
+    
+    // Copy AI job pack content
+    aiSummary: sourceJob.aiSummary,
+    aiQuote: sourceJob.aiQuote,
+    aiScopeOfWork: sourceJob.aiScopeOfWork,
+    aiInclusions: sourceJob.aiInclusions,
+    aiExclusions: sourceJob.aiExclusions,
+    aiMaterials: sourceJob.aiMaterials,
+    aiClientNotes: sourceJob.aiClientNotes,
+    
+    // Reset statuses to safe starting point
+    // If AI content exists, mark as ai_complete so user can edit without regenerating
+    // Otherwise, mark as draft
+    status: (sourceJob.aiSummary || sourceJob.aiScopeOfWork) ? "ai_complete" : "draft",
+    jobStatus: "pending",
+    aiReviewStatus: "pending",
+    clientStatus: "draft",
+    clientStatusUpdatedAt: now,
+    
+    // DO NOT copy client acceptance/signature fields
+    // clientAcceptedAt, clientDeclinedAt, clientSignatureId, clientSignedName, clientSignedEmail
+    // are all undefined, which is correct
+    
+    // DO NOT copy email tracking
+    // sentToClientAt is undefined
+    
+    // DO NOT copy SWMS
+    // swmsText and swmsStatus are undefined
+    
+    // DO NOT copy quote metadata (reset for new job)
+    // quoteNumber, quoteVersion, quoteExpiryAt, quoteLastSentAt are undefined
+    
+    // DO NOT copy assignment metadata (reset for new job)
+    // assignedByUserId, assignedAt, assignmentStatus, leadSource, clientUserId are undefined
+    
+    // DO NOT copy client CRM link (will be recreated if client details are updated)
+    // clientId is undefined
+    
+    // Soft delete flag starts as false
+    isDeleted: false,
+  };
+
+  // 3. Store the new job
+  await kv.set(`job:${clonedJob.id}`, clonedJob);
+
+  // 4. Add job ID to user's job list atomically
+  const userJobsKey = `user:${userId}:jobs`;
+  try {
+    await kv.lpush(userJobsKey, clonedJob.id);
+  } catch (error) {
+    // Rollback: delete the job to prevent orphaned entries
+    await kv.del(`job:${clonedJob.id}`);
+    throw error;
+  }
+
+  // 5. Return the new job
+  return clonedJob;
+}
 
 /**
  * Gets all active jobs from all users (for matching/searching)
@@ -318,6 +586,18 @@ export async function getAllActiveJobs(limit: number = 50): Promise<Job[]> {
  * @param user - The user creating/owning the job (for loading business profile rates)
  */
 export async function generateJobPack(job: Job, user?: SafeUser): Promise<Job> {
+  // Email verification check: require verified email for job pack generation
+  if (user) {
+    try {
+      const { requireVerifiedEmail } = await import("./authChecks");
+      await requireVerifiedEmail(user);
+    } catch (error: any) {
+      if (error.name === "EmailNotVerifiedError") {
+        throw new Error("EMAIL_NOT_VERIFIED: Please verify your email before generating job packs.");
+      }
+      throw error;
+    }
+  }
   try {
     // Get effective rates (job override > business profile > pricing settings)
     let effectiveRates: EffectiveRates = {};
@@ -339,13 +619,29 @@ export async function generateJobPack(job: Job, user?: SafeUser): Promise<Job> {
     let labourRateInstructions = "";
     if (effectiveRates.hourlyRate) {
       labourRateInstructions = `Use AUD $${effectiveRates.hourlyRate}/hour as the base labour rate for this job.`;
-      if (effectiveRates.helperHourlyRate) {
+      // Handle multiple helpers from job.helpers array
+      if (job.helpers && job.helpers.length > 0) {
+        const helperDescriptions = job.helpers.map((h, idx) => {
+          const helperName = h.name ? ` (${h.name})` : "";
+          return `Helper ${idx + 1}${helperName}: AUD $${h.ratePerHour}/hour`;
+        }).join(", ");
+        labourRateInstructions += ` Additional helpers: ${helperDescriptions}.`;
+      } else if (effectiveRates.helperHourlyRate) {
+        // Fallback to legacy helperHourlyRate
         labourRateInstructions += ` Assume a second worker at AUD $${effectiveRates.helperHourlyRate}/hour where needed.`;
       }
     } else if (job.labourRatePerHour) {
       // Fallback to job override if effective rates not available
       labourRateInstructions = `Use AUD $${job.labourRatePerHour}/hour as the base labour rate for this job.`;
-      if (job.helperRatePerHour) {
+      // Handle multiple helpers from job.helpers array
+      if (job.helpers && job.helpers.length > 0) {
+        const helperDescriptions = job.helpers.map((h, idx) => {
+          const helperName = h.name ? ` (${h.name})` : "";
+          return `Helper ${idx + 1}${helperName}: AUD $${h.ratePerHour}/hour`;
+        }).join(", ");
+        labourRateInstructions += ` Additional helpers: ${helperDescriptions}.`;
+      } else if (job.helperRatePerHour) {
+        // Fallback to legacy helperRatePerHour
         labourRateInstructions += ` Assume a second worker at AUD $${job.helperRatePerHour}/hour where needed.`;
       }
     } else {
@@ -430,10 +726,63 @@ Speak in clear, practical language that Aussie tradies understand. No fluff - ju
       ? `**Pricing Context:**\n${pricingContextParts.join("\n")}\n\nIMPORTANT: Use these exact rates when calculating labour costs, materials costs, and total estimates.`
       : "**Pricing Context:** Use typical WA rates for this trade";
 
+    // Load job materials if they exist
+    let materialsContext = "";
+    if (job.materialsTotal != null && job.materialsTotal > 0) {
+      const { prisma } = await import("./prisma");
+      const jobMaterials = await (prisma as any).jobMaterial.findMany({
+        where: {
+          jobId: job.id,
+          userId: job.userId,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      if (jobMaterials.length > 0) {
+        const materialsList = jobMaterials
+          .map((m: any) => `${m.name} (${m.quantity} ${m.unitLabel})`)
+          .join(", ");
+        materialsContext = `\n**Materials Total:** $${job.materialsTotal.toFixed(2)}\n**Materials List:** ${materialsList}`;
+      }
+    }
+
+    // Load attachments with captions for additional context
+    let attachmentsContext = "";
+    try {
+      const { prisma } = await import("./prisma");
+      const attachments = await (prisma as any).jobAttachment.findMany({
+        where: {
+          jobId: job.id,
+          userId: job.userId,
+        },
+        select: {
+          fileName: true,
+          kind: true,
+          caption: true,
+        },
+        take: 10, // sanity limit
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (attachments.length > 0) {
+        const attachmentLines = attachments
+          .filter((a: any) => a.caption) // Only include attachments with captions
+          .map((a: any) => `- Attachment: ${a.fileName}, Kind: ${a.kind}, Caption: "${a.caption}"`)
+          .join("\n");
+
+        if (attachmentLines) {
+          attachmentsContext = `\n\n**Additional site context from attachments (text only, no images processed):**\n${attachmentLines}`;
+        }
+      }
+    } catch (error) {
+      // Log but don't fail job pack generation if attachment loading fails
+      console.warn("Failed to load attachments for AI context:", error);
+    }
+
     const userPrompt = `Generate a complete job pack for this ${job.tradeType.toLowerCase()} job:
 
 **Job Title:** ${job.title}
-**Trade Type:** ${job.tradeType}
+**Trade Type:** ${job.tradeType}${materialsContext}
 **Property Type:** ${job.propertyType}
 **Location:** ${job.address || "Western Australia"}
 **Job Created:** ${job.createdAt}
@@ -441,7 +790,7 @@ Speak in clear, practical language that Aussie tradies understand. No fluff - ju
 ${pricingContext}
 
 **Job Details/Notes:**
-${job.notes || "No additional details provided"}
+${job.notes || "No additional details provided"}${attachmentsContext}
 
 Respond with ONLY valid JSON (no markdown, no code blocks):
 {

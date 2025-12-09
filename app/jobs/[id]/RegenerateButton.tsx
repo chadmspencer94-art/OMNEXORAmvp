@@ -9,20 +9,24 @@ interface RegenerateButtonProps {
   jobId: string;
   status: JobStatus;
   aiReviewStatus?: "pending" | "confirmed";
+  clientStatus?: "draft" | "sent" | "accepted" | "declined" | "cancelled";
 }
 
-export default function RegenerateButton({ jobId, status, aiReviewStatus }: RegenerateButtonProps) {
+export default function RegenerateButton({ jobId, status, aiReviewStatus, clientStatus }: RegenerateButtonProps) {
   const router = useRouter();
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState("");
 
   const isGenerating = status === "generating" || status === "ai_pending";
   const isConfirmed = aiReviewStatus === "confirmed";
-  const canRegenerate = !isGenerating && !isRegenerating && !isConfirmed;
+  const isAccepted = clientStatus === "accepted";
+  const canRegenerate = !isGenerating && !isRegenerating && !isConfirmed && !isAccepted;
 
   const handleRegenerate = async () => {
     if (!canRegenerate) {
-      if (isConfirmed) {
+      if (isAccepted) {
+        setError("This pack has been signed by the client. Create a variation instead of regenerating the original scope.");
+      } else if (isConfirmed) {
         setError("Cannot regenerate a confirmed job pack. For major changes, create a new job or duplicate this one.");
       }
       return;

@@ -14,10 +14,12 @@ import { prisma } from "./prisma";
 export interface EffectiveRates {
   hourlyRate?: number;
   helperHourlyRate?: number;
+  dayRate?: number;
   ratePerM2Interior?: number;
   ratePerM2Exterior?: number;
   ratePerLmTrim?: number;
   calloutFee?: number;
+  minCharge?: number;
   materialMarkupPercent?: number;
 }
 
@@ -28,10 +30,11 @@ export interface EffectiveRates {
 /**
  * Computes effective rates for a job by combining:
  * 1. Job-level overrides (if present)
- * 2. User business profile rates (from Prisma)
- * 3. User pricing settings (from KV)
+ * 2. RateTemplate (if job has rateTemplateId)
+ * 3. User business profile rates (from Prisma)
+ * 4. User pricing settings (from KV)
  * 
- * Job overrides take precedence, then business profile, then pricing settings.
+ * Uses the rateResolver helper for consistent hierarchy.
  * 
  * @param user - The user object from KV (SafeUser)
  * @param job - The job object (optional, for job-level overrides)
@@ -43,9 +46,15 @@ export async function getEffectiveRates(args: {
 }): Promise<EffectiveRates> {
   const { user, job } = args;
   
+  // Import rateResolver
+  const { resolveEffectiveRates } = await import("./rateResolver");
+  
   // Load business profile rates from Prisma
   let prismaUser = null;
+  let rateTemplate = null;
+  
   try {
+    // Load business profile
     prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: {
@@ -56,54 +65,57 @@ export async function getEffectiveRates(args: {
         ratePerLmTrim: true,
       },
     });
+
+    // Load rate template if job has rateTemplateId
+    if (job?.rateTemplateId) {
+      rateTemplate = await (prisma as any).rateTemplate.findUnique({
+        where: { id: job.rateTemplateId },
+      });
+    }
   } catch (error) {
-    // If Prisma lookup fails, continue with KV-only data
-    console.warn("Failed to load Prisma user for rates:", error);
+    // If Prisma lookup fails, continue without template/profile
+    console.warn("Failed to load Prisma data for rates:", error);
   }
 
-  // Build effective rates: job override > Prisma business profile > KV pricing settings
-  const rates: EffectiveRates = {};
+  // Use rateResolver for consistent hierarchy
+  const businessProfile = prismaUser ? {
+    hourlyRate: prismaUser.hourlyRate,
+    calloutFee: prismaUser.calloutFee,
+    ratePerM2Interior: prismaUser.ratePerM2Interior,
+    ratePerM2Exterior: prismaUser.ratePerM2Exterior,
+    ratePerLmTrim: prismaUser.ratePerLmTrim,
+  } : null;
 
-  // Hourly rate: job override > Prisma hourlyRate > KV hourlyRate
-  if (job?.labourRatePerHour !== null && job?.labourRatePerHour !== undefined) {
-    rates.hourlyRate = job.labourRatePerHour;
-  } else if (prismaUser?.hourlyRate !== null && prismaUser?.hourlyRate !== undefined) {
-    rates.hourlyRate = prismaUser.hourlyRate;
-  } else if (user.hourlyRate !== null && user.hourlyRate !== undefined) {
-    rates.hourlyRate = user.hourlyRate;
+  const resolvedRates = resolveEffectiveRates({
+    job: job || ({} as Job),
+    rateTemplate: rateTemplate ? {
+      id: rateTemplate.id,
+      userId: rateTemplate.userId,
+      name: rateTemplate.name,
+      tradeType: rateTemplate.tradeType,
+      propertyType: rateTemplate.propertyType,
+      hourlyRate: rateTemplate.hourlyRate,
+      helperHourlyRate: rateTemplate.helperHourlyRate,
+      dayRate: rateTemplate.dayRate,
+      calloutFee: rateTemplate.calloutFee,
+      minCharge: rateTemplate.minCharge,
+      ratePerM2Interior: rateTemplate.ratePerM2Interior,
+      ratePerM2Exterior: rateTemplate.ratePerM2Exterior,
+      ratePerLmTrim: rateTemplate.ratePerLmTrim,
+      materialMarkupPercent: rateTemplate.materialMarkupPercent,
+      isDefault: rateTemplate.isDefault,
+      createdAt: rateTemplate.createdAt,
+      updatedAt: rateTemplate.updatedAt,
+    } : null,
+    businessProfile,
+  });
+
+  // Fallback to KV pricing settings for material markup if not in template
+  if (resolvedRates.materialMarkupPercent == null && user.materialMarkupPercent != null) {
+    resolvedRates.materialMarkupPercent = user.materialMarkupPercent;
   }
 
-  // Helper hourly rate: job override only (no business profile equivalent)
-  if (job?.helperRatePerHour !== null && job?.helperRatePerHour !== undefined) {
-    rates.helperHourlyRate = job.helperRatePerHour;
-  }
-
-  // Rate per m² interior: Prisma only
-  if (prismaUser?.ratePerM2Interior !== null && prismaUser?.ratePerM2Interior !== undefined) {
-    rates.ratePerM2Interior = prismaUser.ratePerM2Interior;
-  }
-
-  // Rate per m² exterior: Prisma only
-  if (prismaUser?.ratePerM2Exterior !== null && prismaUser?.ratePerM2Exterior !== undefined) {
-    rates.ratePerM2Exterior = prismaUser.ratePerM2Exterior;
-  }
-
-  // Rate per linear metre: Prisma only
-  if (prismaUser?.ratePerLmTrim !== null && prismaUser?.ratePerLmTrim !== undefined) {
-    rates.ratePerLmTrim = prismaUser.ratePerLmTrim;
-  }
-
-  // Callout fee: Prisma only
-  if (prismaUser?.calloutFee !== null && prismaUser?.calloutFee !== undefined) {
-    rates.calloutFee = prismaUser.calloutFee;
-  }
-
-  // Material markup: KV only (no Prisma equivalent yet)
-  if (user.materialMarkupPercent !== null && user.materialMarkupPercent !== undefined) {
-    rates.materialMarkupPercent = user.materialMarkupPercent;
-  }
-
-  return rates;
+  return resolvedRates;
 }
 
 /**

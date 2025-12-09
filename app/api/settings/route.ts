@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, updateUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
@@ -12,6 +13,12 @@ export async function GET() {
       );
     }
 
+    // Get email verification status from Prisma
+    const prismaUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: { emailVerifiedAt: true },
+    });
+
     // Return user settings including pricing
     return NextResponse.json({
       user: {
@@ -19,6 +26,7 @@ export async function GET() {
         email: user.email,
         role: user.role,
         verificationStatus: user.verificationStatus,
+        emailVerifiedAt: prismaUser?.emailVerifiedAt?.toISOString() || null,
         hourlyRate: user.hourlyRate ?? null,
         dayRate: user.dayRate ?? null,
         materialMarkupPercent: user.materialMarkupPercent ?? null,

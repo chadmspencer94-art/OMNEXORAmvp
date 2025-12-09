@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
-import { getJobById } from "@/lib/jobs";
+import { getJobById, saveJob } from "@/lib/jobs";
 import { openai } from "@/lib/openai";
 
 /**
@@ -150,6 +150,12 @@ Create a comprehensive handover checklist that is specific to ${tradeInfo} work.
         { status: 500 }
       );
     }
+
+    // Save document as draft (not confirmed)
+    const { saveJob } = await import("@/lib/jobs");
+    job.handoverText = documentContent.trim();
+    job.handoverConfirmed = false;
+    await saveJob(job);
 
     return NextResponse.json(
       {

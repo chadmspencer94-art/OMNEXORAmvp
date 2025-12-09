@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
-import { getJobById } from "@/lib/jobs";
+import { getJobById, saveJob } from "@/lib/jobs";
 import { openai } from "@/lib/openai";
 
 /**
@@ -163,6 +163,11 @@ Create a professional Variation document that clearly outlines the change in sco
         { status: 500 }
       );
     }
+
+    // Save document as draft (not confirmed)
+    job.variationText = documentContent.trim();
+    job.variationConfirmed = false;
+    await saveJob(job);
 
     return NextResponse.json(
       {

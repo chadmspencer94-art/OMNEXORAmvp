@@ -109,6 +109,7 @@ export const SESSION_COOKIE_OPTIONS = {
  */
 const ADMIN_EMAILS: string[] = [
   "chadmspencer94@gmail.com",
+  "sarahkison5@gmail.com",
   // Add more admin emails as needed
 ];
 
@@ -175,10 +176,12 @@ const PRIMARY_ADMIN_EMAIL = "chadmspencer94@gmail.com";
 function normalizeUser(rawUser: Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }): User {
   const email = rawUser.email.toLowerCase();
   const isPrimaryAdmin = email === PRIMARY_ADMIN_EMAIL;
+  const isAdminEmail = ADMIN_EMAILS.includes(email);
+  const isAnyAdmin = isPrimaryAdmin || isAdminEmail;
   
   // Normalize role - handle legacy roles and ensure valid role
-  // FORCE primary admin to always have "admin" role
-  let role: UserRole = isPrimaryAdmin ? "admin" : (rawUser.role || "tradie");
+  // FORCE primary admin and admin emails to always have "admin" role
+  let role: UserRole = isAnyAdmin ? "admin" : (rawUser.role || "tradie");
   // Map legacy roles if needed (backwards compatibility)
   if (role !== "tradie" && role !== "builder" && role !== "client" && role !== "supplier" && role !== "admin") {
     role = "tradie"; // Default fallback
@@ -187,13 +190,14 @@ function normalizeUser(rawUser: Partial<User> & { id: string; email: string; pas
   // If role is "admin", user is automatically an admin
   const isAdminFromRole = role === "admin";
   
-  // For the primary admin, force isAdmin=true, role="admin", and verificationStatus="verified"
-  const isAdminFlag = isPrimaryAdmin || isAdminFromRole ? true : (rawUser.isAdmin ?? false);
+  // For primary admin and admin emails, force isAdmin=true, role="admin", and verificationStatus="verified"
+  const isAdminFlag = isAnyAdmin || isAdminFromRole ? true : (rawUser.isAdmin ?? false);
   
   // Normalize verification status - map legacy statuses
+  // Admins are automatically verified (no business verification needed)
   let verificationStatus: VerificationStatus;
   const rawStatus = rawUser.verificationStatus as VerificationStatus | LegacyVerificationStatus | undefined;
-  if (isPrimaryAdmin) {
+  if (isAnyAdmin) {
     verificationStatus = "verified";
   } else if (!rawStatus) {
     verificationStatus = "unverified";
@@ -207,7 +211,7 @@ function normalizeUser(rawUser: Partial<User> & { id: string; email: string; pas
     verificationStatus = "unverified"; // Default fallback
   }
   
-  const verifiedAt = isPrimaryAdmin 
+  const verifiedAt = isAnyAdmin 
     ? (rawUser.verifiedAt || new Date().toISOString())
     : (rawUser.verifiedAt ?? null);
   
@@ -401,9 +405,38 @@ export async function updateUser(
     ...updates,
   };
 
-  // If role is being updated to "admin", ensure isAdmin is true
+  // If role is being updated to "admin", ensure isAdmin is true and auto-verify
   if (updates.role === "admin") {
     updatedUser.isAdmin = true;
+    // Admins don't need business verification - auto-verify them
+    if (!updatedUser.verificationStatus || updatedUser.verificationStatus !== "verified") {
+      updatedUser.verificationStatus = "verified";
+      if (!updatedUser.verifiedAt) {
+        updatedUser.verifiedAt = new Date().toISOString();
+      }
+    }
+  }
+  
+  // If isAdmin is being set to true, also ensure role is "admin" and auto-verify
+  if (updates.isAdmin === true) {
+    updatedUser.role = "admin";
+    updatedUser.isAdmin = true;
+    // Admins don't need business verification - auto-verify them
+    if (!updatedUser.verificationStatus || updatedUser.verificationStatus !== "verified") {
+      updatedUser.verificationStatus = "verified";
+      if (!updatedUser.verifiedAt) {
+        updatedUser.verifiedAt = new Date().toISOString();
+      }
+    }
+  }
+  
+  // If isAdmin is being set to false, reset role to "tradie" (default non-admin role)
+  if (updates.isAdmin === false) {
+    updatedUser.isAdmin = false;
+    // Only reset role if it was "admin" (preserve other roles like "builder", "supplier", etc.)
+    if (updatedUser.role === "admin") {
+      updatedUser.role = "tradie";
+    }
   }
 
   // Update both user:id and user:email entries
@@ -672,6 +705,46 @@ export async function requireActiveUser(redirectTo?: string): Promise<SafeUser> 
   }
 
   // At this point, user is guaranteed to be non-null and not suspended
+  return user;
+}
+
+/**
+ * Requires a client user
+ * Redirects to login if not authenticated, or to /client/dashboard if not a client
+ * @param redirectTo - Optional redirect path to append to login redirect
+ * @returns The client user (never null, redirects if issues)
+ */
+export async function requireClientUser(redirectTo?: string): Promise<SafeUser> {
+  const user = await requireActiveUser(redirectTo);
+  
+  if (!isClient(user)) {
+    const { redirect } = await import("next/navigation");
+    // Non-clients should go to their dashboard
+    redirect("/dashboard");
+    // redirect() never returns, but TypeScript doesn't know that
+    throw new Error("Redirected to dashboard");
+  }
+
+  return user;
+}
+
+/**
+ * Requires a tradie/business/admin user (not a client)
+ * Redirects to login if not authenticated, or to /client/dashboard if client
+ * @param redirectTo - Optional redirect path to append to login redirect
+ * @returns The tradie/business/admin user (never null, redirects if issues)
+ */
+export async function requireTradieUser(redirectTo?: string): Promise<SafeUser> {
+  const user = await requireActiveUser(redirectTo);
+  
+  if (isClient(user)) {
+    const { redirect } = await import("next/navigation");
+    // Clients should go to their dashboard
+    redirect("/client/dashboard");
+    // redirect() never returns, but TypeScript doesn't know that
+    throw new Error("Redirected to client dashboard");
+  }
+
   return user;
 }
 

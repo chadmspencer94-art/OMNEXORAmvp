@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { consumePasswordResetToken } from "@/lib/password-reset";
 import bcrypt from "bcryptjs";
 
 /**
@@ -9,7 +10,7 @@ import bcrypt from "bcryptjs";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token, password } = body;
+    const { token, password, confirmPassword } = body;
 
     if (!token || typeof token !== "string") {
       return NextResponse.json(
@@ -25,47 +26,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!confirmPassword || typeof confirmPassword !== "string") {
+      return NextResponse.json(
+        { error: "Password confirmation is required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      return NextResponse.json(
+        { error: "Passwords do not match" },
+        { status: 400 }
+      );
+    }
+
+    // Password validation (same as registration: minimum 8 characters)
     if (password.length < 8) {
       return NextResponse.json(
-        { error: "Password must be at least 8 characters long" },
+        { error: "Password must be at least 8 characters" },
         { status: 400 }
       );
     }
 
-    // Find all non-expired reset tokens
-    const now = new Date();
-    const tokens = await prisma.passwordResetToken.findMany({
-      where: {
-        expiresAt: {
-          gt: now,
-        },
-      },
-      include: {
-        user: true,
-      },
+    // Consume the token (verifies and deletes it for single-use)
+    const resetToken = await consumePasswordResetToken(token);
+
+    if (!resetToken) {
+      return NextResponse.json(
+        { error: "Invalid or expired reset link" },
+        { status: 400 }
+      );
+    }
+
+    // Get the user
+    const user = await prisma.user.findUnique({
+      where: { id: resetToken.userId },
     });
 
-    // Find matching token by comparing hash
-    let validToken = null;
-    let user = null;
-
-    for (const resetToken of tokens) {
-      const isValid = await bcrypt.compare(token, resetToken.tokenHash);
-      if (isValid) {
-        validToken = resetToken;
-        user = resetToken.user;
-        break;
-      }
-    }
-
-    if (!validToken || !user) {
+    if (!user) {
       return NextResponse.json(
-        { error: "Invalid or expired reset token. Please request a new password reset link." },
-        { status: 400 }
+        { error: "User not found" },
+        { status: 404 }
       );
     }
 
-    // Hash new password
+    // Hash new password using the same method as registration (bcrypt, 12 rounds)
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Update user password
@@ -74,13 +80,11 @@ export async function POST(request: NextRequest) {
       data: { passwordHash },
     });
 
-    // Delete the used token (and any other tokens for this user)
-    await prisma.passwordResetToken.deleteMany({
-      where: { userId: user.id },
-    });
+    // Optionally clear any existing sessions for that user
+    // (If you have session storage, clear it here)
 
     return NextResponse.json(
-      { success: true, message: "Password reset successfully" },
+      { success: true },
       { status: 200 }
     );
   } catch (error) {

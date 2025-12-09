@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
 import { sendJobPackEmail, buildJobPackEmailHtml, buildJobPackEmailText } from "@/lib/email";
+import { ensureQuoteNumber, getNextQuoteVersion } from "@/lib/quotes";
+import { prisma } from "@/lib/prisma";
 
 interface SendToClientRequestBody {
   clientEmail: string;
@@ -51,7 +53,24 @@ export async function POST(
       );
     }
 
-    // Verification check: only verified tradies can send emails to clients
+    // Email verification check: require verified email
+    try {
+      const { requireVerifiedEmail } = await import("@/lib/authChecks");
+      await requireVerifiedEmail(user);
+    } catch (error: any) {
+      if (error.name === "EmailNotVerifiedError") {
+        return NextResponse.json(
+          {
+            error: "EMAIL_NOT_VERIFIED",
+            message: "Please verify your email before sending job packs to clients.",
+          },
+          { status: 403 }
+        );
+      }
+      throw error;
+    }
+
+    // Business verification check: only verified tradies can send emails to clients
     if (user.verificationStatus !== "verified") {
       return NextResponse.json(
         { 
@@ -83,8 +102,16 @@ export async function POST(
       );
     }
 
-    // Build email subject
-    const emailSubject = subject?.trim() || `Job pack for ${job.title}`;
+    // Generate quote number and version before sending
+    const quoteNumber = await ensureQuoteNumber(job.id);
+    const nextVersion = await getNextQuoteVersion(job.id);
+
+    // Determine expiry date (MVP: 30 days from now)
+    const expiryDays = 30; // TODO: make configurable per user later
+    const quoteExpiryAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+
+    // Build email subject (include quote number and version)
+    const emailSubject = subject?.trim() || `Job pack for ${job.title} - ${quoteNumber} v${nextVersion}`;
 
     // Parse quote to get price range
     let priceRange = "";
@@ -98,6 +125,13 @@ export async function POST(
         // Ignore parse errors
       }
     }
+
+    // Format expiry date for email
+    const expiryDateFormatted = quoteExpiryAt.toLocaleDateString("en-AU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
 
     // Common email content options
     const emailContentOptions = {
@@ -114,6 +148,9 @@ export async function POST(
       materialsOverrideText: job.materialsOverrideText,
       materialsAreRoughEstimate: job.materialsAreRoughEstimate,
       customMessage: message?.trim(),
+      quoteNumber,
+      quoteVersion: nextVersion,
+      quoteExpiryAt: expiryDateFormatted,
     };
 
     // Build email HTML content
@@ -143,9 +180,40 @@ export async function POST(
       );
     }
 
-    // Email sent successfully - update job with sent timestamp and client status
+    // Create quote version snapshot before updating job
+    try {
+      await (prisma as any).jobQuoteVersion.create({
+        data: {
+          jobId: job.id,
+          version: nextVersion,
+          sentAt: new Date(),
+          quoteExpiryAt,
+          labourHoursEstimate: job.labourHoursEstimate,
+          labourSubtotal: job.labourSubtotal != null ? job.labourSubtotal : null,
+          materialsTotal: job.materialsTotal != null ? job.materialsTotal : null,
+          subtotal: job.subtotal != null ? job.subtotal : null,
+          gstAmount: job.gstAmount != null ? job.gstAmount : null,
+          totalInclGst: job.totalInclGst != null ? job.totalInclGst : null,
+          summary: job.aiSummary || null,
+          scopeOfWork: job.aiScopeOfWork || null,
+          inclusions: job.aiInclusions || null,
+          exclusions: job.aiExclusions || null,
+          materialsText: job.materialsOverrideText || job.aiMaterials || null,
+          clientNotes: job.aiClientNotes || null,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to create quote version snapshot:", error);
+      // Don't fail the send if snapshot creation fails, but log it
+    }
+
+    // Email sent successfully - update job with sent timestamp, quote metadata, and client status
     const now = new Date().toISOString();
     job.sentToClientAt = now;
+    job.quoteNumber = quoteNumber;
+    job.quoteVersion = nextVersion;
+    job.quoteExpiryAt = quoteExpiryAt.toISOString();
+    job.quoteLastSentAt = now;
     
     // Only auto-update to "sent" if still in "draft" status
     // Don't override "accepted", "declined", etc. on resends

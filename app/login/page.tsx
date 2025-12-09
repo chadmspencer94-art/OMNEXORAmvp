@@ -35,11 +35,11 @@ function LoginForm() {
         return;
       }
 
-      // Success - redirect to original page or dashboard
-      // Validate redirect to prevent open redirect attacks
-      const redirectParam = searchParams.get("redirect");
+      // Check user role and redirect accordingly
       let redirectTo = "/dashboard";
       
+      // Validate redirect to prevent open redirect attacks
+      const redirectParam = searchParams.get("redirect");
       if (redirectParam) {
         // Only allow relative paths starting with / (not // or external URLs)
         const isValidRedirect = 
@@ -50,6 +50,36 @@ function LoginForm() {
         if (isValidRedirect) {
           redirectTo = redirectParam;
         }
+      }
+      
+      // Check user role and redirect clients to their dashboard
+      try {
+        const userResponse = await fetch("/api/auth/me");
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          if (userData.user) {
+            // Clients go to client dashboard
+            if (userData.user.role === "client") {
+              redirectTo = "/client/dashboard";
+            } else if (redirectTo === "/dashboard") {
+              // Check onboarding status for tradie/business users
+              try {
+                const onboardingCheck = await fetch("/api/onboarding/check");
+                if (onboardingCheck.ok) {
+                  const onboardingData = await onboardingCheck.json();
+                  // If user needs onboarding and hasn't skipped, redirect to onboarding
+                  if (onboardingData.needsOnboarding && !onboardingData.skipped) {
+                    redirectTo = "/onboarding";
+                  }
+                }
+              } catch {
+                // If check fails, proceed to dashboard (guard will handle redirect if needed)
+              }
+            }
+          }
+        }
+      } catch {
+        // If check fails, proceed with default redirect
       }
       
       // Use replace to avoid adding to history, then refresh to update navbar

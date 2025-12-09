@@ -5,42 +5,43 @@ export default function Home() {
   const isLoggedIn = false;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
-      <div className="max-w-2xl mx-auto text-center">
-        {/* Hero Section */}
-        <div className="mb-8">
-          <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium text-amber-700 bg-amber-100 rounded-full">
-            Built for Australian Tradies
-          </span>
-          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-4 leading-tight">
+    <main className="min-h-[calc(100vh-4rem)]">
+      {/* Hero Section */}
+      <section className="flex flex-col items-center justify-center px-4 py-12 sm:py-16 lg:py-20">
+        <div className="w-full max-w-2xl mx-auto text-center">
+          {/* Badge */}
+          <div className="mb-6 sm:mb-8">
+            <span className="inline-block px-3 py-1.5 text-xs sm:text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full">
+              Built for Australian Tradies
+            </span>
+          </div>
+
+          {/* Main Heading */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-3 sm:mb-4 leading-tight tracking-tight">
             OMNEXORA
-            <span className="block text-amber-500 mt-2">AI Job Packs for Tradies</span>
           </h1>
-          <p className="text-xl sm:text-2xl font-semibold text-slate-700 mb-6 max-w-xl mx-auto leading-relaxed">
+
+          {/* Sub-heading */}
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-amber-500 mb-4 sm:mb-6 leading-snug">
+            AI Job Packs for Tradies
+          </h2>
+
+          {/* Tagline */}
+          <p className="text-lg sm:text-xl lg:text-2xl text-slate-700 mb-6 sm:mb-8 max-w-xl mx-auto leading-relaxed font-medium">
             win back time for what most matters
           </p>
-          <p className="text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
+
+          {/* Supporting Paragraph */}
+          <p className="text-base sm:text-lg text-slate-600 max-w-lg mx-auto leading-relaxed mb-8 sm:mb-10">
             Generate professional job packs in minutes. From quotes to scope of work, 
             let AI handle the paperwork so you can focus on what you do best.
           </p>
-          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg max-w-xl mx-auto">
-            <p className="text-sm text-amber-800">
-              <span className="font-semibold">New:</span> Generate SWMS (Safe Work Method Statements) directly in your job packs. 
-              AI-powered safety documentation for every job.
-            </p>
-          </div>
-        </div>
 
-        {/* CTA Button */}
-        <div className="mt-10">
-          {isLoggedIn ? (
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center px-8 py-4 text-lg font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-xl transition-colors shadow-lg shadow-amber-500/25"
-            >
-              Go to Dashboard
+          {/* SWMS Highlight - Refined as a clean notice card */}
+          <div className="mb-10 sm:mb-12 max-w-lg mx-auto">
+            <div className="inline-flex items-start gap-3 px-4 py-3 bg-amber-50/50 border border-amber-200/60 rounded-lg shadow-sm">
               <svg
-                className="w-5 h-5 ml-2"
+                className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -49,73 +50,104 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-            </Link>
-          ) : (
-            <Link
-              href="/login"
-              className="inline-flex items-center px-8 py-4 text-lg font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-xl transition-colors shadow-lg shadow-amber-500/25"
-            >
-              Login to Get Started
-              <svg
-                className="w-5 h-5 ml-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                />
-              </svg>
-            </Link>
-          )}
-        </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-amber-900 mb-0.5">
+                  New: Generate SWMS
+                </p>
+                <p className="text-xs sm:text-sm text-amber-800 leading-relaxed">
+                  Safe Work Method Statements directly in your job packs. 
+                  AI-powered safety documentation for every job.
+                </p>
+              </div>
+            </div>
+          </div>
 
-        {/* Features Preview */}
-        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
-          <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Smart Quotes</h3>
-            <p className="text-sm text-slate-600">AI-generated quotes based on your job details and local pricing.</p>
-          </div>
-          <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
-            </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Scope of Work</h3>
-            <p className="text-sm text-slate-600">Detailed breakdown of tasks, materials, and timelines.</p>
-          </div>
-          <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 className="font-semibold text-slate-900 mb-2">SWMS Generation</h3>
-            <p className="text-sm text-slate-600">AI-powered Safe Work Method Statements included in every job pack.</p>
-          </div>
-          <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Save Time</h3>
-            <p className="text-sm text-slate-600">Create professional documents in minutes, not hours.</p>
+          {/* Primary CTA */}
+          <div className="mb-12 sm:mb-16">
+            {isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-xl transition-colors shadow-lg shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+              >
+                Go to Dashboard
+                <svg
+                  className="w-5 h-5 ml-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-xl transition-colors shadow-lg shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+              >
+                Login to Get Started
+                <svg
+                  className="w-5 h-5 ml-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </Link>
+            )}
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="px-4 py-12 sm:py-16 lg:py-20 border-t border-slate-200 bg-slate-50/50">
+        <div className="w-full max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10 text-left">
+            <div>
+              <h3 className="font-semibold text-slate-900 mb-2 text-base sm:text-lg">
+                Smart Quotes
+              </h3>
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                AI-generated quotes based on your job details and local pricing.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 mb-2 text-base sm:text-lg">
+                Scope of Work
+              </h3>
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Detailed breakdown of tasks, materials, and timelines.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 mb-2 text-base sm:text-lg">
+                SWMS Generation
+              </h3>
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                AI-powered Safe Work Method Statements included in every job pack.
+              </p>
+            </div>
+          </div>
+          <p className="mt-10 sm:mt-12 text-center text-sm text-slate-500">
+            Built for Australian Tradies
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }

@@ -1,24 +1,12 @@
-import { NextResponse } from "next/server";
-import { 
-  getCurrentUser, 
-  updateUser, 
-  addUserToVerificationIndex,
-  type TradieBusinessDetails 
-} from "@/lib/auth";
-import { sendNotification } from "@/lib/notifications";
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser, isClient } from "@/lib/auth";
+import { upsertUserVerification, getUserVerification, updateVerificationStatus } from "@/lib/verification";
 
-interface VerificationRequestBody {
-  businessName: string;
-  tradingName?: string;
-  abn: string;
-  tradeTypes: string;
-  serviceArea: string;
-  insuranceProvider?: string;
-  insuranceExpiry?: string;
-  licenceNumber?: string;
-}
-
-export async function POST(request: Request) {
+/**
+ * GET /api/settings/verification
+ * Returns the current user's verification record
+ */
+export async function GET() {
   try {
     const user = await getCurrentUser();
 
@@ -29,20 +17,123 @@ export async function POST(request: Request) {
       );
     }
 
-    // Only tradies can submit verification
-    const userRole = user.role || "tradie";
-    if (userRole !== "tradie") {
+    // Clients don't need verification
+    if (isClient(user)) {
       return NextResponse.json(
-        { error: "Only tradies can submit business verification" },
+        { error: "Verification is only for trade/business accounts" },
         { status: 403 }
       );
     }
 
+    const verification = await getUserVerification(user.id);
+
+    // Return default structure if no record exists
+    if (!verification) {
+      return NextResponse.json({
+        verification: {
+          status: "unverified",
+          businessName: null,
+          abn: null,
+          primaryTrade: null,
+          workTypes: null,
+          licenceNumber: null,
+          licenceType: null,
+          licenceExpiry: null,
+          insuranceProvider: null,
+          insurancePolicyNumber: null,
+          insuranceExpiry: null,
+          insuranceCoverageNotes: null,
+          abnEvidenceUrl: null,
+          licenceEvidenceUrl: null,
+          insuranceEvidenceUrl: null,
+          rejectionReason: null,
+        },
+      });
+    }
+
+    return NextResponse.json({ verification });
+  } catch (error) {
+    console.error("Error fetching verification:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch verification" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/settings/verification
+ * Creates or updates the user's verification record and sets status to "pending"
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
+    // Clients can't submit verification
+    if (isClient(user)) {
+      return NextResponse.json(
+        { error: "Verification is only for trade/business accounts" },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const {
+      businessName,
+      abn,
+      primaryTrade,
+      workTypes,
+      licenceNumber,
+      licenceType,
+      licenceExpiry,
+      insuranceProvider,
+      insurancePolicyNumber,
+      insuranceExpiry,
+      insuranceCoverageNotes,
+      abnEvidenceUrl,
+      licenceEvidenceUrl,
+      insuranceEvidenceUrl,
+    } = body;
+
+    // Validate required fields
+    if (!businessName?.trim()) {
+      return NextResponse.json(
+        { error: "Business name is required" },
+        { status: 400 }
+      );
+    }
+    if (!abn?.trim()) {
+      return NextResponse.json(
+        { error: "ABN is required" },
+        { status: 400 }
+      );
+    }
+    if (!primaryTrade?.trim()) {
+      return NextResponse.json(
+        { error: "Primary trade is required" },
+        { status: 400 }
+      );
+    }
+    if (!workTypes?.trim()) {
+      return NextResponse.json(
+        { error: "Work types are required (select at least one: residential, commercial, strata)" },
+        { status: 400 }
+      );
+    }
+
+    // Check current status
+    const currentVerification = await getUserVerification(user.id);
+    const currentStatus = currentVerification?.status || "unverified";
+
     // Can't submit if already pending or verified
-    const currentStatus = user.verificationStatus || "unverified";
-    // Check both new "pending" and legacy "pending_review" status
-    const statusStr = currentStatus as string;
-    if (statusStr === "pending" || statusStr === "pending_review") {
+    if (currentStatus === "pending") {
       return NextResponse.json(
         { error: "Your verification is already pending review" },
         { status: 400 }
@@ -55,91 +146,39 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json()) as VerificationRequestBody;
-
-    // Validate required fields
-    if (!body.businessName?.trim()) {
-      return NextResponse.json(
-        { error: "Business name is required" },
-        { status: 400 }
-      );
-    }
-    if (!body.abn?.trim()) {
-      return NextResponse.json(
-        { error: "ABN is required" },
-        { status: 400 }
-      );
-    }
-    if (!body.tradeTypes?.trim()) {
-      return NextResponse.json(
-        { error: "At least one trade type is required" },
-        { status: 400 }
-      );
-    }
-    if (!body.serviceArea?.trim()) {
-      return NextResponse.json(
-        { error: "Service area is required" },
-        { status: 400 }
-      );
-    }
-
-    // Parse trade types from comma-separated string
-    const tradeTypes = body.tradeTypes
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-
-    if (tradeTypes.length === 0) {
-      return NextResponse.json(
-        { error: "At least one trade type is required" },
-        { status: 400 }
-      );
-    }
-
-    // Build business details
-    const businessDetails: TradieBusinessDetails = {
-      businessName: body.businessName.trim(),
-      tradingName: body.tradingName?.trim() || undefined,
-      abn: body.abn.trim(),
-      tradeTypes,
-      serviceArea: body.serviceArea.trim(),
-      insuranceProvider: body.insuranceProvider?.trim() || undefined,
-      insuranceExpiry: body.insuranceExpiry?.trim() || undefined,
-      licenceNumber: body.licenceNumber?.trim() || undefined,
-      verificationSubmittedAt: new Date().toISOString(),
-    };
-
-    // Update user with business details and set status to pending
-    const updatedUser = await updateUser(user.id, {
-      businessDetails,
-      verificationStatus: "pending",
+    // Upsert verification record
+    await upsertUserVerification(user.id, {
+      businessName: businessName.trim(),
+      abn: abn.trim(),
+      primaryTrade: primaryTrade.trim(),
+      workTypes: workTypes.trim(),
+      licenceNumber: licenceNumber?.trim() || null,
+      licenceType: licenceType?.trim() || null,
+      licenceExpiry: licenceExpiry || null,
+      insuranceProvider: insuranceProvider?.trim() || null,
+      insurancePolicyNumber: insurancePolicyNumber?.trim() || null,
+      insuranceExpiry: insuranceExpiry || null,
+      insuranceCoverageNotes: insuranceCoverageNotes?.trim() || null,
+      abnEvidenceUrl: abnEvidenceUrl?.trim() || null,
+      licenceEvidenceUrl: licenceEvidenceUrl?.trim() || null,
+      insuranceEvidenceUrl: insuranceEvidenceUrl?.trim() || null,
     });
 
-    if (!updatedUser) {
-      return NextResponse.json(
-        { error: "Failed to update user" },
-        { status: 500 }
-      );
+    // Set status to "pending" if it was "unverified" or "rejected"
+    if (currentStatus === "unverified" || currentStatus === "rejected") {
+      await updateVerificationStatus(user.id, "pending", {
+        rejectionReason: null, // Clear any previous rejection reason
+      });
     }
-
-    // Add user to verification pending index for admin review
-    await addUserToVerificationIndex(user.id, "pending");
-
-    // Send notification email
-    await sendNotification("tradie_verification_submitted", {
-      user: updatedUser,
-      businessDetails,
-    });
 
     return NextResponse.json({
       success: true,
-      message: "Verification submitted successfully",
-      verificationStatus: "pending",
+      message: "Verification details submitted. We'll review them soon.",
     });
   } catch (error) {
-    console.error("Verification submission error:", error);
+    console.error("Error submitting verification:", error);
     return NextResponse.json(
-      { error: "An unexpected error occurred" },
+      { error: "Failed to submit verification" },
       { status: 500 }
     );
   }

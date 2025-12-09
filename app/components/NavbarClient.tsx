@@ -121,9 +121,17 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [user, setUser] = useState<NavbarClientProps["user"]>(initialUser);
+  const [mounted, setMounted] = useState(false);
 
-  // Check auth immediately on mount and whenever route changes
+  // Mark as mounted after hydration to prevent hydration mismatches
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Check auth after mount to avoid hydration issues
+  useEffect(() => {
+    if (!mounted) return;
+    
     const checkAuth = async () => {
       try {
         const response = await fetch("/api/auth/me", { 
@@ -155,7 +163,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
       }
     };
 
-    // Check auth on mount
+    // Check auth on mount (after hydration)
     checkAuth();
     
     // Also refresh when window gets focus (user might have logged in/out in another tab)
@@ -164,12 +172,14 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
     };
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, []);
+  }, [mounted]);
 
   // Sync with server prop when it changes (from router.refresh() or navigation)
   useEffect(() => {
-    setUser(initialUser);
-  }, [initialUser]);
+    if (mounted) {
+      setUser(initialUser);
+    }
+  }, [initialUser, mounted]);
 
   // Close mobile menu when user logs out
   useEffect(() => {
@@ -184,13 +194,14 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   // Role-aware navigation links
   const navLinks = isClient
     ? [
-        { href: "/dashboard", label: "Dashboard" },
-        { href: "/jobs", label: "Jobs" },
-        { href: "/settings", label: "Settings" },
+        { href: "/client/dashboard", label: "Dashboard" },
+        { href: "/client/jobs/new", label: "Post Job" },
       ]
     : [
         { href: "/dashboard", label: "Dashboard" },
         { href: "/jobs", label: "Jobs" },
+        { href: "/calendar", label: "Calendar" },
+        { href: "/clients", label: "Clients" },
         { href: "/billing", label: "Billing" },
         { href: "/settings", label: "Settings" },
       ];
@@ -244,15 +255,16 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   };
 
   return (
-    <nav className="bg-slate-900 border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <nav className="bg-slate-900 border-b border-slate-800" suppressHydrationWarning>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" suppressHydrationWarning>
+        <div className="flex items-center justify-between h-16" suppressHydrationWarning>
           {/* Logo */}
           <button
             onClick={() => {
               router.push(isLoggedIn ? "/dashboard" : "/");
             }}
             className="flex items-center text-2xl font-bold text-white tracking-tight hover:opacity-80 transition-opacity"
+            suppressHydrationWarning
           >
             OMNEXORA
           </button>
@@ -277,7 +289,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
                   <VerificationBadge role={user.role} status={user.verificationStatus} />
                   {user.isAdmin && (
                     <Link
-                      href="/admin/users"
+                      href="/admin/dashboard"
                       className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors text-xs font-medium"
                     >
                       Admin
@@ -366,7 +378,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);
-                        router.push("/admin/users");
+                        router.push("/admin/dashboard");
                       }}
                       className="w-full mx-4 my-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-center rounded-lg transition-colors text-sm font-medium"
                     >

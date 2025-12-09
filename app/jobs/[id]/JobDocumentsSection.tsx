@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, FileText } from "lucide-react";
-import JobDocumentModal from "./JobDocumentModal";
+import { Loader2, FileText, Check, Edit2 } from "lucide-react";
+import JobDocumentEditor from "./JobDocumentEditor";
+import type { Job } from "@/lib/jobs";
 
 interface JobDocumentsSectionProps {
   jobId: string;
@@ -12,6 +13,7 @@ interface JobDocumentsSectionProps {
   address?: string;
   clientName?: string;
   showWarning?: boolean;
+  job?: Job; // Optional job object to check confirmation status
 }
 
 type DocumentType = "SWMS" | "VARIATION" | "EOT" | "PROGRESS_CLAIM" | "HANDOVER" | "MAINTENANCE";
@@ -62,6 +64,15 @@ const DOCUMENTS: DocumentConfig[] = [
   },
 ];
 
+const DOCUMENT_STATUS_FIELDS: Record<DocumentType, { textField: keyof Job; confirmedField: keyof Job }> = {
+  SWMS: { textField: "swmsText", confirmedField: "swmsConfirmed" },
+  VARIATION: { textField: "variationText", confirmedField: "variationConfirmed" },
+  EOT: { textField: "eotText", confirmedField: "eotConfirmed" },
+  PROGRESS_CLAIM: { textField: "progressClaimText", confirmedField: "progressClaimConfirmed" },
+  HANDOVER: { textField: "handoverText", confirmedField: "handoverConfirmed" },
+  MAINTENANCE: { textField: "maintenanceText", confirmedField: "maintenanceConfirmed" },
+};
+
 export default function JobDocumentsSection({
   jobId,
   jobTitle,
@@ -69,14 +80,57 @@ export default function JobDocumentsSection({
   address,
   clientName,
   showWarning = false,
+  job,
 }: JobDocumentsSectionProps) {
   const router = useRouter();
   const [generatingDoc, setGeneratingDoc] = useState<DocumentType | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState<string | null>(null);
-  const [modalTitle, setModalTitle] = useState("");
-  const [modalDocType, setModalDocType] = useState<DocumentType>("SWMS");
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorContent, setEditorContent] = useState<string | null>(null);
+  const [editorTitle, setEditorTitle] = useState("");
+  const [editorDocType, setEditorDocType] = useState<DocumentType>("SWMS");
+  const [editorConfirmed, setEditorConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [documentStatuses, setDocumentStatuses] = useState<Record<DocumentType, { hasContent: boolean; confirmed: boolean }>>({
+    SWMS: { hasContent: false, confirmed: false },
+    VARIATION: { hasContent: false, confirmed: false },
+    EOT: { hasContent: false, confirmed: false },
+    PROGRESS_CLAIM: { hasContent: false, confirmed: false },
+    HANDOVER: { hasContent: false, confirmed: false },
+    MAINTENANCE: { hasContent: false, confirmed: false },
+  });
+
+  // Load document statuses from job
+  useEffect(() => {
+    if (job) {
+      const statuses: Record<DocumentType, { hasContent: boolean; confirmed: boolean }> = {
+        SWMS: {
+          hasContent: !!job.swmsText,
+          confirmed: !!job.swmsConfirmed,
+        },
+        VARIATION: {
+          hasContent: !!job.variationText,
+          confirmed: !!job.variationConfirmed,
+        },
+        EOT: {
+          hasContent: !!job.eotText,
+          confirmed: !!job.eotConfirmed,
+        },
+        PROGRESS_CLAIM: {
+          hasContent: !!job.progressClaimText,
+          confirmed: !!job.progressClaimConfirmed,
+        },
+        HANDOVER: {
+          hasContent: !!job.handoverText,
+          confirmed: !!job.handoverConfirmed,
+        },
+        MAINTENANCE: {
+          hasContent: !!job.maintenanceText,
+          confirmed: !!job.maintenanceConfirmed,
+        },
+      };
+      setDocumentStatuses(statuses);
+    }
+  }, [job]);
 
   const handleGenerate = async (doc: DocumentConfig) => {
     setGeneratingDoc(doc.type);
@@ -122,10 +176,30 @@ export default function JobDocumentsSection({
         throw new Error("No content received from server");
       }
 
-      setModalContent(content);
-      setModalTitle(title);
-      setModalDocType(doc.type);
-      setModalOpen(true);
+      // Save the generated content immediately (as draft)
+      try {
+        const saveResponse = await fetch(`/api/jobs/${jobId}/documents/${doc.type.toLowerCase()}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: content.trim(),
+            confirmed: false, // Not confirmed yet - user must review
+          }),
+        });
+
+        if (!saveResponse.ok) {
+          console.warn("Failed to save document draft");
+        }
+      } catch (saveErr) {
+        console.warn("Error saving document draft:", saveErr);
+      }
+
+      // Open editor with generated content
+      setEditorContent(content);
+      setEditorTitle(title);
+      setEditorDocType(doc.type);
+      setEditorConfirmed(false);
+      setEditorOpen(true);
       router.refresh();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `Failed to generate ${doc.label}`;
@@ -135,13 +209,55 @@ export default function JobDocumentsSection({
     }
   };
 
+  const handleOpenEditor = async (docType: DocumentType) => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/documents/${docType.toLowerCase()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setEditorContent(data.content || "");
+        setEditorConfirmed(data.confirmed || false);
+        setEditorTitle(DOCUMENTS.find((d) => d.type === docType)?.label || docType);
+        setEditorDocType(docType);
+        setEditorOpen(true);
+      } else {
+        setError("Failed to load document");
+      }
+    } catch (err) {
+      setError("Failed to load document");
+    }
+  };
+
+  const handleSaveDocument = async (content: string, confirmed: boolean) => {
+    const response = await fetch(`/api/jobs/${jobId}/documents/${editorDocType.toLowerCase()}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, confirmed }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || "Failed to save document");
+    }
+
+    // Update local status
+    setDocumentStatuses((prev) => ({
+      ...prev,
+      [editorDocType]: {
+        hasContent: true,
+        confirmed,
+      },
+    }));
+
+    router.refresh();
+  };
+
   return (
     <>
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-6 py-4 border-b border-slate-200">
           <h2 className="text-lg font-semibold text-slate-900">Job Documents</h2>
           <p className="text-xs text-slate-500 mt-1">
-            Generate professional documents for this job
+            Generate professional documents for this job. All documents must be reviewed and confirmed before use.
           </p>
         </div>
         <div className="p-6">
@@ -152,48 +268,79 @@ export default function JobDocumentsSection({
           )}
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {DOCUMENTS.map((doc) => (
-              <button
-                key={doc.type}
-                onClick={() => handleGenerate(doc)}
-                disabled={generatingDoc !== null}
-                className="p-4 border border-slate-200 rounded-lg hover:border-amber-300 hover:bg-amber-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    {generatingDoc === doc.type ? (
-                      <Loader2 className="w-5 h-5 text-amber-600 animate-spin" />
-                    ) : (
-                      <FileText className="w-5 h-5 text-amber-600" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-slate-900 mb-1">{doc.label}</h3>
-                    <p className="text-xs text-slate-500">{doc.description}</p>
-                  </div>
+            {DOCUMENTS.map((doc) => {
+              const status = documentStatuses[doc.type];
+              const hasContent = status.hasContent;
+              const isConfirmed = status.confirmed;
+
+              return (
+                <div key={doc.type} className="relative">
+                  <button
+                    onClick={() => {
+                      if (hasContent) {
+                        handleOpenEditor(doc.type);
+                      } else {
+                        handleGenerate(doc);
+                      }
+                    }}
+                    disabled={generatingDoc !== null}
+                    className={`w-full p-4 border rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed ${
+                      isConfirmed
+                        ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                        : hasContent
+                        ? "border-amber-200 bg-amber-50 hover:bg-amber-100"
+                        : "border-slate-200 hover:border-amber-300 hover:bg-amber-50"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        isConfirmed ? "bg-emerald-100" : hasContent ? "bg-amber-100" : "bg-amber-100"
+                      }`}>
+                        {generatingDoc === doc.type ? (
+                          <Loader2 className="w-5 h-5 text-amber-600 animate-spin" />
+                        ) : (
+                          <FileText className={`w-5 h-5 ${isConfirmed ? "text-emerald-600" : "text-amber-600"}`} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-slate-900">{doc.label}</h3>
+                          {isConfirmed && (
+                            <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          )}
+                          {hasContent && !isConfirmed && (
+                            <span className="text-xs text-amber-600 font-medium">Draft</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500">{doc.description}</p>
+                        {hasContent && !isConfirmed && (
+                          <p className="text-xs text-amber-600 mt-1 font-medium">
+                            Review & confirm required
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
 
-      <JobDocumentModal
-        isOpen={modalOpen}
+      <JobDocumentEditor
+        isOpen={editorOpen}
         onClose={() => {
-          setModalOpen(false);
-          setModalContent(null);
+          setEditorOpen(false);
+          setEditorContent(null);
           setError(null);
         }}
-        title={modalTitle}
-        content={modalContent}
+        title={editorTitle}
+        content={editorContent}
         jobId={jobId}
-        jobTitle={jobTitle}
-        tradeType={tradeType}
-        address={address}
-        clientName={clientName}
-        documentType={modalDocType}
-        showWarning={showWarning}
+        documentType={editorDocType}
+        isConfirmed={editorConfirmed}
+        onSave={handleSaveDocument}
       />
     </>
   );

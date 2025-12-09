@@ -3,9 +3,16 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import TemplateSelector from "./TemplateSelector";
 
 type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Other";
 type UserRole = "tradie" | "builder" | "client" | "supplier" | "admin";
+
+interface Helper {
+  id: string;
+  name: string;
+  ratePerHour: string;
+}
 
 interface FormData {
   clientName: string;
@@ -16,14 +23,28 @@ interface FormData {
   address: string;
   notes: string;
   labourRatePerHour: string;
-  helperRatePerHour: string;
+  helperRatePerHour: string; // Legacy - kept for backwards compatibility
+  helpers: Helper[]; // New: array of helpers
   materialsAreRoughEstimate: boolean;
+  rateTemplateId: string | null;
+}
+
+interface JobTemplate {
+  id: string;
+  title: string;
+  tradeType: string;
+  propertyType: string;
+  notes: string | null;
+  addressLine1: string | null;
+  suburb: string | null;
+  postcode: string | null;
 }
 
 export default function NewJobPage() {
   const router = useRouter();
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<JobTemplate | null>(null);
   const [formData, setFormData] = useState<FormData>({
     clientName: "",
     clientEmail: "",
@@ -33,8 +54,10 @@ export default function NewJobPage() {
     address: "",
     notes: "",
     labourRatePerHour: "",
-    helperRatePerHour: "",
+    helperRatePerHour: "", // Legacy
+    helpers: [], // New: array of helpers
     materialsAreRoughEstimate: false,
+    rateTemplateId: null,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -103,10 +126,28 @@ export default function NewJobPage() {
 
     try {
       // Prepare data for submission
+      // Remove client details - they will be entered manually after AI generation
+      // Convert helpers array to the format expected by the API
+      const helpers = formData.helpers
+        .filter(h => h.ratePerHour && Number(h.ratePerHour) > 0)
+        .map(h => ({
+          id: h.id,
+          name: h.name.trim() || undefined,
+          ratePerHour: Number(h.ratePerHour),
+        }));
+
       const submitData = {
-        ...formData,
+        title: formData.title,
+        tradeType: formData.tradeType,
+        propertyType: formData.propertyType,
+        address: formData.address,
+        notes: formData.notes,
         labourRatePerHour: formData.labourRatePerHour ? Number(formData.labourRatePerHour) : null,
-        helperRatePerHour: formData.helperRatePerHour ? Number(formData.helperRatePerHour) : null,
+        helperRatePerHour: formData.helperRatePerHour ? Number(formData.helperRatePerHour) : null, // Legacy
+        helpers: helpers.length > 0 ? helpers : undefined, // New: array of helpers
+        materialsAreRoughEstimate: formData.materialsAreRoughEstimate,
+        rateTemplateId: formData.rateTemplateId,
+        // Explicitly exclude clientName and clientEmail for privacy
       };
 
       const response = await fetch("/api/jobs", {
@@ -171,6 +212,14 @@ export default function NewJobPage() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="p-6 sm:p-8">
             <div className="space-y-6">
+              {/* Template Selector - Only for tradie/business users */}
+              {!isClient && (
+                <TemplateSelector
+                  onSelectTemplate={setSelectedTemplate}
+                  selectedTemplateId={selectedTemplate?.id || null}
+                />
+              )}
+
               {/* Error Message */}
               {error && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -178,47 +227,20 @@ export default function NewJobPage() {
                 </div>
               )}
 
-              {/* Client Details Section - Only show for tradies */}
+              {/* Info Notice - Client details entered after AI generation */}
               {!isClient && (
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900 mb-4">Client Details</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                     <div>
-                      <label htmlFor="clientName" className="block text-sm font-medium text-slate-700 mb-2">
-                        Client Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="clientName"
-                        name="clientName"
-                        value={formData.clientName}
-                        onChange={handleChange}
-                        placeholder="e.g. John Smith"
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
-                        required
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="clientEmail" className="block text-sm font-medium text-slate-700 mb-2">
-                        Client Email <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        id="clientEmail"
-                        name="clientEmail"
-                        value={formData.clientEmail}
-                        onChange={handleChange}
-                        placeholder="e.g. john@example.com"
-                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors ${
-                          emailError ? "border-red-500" : "border-slate-300"
-                        }`}
-                        required
-                        disabled={isLoading}
-                      />
-                      {emailError && (
-                        <p className="mt-1 text-sm text-red-600">{emailError}</p>
-                      )}
+                      <p className="text-sm font-medium text-amber-900 mb-1">
+                        Client Privacy & Safety First
+                      </p>
+                      <p className="text-sm text-amber-800">
+                        Client details are kept private and will be entered manually after AI generation. This ensures client information is never sent to AI systems and you can review everything before sending.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -309,6 +331,26 @@ export default function NewJobPage() {
                   <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-2">
                     Job Description / Notes <span className="text-slate-400">(recommended)</span>
                   </label>
+                  
+                  {/* Privacy Warning - Only show for tradies */}
+                  {!isClient && (
+                    <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                          <p className="text-xs font-semibold text-amber-900 mb-1">
+                            ⚠️ Privacy Warning: Do NOT include personal information
+                          </p>
+                          <p className="text-xs text-amber-800">
+                            Do not include client names, email addresses, phone numbers, or other personal information in this field. This information will be sent to AI systems for job pack generation. Client details will be entered manually after you review the AI-generated content.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <textarea
                     id="notes"
                     name="notes"
@@ -366,29 +408,101 @@ export default function NewJobPage() {
                       </p>
                     </div>
 
-                    <div>
-                      <label htmlFor="helperRatePerHour" className="block text-sm font-medium text-slate-700 mb-2">
-                        Helper / second painter rate (optional)
+                  </div>
+
+                  {/* Multiple Helpers Section */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-slate-700">
+                        Helpers (optional)
                       </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                        <input
-                          type="number"
-                          id="helperRatePerHour"
-                          name="helperRatePerHour"
-                          value={formData.helperRatePerHour}
-                          onChange={handleChange}
-                          min="0"
-                          step="1"
-                          placeholder="40"
-                          className="w-full pl-8 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500">
-                        If you usually work with a helper, add their rate. If not, leave blank.
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newHelper: Helper = {
+                            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            name: "",
+                            ratePerHour: "",
+                          };
+                          setFormData((prev) => ({
+                            ...prev,
+                            helpers: [...prev.helpers, newHelper],
+                          }));
+                        }}
+                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                        disabled={isLoading}
+                      >
+                        + Add Helper
+                      </button>
                     </div>
+                    {formData.helpers.length > 0 && (
+                      <div className="space-y-3">
+                        {formData.helpers.map((helper, index) => (
+                          <div key={helper.id} className="flex gap-3 items-start p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-slate-600 mb-1">
+                                  Helper Name/Role (optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={helper.name}
+                                  onChange={(e) => {
+                                    const updatedHelpers = [...formData.helpers];
+                                    updatedHelpers[index].name = e.target.value;
+                                    setFormData((prev) => ({ ...prev, helpers: updatedHelpers }));
+                                  }}
+                                  placeholder="e.g., Second Painter, Apprentice"
+                                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors text-sm"
+                                  disabled={isLoading}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-slate-600 mb-1">
+                                  Rate per Hour (ex GST)
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                                  <input
+                                    type="number"
+                                    value={helper.ratePerHour}
+                                    onChange={(e) => {
+                                      const updatedHelpers = [...formData.helpers];
+                                      updatedHelpers[index].ratePerHour = e.target.value;
+                                      setFormData((prev) => ({ ...prev, helpers: updatedHelpers }));
+                                    }}
+                                    min="0"
+                                    step="1"
+                                    placeholder="40"
+                                    className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors text-sm"
+                                    disabled={isLoading}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedHelpers = formData.helpers.filter((h) => h.id !== helper.id);
+                                setFormData((prev) => ({ ...prev, helpers: updatedHelpers }));
+                              }}
+                              className="mt-6 p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                              disabled={isLoading}
+                              title="Remove helper"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {formData.helpers.length === 0 && (
+                      <p className="text-xs text-slate-500">
+                        Add helpers if you usually work with additional team members. Each helper can have a name/role and hourly rate.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">

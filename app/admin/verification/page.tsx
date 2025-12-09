@@ -3,110 +3,84 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { CheckCircle, Clock, XCircle } from "lucide-react";
 
-interface BusinessDetails {
-  businessName?: string;
-  tradingName?: string;
-  abn?: string;
-  tradeTypes?: string[];
-  serviceArea?: string;
-  insuranceProvider?: string;
-  insuranceExpiry?: string;
-  licenceNumber?: string;
-  verificationSubmittedAt?: string;
-}
-
-interface PendingUser {
+interface Verification {
   id: string;
-  email: string;
+  userId: string;
+  status: string;
+  businessName: string | null;
+  abn: string | null;
+  primaryTrade: string | null;
+  workTypes: string | null;
   createdAt: string;
-  role: string;
-  verificationStatus: string;
-  businessDetails?: BusinessDetails;
+  updatedAt: string;
+  user: {
+    id: string;
+    email: string;
+    role: string;
+  };
 }
 
 export default function AdminVerificationPage() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [verifications, setVerifications] = useState<Verification[]>([]);
   const [error, setError] = useState("");
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = useState<Record<string, string>>({});
 
-  const fetchPendingUsers = useCallback(async () => {
+  const fetchVerifications = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/verification");
       if (response.ok) {
         const data = await response.json();
         setIsAdmin(true);
-        setPendingUsers(data.users || []);
+        setVerifications(data.verifications || []);
       } else if (response.status === 403) {
         setIsAdmin(false);
       } else {
         router.push("/login");
       }
     } catch {
-      setError("Failed to load pending verifications");
+      setError("Failed to load verifications");
     } finally {
       setIsLoading(false);
     }
   }, [router]);
 
   useEffect(() => {
-    fetchPendingUsers();
-  }, [fetchPendingUsers]);
+    fetchVerifications();
+  }, [fetchVerifications]);
 
-  const handleApprove = async (userId: string) => {
-    setActionLoading(userId);
-    try {
-      const response = await fetch("/api/admin/verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, action: "approve" }),
-      });
-
-      if (response.ok) {
-        // Refresh the list - await to ensure loading state is accurate
-        await fetchPendingUsers();
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to approve");
-      }
-    } catch {
-      setError("Failed to approve user");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleReject = async (userId: string) => {
-    const reason = rejectionReason[userId];
-    if (!reason?.trim()) {
-      setError("Please provide a rejection reason");
-      return;
-    }
-
-    setActionLoading(userId);
-    try {
-      const response = await fetch("/api/admin/verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, action: "reject", reason }),
-      });
-
-      if (response.ok) {
-        // Refresh the list - await to ensure loading state is accurate
-        await fetchPendingUsers();
-        setRejectionReason((prev) => ({ ...prev, [userId]: "" }));
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to reject");
-      }
-    } catch {
-      setError("Failed to reject user");
-    } finally {
-      setActionLoading(null);
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "verified":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+            <CheckCircle className="w-3 h-3" />
+            Verified
+          </span>
+        );
+      case "pending":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+            <Clock className="w-3 h-3" />
+            Pending
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+            <XCircle className="w-3 h-3" />
+            Rejected
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+            Unverified
+          </span>
+        );
     }
   };
 
@@ -137,6 +111,10 @@ export default function AdminVerificationPage() {
     );
   }
 
+  const pendingVerifications = verifications.filter((v) => v.status === "pending");
+  const verifiedVerifications = verifications.filter((v) => v.status === "verified");
+  const rejectedVerifications = verifications.filter((v) => v.status === "rejected");
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Admin Navigation */}
@@ -165,6 +143,22 @@ export default function AdminVerificationPage() {
         </p>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="text-2xl font-bold text-amber-900">{pendingVerifications.length}</div>
+          <div className="text-sm text-amber-700">Pending Review</div>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="text-2xl font-bold text-green-900">{verifiedVerifications.length}</div>
+          <div className="text-sm text-green-700">Verified</div>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="text-2xl font-bold text-red-900">{rejectedVerifications.length}</div>
+          <div className="text-sm text-red-700">Rejected</div>
+        </div>
+      </div>
+
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
@@ -177,16 +171,14 @@ export default function AdminVerificationPage() {
         </div>
       )}
 
-      {pendingUsers.length === 0 ? (
+      {verifications.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+            <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-lg font-semibold text-slate-900 mb-2">All Caught Up!</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">No Verifications</h2>
           <p className="text-slate-600">
-            No pending verifications to review.
+            No verification records found.
           </p>
         </div>
       ) : (
@@ -205,10 +197,7 @@ export default function AdminVerificationPage() {
                     ABN
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Trades
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Service Area
+                    Primary Trade
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Status
@@ -219,92 +208,44 @@ export default function AdminVerificationPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {pendingUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50">
+                {verifications.map((verification) => (
+                  <tr key={verification.id} className="hover:bg-slate-50">
                     <td className="px-4 py-4">
-                      <div className="text-sm font-medium text-slate-900">{user.email}</div>
+                      <div className="text-sm font-medium text-slate-900">{verification.user.email}</div>
                       <div className="text-xs text-slate-500">
-                        {user.businessDetails?.verificationSubmittedAt
-                          ? `Submitted ${new Date(user.businessDetails.verificationSubmittedAt).toLocaleDateString()}`
-                          : ""}
+                        {new Date(verification.createdAt).toLocaleDateString()}
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="text-sm text-slate-900">
-                        {user.businessDetails?.businessName || "-"}
+                        {verification.businessName || "-"}
                       </div>
-                      {user.businessDetails?.tradingName && (
-                        <div className="text-xs text-slate-500">
-                          Trading as: {user.businessDetails.tradingName}
-                        </div>
-                      )}
                     </td>
                     <td className="px-4 py-4">
                       <div className="text-sm font-mono text-slate-900">
-                        {user.businessDetails?.abn || "-"}
+                        {verification.abn || "-"}
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="text-sm text-slate-900">
-                        {user.businessDetails?.tradeTypes?.join(", ") || "-"}
+                        {verification.primaryTrade || "-"}
                       </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm text-slate-900">
-                        {user.businessDetails?.serviceArea || "-"}
-                      </div>
-                      {/* Show insurance/licence info if available */}
-                      {(user.businessDetails?.insuranceProvider || user.businessDetails?.licenceNumber) && (
+                      {verification.workTypes && (
                         <div className="text-xs text-slate-500 mt-1">
-                          {user.businessDetails?.insuranceProvider && (
-                            <span>Insurance: {user.businessDetails.insuranceProvider}</span>
-                          )}
-                          {user.businessDetails?.insuranceExpiry && (
-                            <span className="ml-1">(exp: {user.businessDetails.insuranceExpiry})</span>
-                          )}
-                          {user.businessDetails?.licenceNumber && (
-                            <span className="ml-2">Licence: {user.businessDetails.licenceNumber}</span>
-                          )}
+                          {verification.workTypes}
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                        Pending
-                      </span>
+                      {getStatusBadge(verification.status)}
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => handleApprove(user.id)}
-                          disabled={actionLoading === user.id}
-                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {actionLoading === user.id ? "..." : "✓ Approve"}
-                        </button>
-                        <div className="flex gap-1">
-                          <input
-                            type="text"
-                            value={rejectionReason[user.id] || ""}
-                            onChange={(e) =>
-                              setRejectionReason((prev) => ({
-                                ...prev,
-                                [user.id]: e.target.value,
-                              }))
-                            }
-                            placeholder="Reason..."
-                            className="flex-1 px-2 py-1.5 border border-slate-300 rounded-lg text-xs w-24"
-                            disabled={actionLoading === user.id}
-                          />
-                          <button
-                            onClick={() => handleReject(user.id)}
-                            disabled={actionLoading === user.id}
-                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
+                      <Link
+                        href={`/admin/verification/${verification.userId}`}
+                        className="inline-flex items-center px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Review
+                      </Link>
                     </td>
                   </tr>
                 ))}

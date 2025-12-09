@@ -8,6 +8,6 @@ export default async function AdminPage() {
     redirect("/dashboard");
   }
 
-  // Redirect to users page by default
-  redirect("/admin/users");
+  // Redirect to dashboard by default
+  redirect("/admin/dashboard");
 }

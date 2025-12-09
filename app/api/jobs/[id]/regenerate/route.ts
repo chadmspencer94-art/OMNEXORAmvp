@@ -42,6 +42,14 @@ export async function POST(
       );
     }
 
+    // Don't allow regeneration if client has accepted and signed
+    if (job.clientStatus === "accepted") {
+      return NextResponse.json(
+        { error: "This pack has been signed by the client. Create a variation instead of regenerating the original scope." },
+        { status: 403 }
+      );
+    }
+
     // Don't allow regeneration if already generating or initial generation is pending
     if (job.status === "generating" || job.status === "ai_pending") {
       return NextResponse.json(

@@ -3,11 +3,17 @@ import { redirect } from "next/navigation";
 import { requireActiveUser, getUsersByVerificationStatus } from "@/lib/auth";
 import { getJobsForUser, type Job, type JobStatus } from "@/lib/jobs";
 import { getUnresolvedFeedbackCount } from "@/lib/feedback";
+import { formatDateTimeForDisplay } from "@/lib/format";
 import DevVerifyButton from "./DevVerifyButton";
 import VerifiedBadge from "@/app/components/VerifiedBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
 import MatchingJobsSection from "./MatchingJobsSection";
+import GettingStartedCard from "./GettingStartedCard";
+import OnboardingCard from "@/app/components/OnboardingCard";
+import EmailVerificationBanner from "@/app/components/EmailVerificationBanner";
+import AnalyticsSection from "./AnalyticsSection";
+import { getOnboardingStatus } from "@/lib/onboarding-status";
 
 // Check if we're in development mode (for showing dev tools)
 const isDev = process.env.NODE_ENV !== "production";
@@ -64,8 +70,60 @@ function RecentJobRow({ job }: { job: Job }) {
 
 export default async function DashboardPage() {
   const user = await requireActiveUser("/dashboard");
+  
+  // Redirect clients to their dashboard
+  if (user.role === "client") {
+    redirect("/client/dashboard");
+  }
+
+  // Check onboarding status and redirect if needed
+  const { requireCompleteProfile } = await import("@/lib/onboarding-guard");
+  const onboardingUser = await requireCompleteProfile("/dashboard");
+  
+  // TypeScript: user is guaranteed to be non-client after redirect above
+  const isClient = false;
+
+  // Load user data from Prisma to get business profile fields
+  // Use email to find user since KV and Prisma may use different IDs
+  const { prisma } = await import("@/lib/prisma");
+  const prismaUser = await prisma.user.findUnique({
+    where: { email: user.email },
+    select: {
+      id: true,
+      role: true,
+      businessName: true,
+      tradingName: true,
+      primaryTrade: true,
+      abn: true,
+      hourlyRate: true,
+      serviceRadiusKm: true,
+      servicePostcodes: true,
+      verificationStatus: true,
+      profileCompletedAt: true,
+      emailVerifiedAt: true,
+      onboardingDismissed: true,
+      onboardingCompletedAt: true,
+      // Fields needed for onboarding status computation
+      calloutFee: true,
+      ratePerM2Interior: true,
+      ratePerM2Exterior: true,
+      ratePerLmTrim: true,
+      serviceAreaCity: true,
+    },
+  });
 
   const jobs = await getJobsForUser(user.id);
+  
+  // Filter for client jobs (assigned via portal)
+  const clientJobs = jobs.filter(
+    (j) => j.leadSource === "CLIENT_PORTAL" && j.assignmentStatus === "ASSIGNED"
+  );
+  const newClientJobs = clientJobs
+    .filter((j) => {
+      // Show jobs that need attention (draft status or no AI pack yet)
+      return j.status === "draft" || j.status === "ai_pending" || !j.aiSummary;
+    })
+    .slice(0, 5);
   
   // Calculate stats
   const totalJobs = jobs.length;
@@ -73,6 +131,32 @@ export default async function DashboardPage() {
   const pendingJobs = jobs.filter((j) => j.status === "ai_pending").length;
   const recentJobs = jobs.slice(0, 5);
   const lastJob = jobs[0];
+
+  // Get upcoming scheduled jobs (only for tradie/business users)
+  // Note: Clients are already redirected above, so isClient is always false here
+  const now = new Date();
+  const upcomingJobs = !isClient
+    ? jobs
+        .filter((job) => {
+          // Must have scheduledStartAt
+          if (!job.scheduledStartAt) return false;
+          // Must be in the future
+          const startDate = new Date(job.scheduledStartAt);
+          if (startDate <= now) return false;
+          // Must not be cancelled
+          if (job.jobStatus === "cancelled") return false;
+          // Optionally exclude completed jobs
+          if (job.jobStatus === "completed") return false;
+          return true;
+        })
+        .sort((a, b) => {
+          // Sort by scheduledStartAt ascending
+          const aDate = new Date(a.scheduledStartAt!).getTime();
+          const bDate = new Date(b.scheduledStartAt!).getTime();
+          return aDate - bDate;
+        })
+        .slice(0, 10) // Limit to next 10
+    : [];
 
   // Get display name from email
   const displayName = user.email.split("@")[0];
@@ -83,6 +167,16 @@ export default async function DashboardPage() {
   const isVerified = verificationStatus === "verified";
   const isTradie = userRole === "tradie";
   const userIsAdmin = user.isAdmin ?? false;
+
+  // Get onboarding status (only for tradie/business users, not clients or admins)
+  let onboardingStatus = null;
+  if (prismaUser && !isClient && !userIsAdmin && prismaUser.role !== "client") {
+    onboardingStatus = await getOnboardingStatus(prismaUser);
+    // Don't show if all done or dismissed
+    if (onboardingStatus.allDone || onboardingStatus.dismissed) {
+      onboardingStatus = null;
+    }
+  }
 
   // Get pending verification and feedback counts for admins
   let pendingVerifications = 0;
@@ -102,11 +196,40 @@ export default async function DashboardPage() {
       {/* Brand Header */}
       <OmnexoraHeader verificationStatus={verificationStatus} />
 
+      {/* Email Verification Banner */}
+      {prismaUser && !prismaUser.emailVerifiedAt && (
+        <EmailVerificationBanner userEmail={user.email} />
+      )}
+
       {/* Dev-only verify button */}
       {isDev && !isVerified && <DevVerifyButton />}
 
-      {/* Verification Banner for unverified tradies */}
-      {isTradie && !isVerified && (
+      {/* Verification Banner for unverified tradies (show after onboarding) */}
+      {isTradie && !isVerified && prismaUser?.profileCompletedAt && (
+        <div className="mb-6 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="font-medium">Nice work, your profile is set up.</p>
+              <p className="mt-1 text-emerald-700">
+                To build more trust with clients and unlock full OMNEXORA features, complete business verification.
+                {(verificationStatus === "pending" || (verificationStatus as string) === "pending_review") ? (
+                  <span className="ml-1 font-medium">Your verification is currently being reviewed.</span>
+                ) : (
+                  <a href="/settings/verification" className="ml-1 font-medium underline hover:text-emerald-900">
+                    Review verification →
+                  </a>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Legacy verification banner for users who haven't completed onboarding yet */}
+      {isTradie && !isVerified && !prismaUser?.profileCompletedAt && (
         <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <div className="flex items-start gap-3">
             <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,6 +250,25 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* New Onboarding Card */}
+      {onboardingStatus && (
+        <OnboardingCard
+          steps={onboardingStatus.steps}
+          allDone={onboardingStatus.allDone}
+          onDismiss={() => {
+            // This will be handled by the component's router.refresh()
+          }}
+        />
+      )}
+
+      {/* Legacy Getting Started Card (fallback for older logic) */}
+      {!onboardingStatus && prismaUser && (
+        <GettingStartedCard
+          user={prismaUser}
+          hasJobs={totalJobs > 0}
+        />
       )}
 
       {/* Header */}
@@ -159,6 +301,9 @@ export default async function DashboardPage() {
           {isTradie ? "Create New Job" : "Post a Job"}
         </Link>
       </div>
+
+      {/* Analytics Section */}
+      <AnalyticsSection />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
-import { getJobById } from "@/lib/jobs";
+import { getJobById, saveJob } from "@/lib/jobs";
 import { openai } from "@/lib/openai";
 
 /**
@@ -148,6 +148,12 @@ Create a professional EOT notice that clearly explains the delay cause and reque
         { status: 500 }
       );
     }
+
+    // Save document as draft (not confirmed)
+    const { saveJob } = await import("@/lib/jobs");
+    job.eotText = documentContent.trim();
+    job.eotConfirmed = false;
+    await saveJob(job);
 
     return NextResponse.json(
       {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Copy, Check, Download, X } from "lucide-react";
 import { jsPDF } from "jspdf";
+import AIWarningBanner from "@/app/components/AIWarningBanner";
 
 interface JobDocumentModalProps {
   isOpen: boolean;
@@ -180,6 +181,11 @@ export default function JobDocumentModal({
             </p>
           </div>
         )}
+
+        {/* AI Warning Banner */}
+        <div className="px-6 py-4 border-b border-amber-200">
+          <AIWarningBanner variant="compact" />
+        </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">

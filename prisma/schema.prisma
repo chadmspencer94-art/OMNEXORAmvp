@@ -72,12 +72,58 @@ model User {
   signatureImage      String?   // Data URL or image path for user signature
   signatureUpdatedAt  DateTime? // Last update timestamp
   
+  // Onboarding tracking
+  profileCompletedAt  DateTime? // When user completed onboarding wizard
+  hasSeenOnboarding   Boolean   @default(false) // Whether user has seen onboarding
+  onboardingSkippedAt DateTime? // When user skipped onboarding (can resume later)
+  onboardingCompletedAt DateTime? // When user completed all onboarding steps
+  onboardingDismissed  Boolean   @default(false) // Whether user dismissed the onboarding checklist
+  // Optional: progress snapshot (can be used for analytics later)
+  onboardingBusinessProfileDone Boolean @default(false)
+  onboardingRatesDone           Boolean @default(false)
+  onboardingServiceAreaDone     Boolean @default(false)
+  onboardingVerificationDone    Boolean @default(false)
+  onboardingFirstJobDone        Boolean @default(false)
+  
+  // Email verification
+  emailVerifiedAt     DateTime? // When user verified their email address
+  
   // Password reset tokens
   passwordResetTokens PasswordResetToken[]
+  
+  // Email verification tokens
+  emailVerificationTokens EmailVerificationToken[]
   
   // Job document signatures (as signer)
   jobDocumentSignatures JobDocumentSignature[]
   
+  // Signatures (for quote acceptance, etc.)
+  signatures Signature[]
+  
+  // Verification record
+  verification UserVerification?
+  
+  // Client notes (for tradies to track notes about their clients)
+  clientNotes ClientNote[]
+
+  // Job templates (reusable job configurations)
+  jobTemplates JobTemplate[]
+
+  // Materials library
+  materialItems MaterialItem[]
+
+  // Job materials (line items)
+  jobMaterials JobMaterial[]
+
+  // Rate templates
+  rateTemplates RateTemplate[]
+
+  // Clients (owned by this tradie/business)
+  clients Client[]
+
+  // Job attachments (uploaded by this user)
+  jobAttachments JobAttachment[]
+
   @@map("users")
 }
 
@@ -90,6 +136,18 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
   
   @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String   // hashed version of the token
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@map("email_verification_tokens")
+  @@index([userId])
 }
 
 model JobDocumentSignature {
@@ -109,4 +167,316 @@ model JobDocumentSignature {
   
   @@map("job_document_signatures")
   @@index([jobId, docType, docKey])
+}
+
+model Signature {
+  id           String   @id @default(cuid())
+  userId       String?
+  jobId        String?
+  kind         String   // e.g. "quote_acceptance", "variation", etc.
+  imageDataUrl String   // data:image/png;base64,... from a canvas OR stored URL
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+  
+  user User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@map("signatures")
+  @@index([jobId])
+  @@index([userId])
+}
+
+model UserVerification {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @unique
+  
+  status      String   @default("unverified") // "unverified" | "pending" | "verified" | "rejected"
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  
+  // Business details
+  businessName    String?
+  abn             String?
+  primaryTrade    String?
+  workTypes       String? // e.g. "residential,commercial"
+  
+  // Licence
+  licenceNumber   String?
+  licenceType     String?
+  licenceExpiry   DateTime?
+  
+  // Insurance
+  insuranceProvider      String?
+  insurancePolicyNumber  String?
+  insuranceExpiry        DateTime?
+  insuranceCoverageNotes String?
+  
+  // Evidence (MVP: URLs that they paste in – later we can add real file uploads)
+  abnEvidenceUrl         String?
+  licenceEvidenceUrl     String?
+  insuranceEvidenceUrl   String?
+  
+  // Admin review
+  adminNotes       String?   // internal notes for admins
+  rejectionReason  String?   // short explanation shown to the user if rejected
+  reviewedByAdminId String?  // optional link to an admin user
+  
+  @@map("user_verifications")
+  @@index([status])
+  @@index([createdAt])
+}
+
+model JobSafetyDocument {
+  id          String   @id @default(cuid())
+  jobId       String   // Job ID from KV store (String, not FK since Job is in KV)
+  type        String   // "SWMS" | "RISK_ASSESSMENT" | "TOOLBOX_TALK"
+  title       String
+  content     String   // markdown / rich text we generate + allow editing
+  status      String   @default("draft") // "draft" | "generated" | "reviewed"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("job_safety_documents")
+  @@index([jobId])
+  @@index([jobId, type])
+}
+
+model ClientNote {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  clientKey String   // clientEmail (normalized) used as key
+  note      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("client_notes")
+  @@index([userId, clientKey])
+  @@unique([userId, clientKey]) // Only one note per (user, clientKey)
+}
+
+model JobTemplate {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  // Basic job details
+  title            String   // e.g. "3×2 repaint – standard"
+  tradeType        String   // e.g. "Painter", "Plasterer", etc.
+  propertyType     String   // e.g. "House", "Unit", etc.
+  
+  // Address fields (optional - templates may not have real addresses)
+  addressLine1     String?
+  suburb           String?
+  state             String?
+  postcode          String?
+
+  // Job description / scope notes (feeds AI)
+  notes             String?
+  
+  // Default notes for client-facing documents
+  defaultClientNotes    String?
+  defaultMaterialsNotes String?
+
+  // Document generation flags
+  includeSwms           Boolean @default(false)
+  includeVariationDoc   Boolean @default(false)
+  includeEotDoc         Boolean @default(false)
+  includeProgressClaim  Boolean @default(false)
+  includeHandoverChecklist Boolean @default(false)
+  includeMaintenanceGuide Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("job_templates")
+  @@index([userId])
+}
+
+model MaterialItem {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  name      String              // e.g. "Dulux Wash & Wear Low Sheen White"
+  category  String?             // e.g. "Paint", "Primer", "Filler", "Tools"
+  supplier  String?             // free text for now, e.g. "Paint Place", "Bunnings"
+
+  unitLabel String              // e.g. "Litre", "4L can", "10L can", "Each", "Box"
+  unitCost  Decimal?            // cost per unit (internal reference)
+  notes     String?             // free text (finish, base, etc.)
+
+  isArchived Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Job materials that reference this item
+  jobMaterials JobMaterial[]
+
+  @@map("material_items")
+  @@index([userId])
+  @@index([userId, isArchived])
+}
+
+model JobMaterial {
+  id        String   @id @default(cuid())
+
+  jobId     String   // Job ID from KV store (String, not FK since Job is in KV)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  material  MaterialItem? @relation(fields: [materialItemId], references: [id], onDelete: SetNull)
+  materialItemId String?
+
+  name      String        // snapshot of material name at time of use
+  unitLabel String        // snapshot of unit label
+  unitCost  Decimal?      // snapshot of unit cost (pre-markup, optional)
+
+  quantity  Float         // number of units for this job
+  markupPercent Float?    // override markup for this line, if any
+
+  notes     String?       // job-specific notes
+
+  // Cache total for this line (optional but useful): quantity * unitCost * (1 + markup)
+  lineTotal Decimal?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("job_materials")
+  @@index([jobId])
+  @@index([userId])
+  @@index([materialItemId])
+}
+
+model RateTemplate {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  name      String   // e.g. "Standard interior repaint", "Commercial night shift"
+
+  // Optional scoping hints:
+  tradeType    String?  // e.g. "Painter"
+  propertyType String?  // e.g. "Residential", "Commercial"
+
+  // Labour / pricing fields (match existing types in Job/BusinessProfile)
+  hourlyRate        Int?      // base hourly rate (stored as Int to match User model)
+  helperHourlyRate  Int?      // optional helper rate
+  dayRate           Int?
+  calloutFee        Int?
+  minCharge         Int?      // e.g. minimum job charge
+
+  ratePerM2Interior Int?
+  ratePerM2Exterior Int?
+  ratePerLmTrim     Int?
+
+  materialMarkupPercent Float?
+
+  isDefault  Boolean  @default(false) // whether this is the user's default template
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rate_templates")
+  @@index([userId])
+  @@index([userId, isDefault])
+}
+
+model JobQuoteVersion {
+  id        String   @id @default(cuid())
+
+  jobId     String   // Job ID from KV store (String, not FK since Job is in KV)
+
+  version   Int      // version number (1, 2, 3, …)
+  sentAt    DateTime // when this version was sent to the client
+
+  // Snapshot of key fields at the time of sending:
+  quoteExpiryAt         DateTime?
+
+  labourHoursEstimate   Float?
+  labourSubtotal        Decimal?
+  materialsTotal        Decimal?
+  subtotal              Decimal?
+  gstAmount             Decimal?
+  totalInclGst          Decimal?
+
+  summary               String? // job pack summary text
+  scopeOfWork           String?
+  inclusions            String?
+  exclusions            String?
+  materialsText         String?
+  clientNotes           String?
+
+  createdAt DateTime @default(now())
+
+  @@map("job_quote_versions")
+  @@index([jobId])
+  @@index([jobId, version])
+}
+
+model JobAttachment {
+  id        String   @id @default(cuid())
+
+  // Job ID from KV store (String, not FK since Job is in KV)
+  jobId     String
+
+  // User who uploaded the attachment
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  // Basic metadata
+  fileName  String
+  mimeType  String
+  fileSize  Int        // in bytes
+  kind      String     // e.g. "IMAGE", "DOCUMENT", "OTHER"
+
+  // Short caption/description, used by AI quoting
+  caption   String?
+
+  // For MVP: store file as base64-encoded string.
+  // (Later we can migrate to blob/object storage and keep this as a fallback or drop it.)
+  dataBase64 String    // WARNING: for small files only (limit via validation)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("job_attachments")
+  @@index([jobId])
+  @@index([userId])
+  @@index([jobId, userId])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+
+  // Owner tradie/business user
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId   String
+
+  // Basic contact info
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+
+  // Optional location info for convenience
+  suburb    String?
+  state     String?
+  postcode  String?
+
+  // Internal-only fields (never shown in client portal)
+  tags      String?  // e.g. comma-separated tags: "VIP, slow payer, referral"
+  notes     String?  // free text internal notes about the client
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("clients")
+  @@index([ownerId])
+  @@index([email])
+  @@index([ownerId, email])
 }

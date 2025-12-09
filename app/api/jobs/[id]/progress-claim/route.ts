@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
-import { getJobById } from "@/lib/jobs";
+import { getJobById, saveJob } from "@/lib/jobs";
 import { openai } from "@/lib/openai";
 
 /**

@@ -249,8 +249,9 @@ Focus on common hazards and controls for this type of work in an Australian cont
       );
     }
 
-    // Save SWMS to job
+    // Save SWMS to job as draft (not confirmed)
     job.swmsText = swmsContent.trim();
+    job.swmsConfirmed = false;
     await saveJob(job);
 
     return NextResponse.json(

@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { requireActiveUser } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
 import PrintButton from "./PrintButton";
+import AIWarningBanner from "@/app/components/AIWarningBanner";
 
 interface SpecDocPageProps {
   params: Promise<{ id: string }>;
@@ -55,6 +56,11 @@ export default async function SpecDocPage({ params }: SpecDocPageProps) {
       {/* Spec Doc Content - Printable */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm print:shadow-none print:border-0">
         <div className="p-8 print:p-6">
+          {/* AI Warning Banner */}
+          <div className="mb-6 print:mb-4 print:hidden">
+            <AIWarningBanner variant="compact" />
+          </div>
+
           {/* Header */}
           <div className="mb-8 print:mb-6">
             <h1 className="text-3xl font-bold text-slate-900 mb-2 print:text-2xl">

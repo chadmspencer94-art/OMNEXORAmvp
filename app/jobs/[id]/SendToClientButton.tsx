@@ -32,6 +32,7 @@ export default function SendToClientButton({
   const [clientEmail, setClientEmail] = useState(initialClientEmail || "");
   const [subject, setSubject] = useState(`Job pack for ${jobTitle}`);
   const [message, setMessage] = useState("");
+  const [aiContentConfirmed, setAiContentConfirmed] = useState(false);
 
   const isVerified = verificationStatus === "verified";
 
@@ -41,6 +42,14 @@ export default function SendToClientButton({
       setTimeout(() => setError(""), 5000);
       return;
     }
+
+    // Check if client details are entered
+    if (!initialClientEmail || !initialClientEmail.trim()) {
+      setError("Please enter client details before sending the job pack. Client information must be entered manually after reviewing the AI-generated content.");
+      setTimeout(() => setError(""), 8000);
+      return;
+    }
+
     setIsModalOpen(true);
     setError("");
     setSuccess(false);
@@ -51,12 +60,20 @@ export default function SendToClientButton({
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setError("");
+    setAiContentConfirmed(false); // Reset confirmation when closing
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess(false);
+
+    // Require AI content confirmation
+    if (!aiContentConfirmed) {
+      setError("Please confirm that you have reviewed and verified the AI-generated content before sending.");
+      return;
+    }
+
     setIsSending(true);
 
     try {
@@ -235,7 +252,7 @@ export default function SendToClientButton({
                   </div>
 
                   {/* Optional Message */}
-                  <div className="mb-6">
+                  <div className="mb-4">
                     <label htmlFor="message" className="block text-sm font-medium text-slate-700 mb-1">
                       Additional Note (optional)
                     </label>
@@ -250,6 +267,22 @@ export default function SendToClientButton({
                     />
                   </div>
 
+                  {/* AI Content Confirmation */}
+                  <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={aiContentConfirmed}
+                        onChange={(e) => setAiContentConfirmed(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500 flex-shrink-0"
+                        disabled={isSending}
+                      />
+                      <span className="text-sm text-amber-900">
+                        <span className="font-semibold">I confirm:</span> I have reviewed and verified all AI-generated content in this job pack and ensured its compliance with all applicable Australian laws and regulations before sending to the client.
+                      </span>
+                    </label>
+                  </div>
+
                   {/* Footer */}
                   <div className="flex gap-3">
                     <button
@@ -262,7 +295,7 @@ export default function SendToClientButton({
                     </button>
                     <button
                       type="submit"
-                      disabled={isSending || !clientEmail.trim()}
+                      disabled={isSending || !clientEmail.trim() || !aiContentConfirmed}
                       className="flex-1 px-4 py-2 text-sm font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {isSending ? (

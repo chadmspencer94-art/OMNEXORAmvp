@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Resend } from "resend";
-import crypto from "crypto";
-import bcrypt from "bcryptjs";
+import { createPasswordResetToken } from "@/lib/password-reset";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -38,33 +37,15 @@ export async function POST(request: NextRequest) {
     // Always return success (security: don't reveal if email exists)
     // But only create token and send email if user exists
     if (user) {
-      // Generate secure random token
-      const token = crypto.randomBytes(32).toString("hex");
-      const tokenHash = await bcrypt.hash(token, 12);
-
-      // Set expiry to 1 hour from now
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 1);
-
-      // Delete any existing tokens for this user
-      await prisma.passwordResetToken.deleteMany({
-        where: { userId: user.id },
-      });
-
-      // Create new reset token
-      await prisma.passwordResetToken.create({
-        data: {
-          userId: user.id,
-          tokenHash,
-          expiresAt,
-        },
-      });
+      // Create password reset token using helper
+      const rawToken = await createPasswordResetToken(user.id);
 
       // Build reset URL
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : "http://localhost:3000";
-      const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ??
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
+        "http://localhost:3000";
+      const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
       // Build email content
       const emailHtml = `
@@ -82,7 +63,7 @@ export async function POST(request: NextRequest) {
             <div style="background: white; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
               <h2 style="color: #1e293b; margin-top: 0;">Reset Your Password</h2>
               <p>You requested to reset your password for your OMNEXORA account.</p>
-              <p>Click the button below to reset your password. This link will expire in 1 hour.</p>
+              <p>Click the button below to reset your password. This link will expire in 60 minutes.</p>
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${resetUrl}" style="display: inline-block; background: #f59e0b; color: #1e293b; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">Reset Password</a>
               </div>
@@ -99,7 +80,7 @@ Reset Your Password
 
 You requested to reset your password for your OMNEXORA account.
 
-Click the link below to reset your password. This link will expire in 1 hour.
+Click the link below to reset your password. This link will expire in 60 minutes.
 
 ${resetUrl}
 

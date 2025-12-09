@@ -111,6 +111,9 @@ export function buildJobPackEmailHtml({
   materialsOverrideText,
   materialsAreRoughEstimate,
   customMessage,
+  quoteNumber,
+  quoteVersion,
+  quoteExpiryAt,
 }: {
   clientName?: string;
   title: string;
@@ -125,6 +128,9 @@ export function buildJobPackEmailHtml({
   materialsOverrideText?: string | null;
   materialsAreRoughEstimate?: boolean;
   customMessage?: string;
+  quoteNumber?: string;
+  quoteVersion?: number;
+  quoteExpiryAt?: string;
 }): string {
   const greeting = clientName ? `Hi ${clientName},` : "Hi,";
 
@@ -156,7 +162,9 @@ export function buildJobPackEmailHtml({
       
       <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
         <h2 style="font-size: 18px; font-weight: 600; margin: 0 0 8px 0; color: #0f172a;">${escapeHtml(title)}</h2>
-        ${address ? `<p style="font-size: 14px; color: #64748b; margin: 0;">${escapeHtml(address)}</p>` : ""}
+        ${address ? `<p style="font-size: 14px; color: #64748b; margin: 0 0 8px 0;">${escapeHtml(address)}</p>` : ""}
+        ${quoteNumber ? `<p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0;"><strong>Quote #:</strong> ${escapeHtml(quoteNumber)}${quoteVersion ? ` v${quoteVersion}` : ""}</p>` : ""}
+        ${quoteExpiryAt ? `<p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0;"><strong>Valid until:</strong> ${escapeHtml(quoteExpiryAt)}</p>` : ""}
       </div>
   `);
 
@@ -326,6 +334,9 @@ export function buildJobPackEmailText({
   materialsOverrideText,
   materialsAreRoughEstimate,
   customMessage,
+  quoteNumber,
+  quoteVersion,
+  quoteExpiryAt,
 }: {
   clientName?: string;
   title: string;
@@ -340,6 +351,9 @@ export function buildJobPackEmailText({
   materialsOverrideText?: string | null;
   materialsAreRoughEstimate?: boolean;
   customMessage?: string;
+  quoteNumber?: string;
+  quoteVersion?: number;
+  quoteExpiryAt?: string;
 }): string {
   const lines: string[] = [];
   const greeting = clientName ? `Hi ${clientName},` : "Hi,";
@@ -357,6 +371,12 @@ export function buildJobPackEmailText({
   lines.push(`📋 ${title}`);
   if (address) {
     lines.push(`📍 ${address}`);
+  }
+  if (quoteNumber) {
+    lines.push(`📄 Quote #: ${quoteNumber}${quoteVersion ? ` v${quoteVersion}` : ""}`);
+  }
+  if (quoteExpiryAt) {
+    lines.push(`⏰ Valid until: ${quoteExpiryAt}`);
   }
   lines.push("");
 

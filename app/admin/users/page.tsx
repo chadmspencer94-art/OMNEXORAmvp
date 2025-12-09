@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import PaginationControls from "@/app/components/PaginationControls";
 
 interface User {
   id: string;
@@ -12,6 +13,7 @@ interface User {
   role: string;
   verificationStatus: string;
   verifiedAt: string | null;
+  emailVerifiedAt: string | null; // Email verification status
   isAdmin: boolean;
   // Plan fields
   planTier?: string;
@@ -35,34 +37,68 @@ interface User {
     serviceAreaRadiusKm?: number;
   };
   businessName?: string;
+  onboardingCompletedAt?: string | null;
+  onboardingDismissed?: boolean;
+  onboardingBusinessProfileDone?: boolean;
+  onboardingRatesDone?: boolean;
+  onboardingServiceAreaDone?: boolean;
+  onboardingVerificationDone?: boolean;
+  onboardingFirstJobDone?: boolean;
 }
 
-export default function AdminUsersPage() {
+function AdminUsersPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 20,
+    totalItems: 0,
+    totalPages: 0,
+  });
   const [error, setError] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  // Search and filter state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [verificationFilter, setVerificationFilter] = useState<string>("all");
-  const [planStatusFilter, setPlanStatusFilter] = useState<string>("all");
-  const [accountStatusFilter, setAccountStatusFilter] = useState<string>("all");
+  // Search and filter state from URL
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [verificationFilter, setVerificationFilter] = useState<string>(
+    searchParams.get("verificationStatus") || "all"
+  );
+  const [planStatusFilter, setPlanStatusFilter] = useState<string>(
+    searchParams.get("planStatus") || "all"
+  );
+  const [accountStatusFilter, setAccountStatusFilter] = useState<string>(
+    searchParams.get("accountStatus") || "all"
+  );
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch("/api/admin/users");
+      setIsLoading(true);
+      // Build query params
+      const params = new URLSearchParams();
+      const currentPage = searchParams.get("page") || "1";
+      params.set("page", currentPage);
+      if (searchQuery) params.set("search", searchQuery);
+      if (verificationFilter !== "all") params.set("verificationStatus", verificationFilter);
+      if (planStatusFilter !== "all") params.set("planStatus", planStatusFilter);
+      if (accountStatusFilter !== "all") params.set("accountStatus", accountStatusFilter);
+
+      const response = await fetch(`/api/admin/users?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setIsAdmin(true);
-        const allUsers = data.users || [];
-        setUsers(allUsers);
-        setFilteredUsers(allUsers);
+        setUsers(data.items || []);
+        setPagination({
+          page: data.page || 1,
+          pageSize: data.pageSize || 20,
+          totalItems: data.totalItems || 0,
+          totalPages: data.totalPages || 0,
+        });
       } else if (response.status === 403) {
         setIsAdmin(false);
       } else {
@@ -73,7 +109,7 @@ export default function AdminUsersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
+  }, [router, searchParams, searchQuery, verificationFilter, planStatusFilter, accountStatusFilter]);
 
   // Fetch current user ID on mount
   useEffect(() => {
@@ -99,6 +135,7 @@ export default function AdminUsersPage() {
 
     setIsUpdating(true);
     setUpdateError(null);
+    setUpdateSuccess(null);
 
     try {
       const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
@@ -111,7 +148,10 @@ export default function AdminUsersPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        setUpdateError(data.error || "Could not update user. Please try again.");
+        const errorMessage = data.error || "Could not update user. Please try again.";
+        setUpdateError(errorMessage);
+        console.error("Update failed:", errorMessage, data);
+        setIsUpdating(false);
         return;
       }
 
@@ -121,14 +161,26 @@ export default function AdminUsersPage() {
       // Update selectedUser state
       setSelectedUser(updatedUser);
 
-      // Update user in the list
-      setUsers((prevUsers) =>
-        prevUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u))
-      );
+      // Refresh users list to reflect changes
+      fetchUsers();
+
+      // Show success message
+      if (field === "isAdmin") {
+        setUpdateSuccess(value ? "User is now an admin" : "Admin privileges removed");
+      } else {
+        setUpdateSuccess("User updated successfully");
+      }
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setUpdateSuccess(null);
+      }, 3000);
 
       setUpdateError(null);
     } catch (err) {
-      setUpdateError("Could not update user. Please try again.");
+      console.error("Error updating user:", err);
+      const errorMessage = err instanceof Error ? err.message : "Could not update user. Please try again.";
+      setUpdateError(errorMessage);
     } finally {
       setIsUpdating(false);
     }
@@ -143,45 +195,45 @@ export default function AdminUsersPage() {
     updateUserField("planStatus", e.target.value);
   };
 
-  // Filter users based on search and filters
-  useEffect(() => {
-    let filtered = [...users];
+  // Update URL when filters change and reset to page 1
+  const updateFilters = useCallback((updates: {
+    search?: string;
+    verificationStatus?: string;
+    planStatus?: string;
+    accountStatus?: string;
+  }) => {
+    const params = new URLSearchParams();
+    const newSearch = updates.search !== undefined ? updates.search : searchQuery;
+    const newVerification = updates.verificationStatus !== undefined ? updates.verificationStatus : verificationFilter;
+    const newPlanStatus = updates.planStatus !== undefined ? updates.planStatus : planStatusFilter;
+    const newAccountStatus = updates.accountStatus !== undefined ? updates.accountStatus : accountStatusFilter;
 
-    // Search filter (email, name, business name)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((user) => {
-        const email = user.email?.toLowerCase() || "";
-        const name = user.name?.toLowerCase() || user.email?.split("@")[0]?.toLowerCase() || "";
-        const businessName = user.businessName?.toLowerCase() || user.businessDetails?.businessName?.toLowerCase() || "";
-        return email.includes(query) || name.includes(query) || businessName.includes(query);
-      });
-    }
+    if (newSearch) params.set("search", newSearch);
+    if (newVerification !== "all") params.set("verificationStatus", newVerification);
+    if (newPlanStatus !== "all") params.set("planStatus", newPlanStatus);
+    if (newAccountStatus !== "all") params.set("accountStatus", newAccountStatus);
+    // Reset to page 1 when filters change
+    // params.delete("page"); // page 1 is default
 
-    // Verification status filter
-    if (verificationFilter !== "all") {
-      filtered = filtered.filter((user) => user.verificationStatus === verificationFilter);
-    }
-
-    // Plan status filter
-    if (planStatusFilter !== "all") {
-      filtered = filtered.filter((user) => user.planStatus === planStatusFilter);
-    }
-
-    // Account status filter
-    if (accountStatusFilter !== "all") {
-      filtered = filtered.filter((user) => {
-        const status = user.accountStatus || (user.isBanned ? "BANNED" : "ACTIVE");
-        return status === accountStatusFilter;
-      });
-    }
-
-    setFilteredUsers(filtered);
-  }, [users, searchQuery, verificationFilter, planStatusFilter, accountStatusFilter]);
+    router.push(`/admin/users?${params.toString()}`);
+  }, [router, searchQuery, verificationFilter, planStatusFilter, accountStatusFilter]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // Sync URL params with state
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") || "";
+    const urlVerification = searchParams.get("verificationStatus") || "all";
+    const urlPlanStatus = searchParams.get("planStatus") || "all";
+    const urlAccountStatus = searchParams.get("accountStatus") || "all";
+
+    if (urlSearch !== searchQuery) setSearchQuery(urlSearch);
+    if (urlVerification !== verificationFilter) setVerificationFilter(urlVerification);
+    if (urlPlanStatus !== planStatusFilter) setPlanStatusFilter(urlPlanStatus);
+    if (urlAccountStatus !== accountStatusFilter) setAccountStatusFilter(urlAccountStatus);
+  }, [searchParams]);
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -312,8 +364,7 @@ export default function AdminUsersPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 mb-2">All Users</h1>
         <p className="text-slate-600">
-          Manage all registered users in the system. {users.length} total user{users.length !== 1 ? "s" : ""}.
-          {filteredUsers.length !== users.length && ` (${filteredUsers.length} shown)`}
+          Manage all registered users in the system. {pagination.totalItems} total user{pagination.totalItems !== 1 ? "s" : ""}.
         </p>
       </div>
 
@@ -326,7 +377,15 @@ export default function AdminUsersPage() {
               type="text"
               placeholder="Search users…"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                updateFilters({ search: e.target.value });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  updateFilters({ search: searchQuery });
+                }
+              }}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
@@ -334,7 +393,10 @@ export default function AdminUsersPage() {
           {/* Verification Status Filter */}
           <select
             value={verificationFilter}
-            onChange={(e) => setVerificationFilter(e.target.value)}
+            onChange={(e) => {
+              setVerificationFilter(e.target.value);
+              updateFilters({ verificationStatus: e.target.value });
+            }}
             className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           >
             <option value="all">All Verification Status</option>
@@ -346,7 +408,10 @@ export default function AdminUsersPage() {
           {/* Plan Status Filter */}
           <select
             value={planStatusFilter}
-            onChange={(e) => setPlanStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setPlanStatusFilter(e.target.value);
+              updateFilters({ planStatus: e.target.value });
+            }}
             className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           >
             <option value="all">All Plan Status</option>
@@ -360,7 +425,10 @@ export default function AdminUsersPage() {
           {/* Account Status Filter */}
           <select
             value={accountStatusFilter}
-            onChange={(e) => setAccountStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setAccountStatusFilter(e.target.value);
+              updateFilters({ accountStatus: e.target.value });
+            }}
             className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           >
             <option value="all">All Account Status</option>
@@ -383,7 +451,7 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {filteredUsers.length === 0 ? (
+      {users.length === 0 && !isLoading ? (
         <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
           <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -391,10 +459,10 @@ export default function AdminUsersPage() {
             </svg>
           </div>
           <h2 className="text-lg font-semibold text-slate-900 mb-2">
-            {users.length === 0 ? "No Users Yet" : "No Users Match Filters"}
+            {pagination.totalItems === 0 ? "No Users Yet" : "No Users Match Filters"}
           </h2>
           <p className="text-slate-600">
-            {users.length === 0
+            {pagination.totalItems === 0
               ? "No users have registered yet."
               : "Try adjusting your search or filter criteria."}
           </p>
@@ -418,6 +486,9 @@ export default function AdminUsersPage() {
                     Status
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Email Verified
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Last Login
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -426,7 +497,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {filteredUsers.map((user) => {
+                {users.map((user) => {
                   const accountStatus = user.accountStatus || (user.isBanned ? "BANNED" : "ACTIVE");
 
                   return (
@@ -477,6 +548,22 @@ export default function AdminUsersPage() {
                         </div>
                       </td>
                       <td className="px-4 py-4">
+                        {user.emailVerifiedAt ? (
+                          <div className="flex flex-col gap-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-green-100 text-green-700 border-green-300">
+                              ✓ Verified
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {new Date(user.emailVerifiedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-amber-100 text-amber-700 border-amber-300">
+                            Not verified
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
                         <div className="text-xs text-slate-600">
                           {formatLastLogin(user.lastLoginAt)}
                         </div>
@@ -498,6 +585,17 @@ export default function AdminUsersPage() {
               </tbody>
             </table>
           </div>
+          {/* Pagination Controls */}
+          {pagination.totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-slate-200">
+              <PaginationControls
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                pageSize={pagination.pageSize}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -583,12 +681,93 @@ export default function AdminUsersPage() {
                   </p>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Verified At</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Business Verified At</label>
                   <p className="mt-1 text-sm text-slate-900">
                     {selectedUser.verifiedAt ? new Date(selectedUser.verifiedAt).toLocaleString() : "Not verified"}
                   </p>
                 </div>
               </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email Verified</label>
+                <p className="mt-1">
+                  {selectedUser.emailVerifiedAt ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300">
+                        ✓ Verified
+                      </span>
+                      <span className="text-sm text-slate-600">
+                        {new Date(selectedUser.emailVerifiedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
+                      Not verified
+                    </span>
+                  )}
+                </p>
+              </div>
+              {/* Onboarding Status */}
+              {selectedUser.role !== "client" && (
+                <div className="pt-4 border-t border-slate-200">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-3">
+                    Onboarding
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Onboarding completed:</span>
+                      <span className="text-sm text-slate-900">
+                        {selectedUser.onboardingCompletedAt
+                          ? new Date(selectedUser.onboardingCompletedAt).toLocaleString()
+                          : "Not yet"}
+                      </span>
+                    </div>
+                    {selectedUser.onboardingBusinessProfileDone !== undefined && (
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          {selectedUser.onboardingBusinessProfileDone ? (
+                            <span className="text-green-600">✓</span>
+                          ) : (
+                            <span className="text-slate-300">○</span>
+                          )}
+                          <span className="text-slate-600">Business profile</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {selectedUser.onboardingRatesDone ? (
+                            <span className="text-green-600">✓</span>
+                          ) : (
+                            <span className="text-slate-300">○</span>
+                          )}
+                          <span className="text-slate-600">Rates</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {selectedUser.onboardingServiceAreaDone ? (
+                            <span className="text-green-600">✓</span>
+                          ) : (
+                            <span className="text-slate-300">○</span>
+                          )}
+                          <span className="text-slate-600">Service area</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {selectedUser.onboardingVerificationDone ? (
+                            <span className="text-green-600">✓</span>
+                          ) : (
+                            <span className="text-slate-300">○</span>
+                          )}
+                          <span className="text-slate-600">Verification</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {selectedUser.onboardingFirstJobDone ? (
+                            <span className="text-green-600">✓</span>
+                          ) : (
+                            <span className="text-slate-300">○</span>
+                          )}
+                          <span className="text-slate-600">First job</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Last Login</label>
@@ -712,6 +891,16 @@ export default function AdminUsersPage() {
                     </select>
                   </div>
 
+                  {/* Success Message */}
+                  {updateSuccess && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      {updateSuccess}
+                    </div>
+                  )}
+
                   {/* Error Message */}
                   {updateError && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
@@ -733,5 +922,17 @@ export default function AdminUsersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminUsersPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="text-slate-500">Loading...</div>
+      </div>
+    }>
+      <AdminUsersPageContent />
+    </Suspense>
   );
 }

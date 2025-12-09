@@ -88,6 +88,35 @@ export async function PATCH(
     if (updates.clientName !== undefined) job.clientName = updates.clientName;
     if (updates.clientEmail !== undefined) job.clientEmail = updates.clientEmail;
 
+    // Link to Client CRM if client details are provided/updated (for tradie-created jobs only)
+    const { isClient } = await import("@/lib/auth");
+    const userIsClient = isClient(user);
+    
+    if (!userIsClient && (updates.clientName || updates.clientEmail)) {
+      const finalClientName = updates.clientName || job.clientName;
+      const finalClientEmail = updates.clientEmail || job.clientEmail;
+      
+      if (finalClientName && finalClientEmail) {
+        try {
+          const { findOrCreateClientForJob } = await import("@/lib/clientCrm");
+          // Extract suburb from address if available
+          const suburb = job.address ? extractSuburbFromAddress(job.address) : undefined;
+          
+          const { clientId } = await findOrCreateClientForJob({
+            ownerUserId: user.id,
+            name: finalClientName,
+            email: finalClientEmail,
+            suburb: suburb,
+          });
+          
+          job.clientId = clientId;
+        } catch (error) {
+          // Log but don't fail job update if client linking fails
+          console.error("Failed to link client to job:", error);
+        }
+      }
+    }
+
     // Mark job as needing regeneration if it was previously complete
     if (job.status === "ai_complete") {
       job.status = "pending_regeneration";
@@ -131,5 +160,21 @@ export async function GET(
     console.error("Error fetching job:", error);
     return NextResponse.json({ error: "Failed to fetch job" }, { status: 500 });
   }
+}
+
+/**
+ * Helper to extract suburb from address string
+ */
+function extractSuburbFromAddress(address: string): string | undefined {
+  // Try to extract suburb (word before postcode, or common suburb patterns)
+  const postcodeMatch = address.match(/\b(\d{4})\b/);
+  if (postcodeMatch) {
+    const beforePostcode = address.substring(0, address.indexOf(postcodeMatch[1])).trim();
+    const words = beforePostcode.split(/[,\s]+/);
+    if (words.length > 0) {
+      return words[words.length - 1]; // Last word before postcode
+    }
+  }
+  return undefined;
 }
 

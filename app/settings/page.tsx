@@ -11,12 +11,18 @@ interface PricingSettings {
   roughEstimateOnly: boolean | null;
 }
 
+interface UserInfo {
+  email: string;
+  emailVerifiedAt: string | null;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [pricingSettings, setPricingSettings] = useState<PricingSettings>({
     hourlyRate: null,
     dayRate: null,
@@ -37,6 +43,10 @@ export default function SettingsPage() {
         const response = await fetch("/api/settings");
         if (response.ok) {
           const data = await response.json();
+          setUserInfo({
+            email: data.user.email,
+            emailVerifiedAt: data.user.emailVerifiedAt || null,
+          });
           setPricingSettings({
             hourlyRate: data.user.hourlyRate ?? null,
             dayRate: data.user.dayRate ?? null,
@@ -126,6 +136,55 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      {/* Account Info Card */}
+      {userInfo && (
+        <div className="mb-6 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Account</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</label>
+              <p className="mt-1 text-sm text-slate-900">{userInfo.email}</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email Verification</label>
+              <p className="mt-1">
+                {userInfo.emailVerifiedAt ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300">
+                    ✓ Verified
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
+                      Not verified
+                    </span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await fetch("/api/auth/send-verification-email", {
+                            method: "POST",
+                          });
+                          if (response.ok) {
+                            alert("Verification email sent! Check your inbox.");
+                          } else {
+                            const data = await response.json();
+                            alert(data.error || "Failed to send verification email");
+                          }
+                        } catch (err) {
+                          alert("Failed to send verification email");
+                        }
+                      }}
+                      className="text-xs text-amber-600 hover:text-amber-700 font-medium underline"
+                    >
+                      Resend verification email
+                    </button>
+                  </div>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Tabs */}
       <div className="mb-6 flex gap-3 border-b border-slate-200">
         <Link
@@ -139,6 +198,18 @@ export default function SettingsPage() {
           className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
         >
           Business Profile
+        </Link>
+        <Link
+          href="/settings/rates"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+        >
+          Rate Templates
+        </Link>
+        <Link
+          href="/settings/materials"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+        >
+          Materials
         </Link>
         <Link
           href="/settings/verification"

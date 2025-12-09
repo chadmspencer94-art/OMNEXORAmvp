@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, incrementUserJobCount, getRealUserFromSession, isImpersonating, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { getCurrentUser, incrementUserJobCount, getRealUserFromSession, isImpersonating, SESSION_COOKIE_NAME, isClient } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { createAuditLog } from "@/lib/audit";
 import { createEmptyJob, generateJobPack, saveJob, type CreateJobData, type TradeType } from "@/lib/jobs";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   let jobId: string | null = null;
@@ -28,8 +29,10 @@ export async function POST(request: Request) {
       clientName, 
       clientEmail,
       labourRatePerHour,
-      helperRatePerHour,
+      helperRatePerHour, // Legacy - kept for backwards compatibility
+      helpers, // New: array of helpers
       materialsAreRoughEstimate,
+      rateTemplateId,
     } = body;
 
     // Validate required fields
@@ -48,26 +51,27 @@ export async function POST(request: Request) {
     }
 
     // Check if user is a client - clients don't need to provide client details
-    const isClient = user.role === "client";
+    const userIsClient = isClient(user);
 
-    // Validate client name (only required for tradies creating quotes)
-    if (!isClient) {
-      if (!clientName || typeof clientName !== "string" || clientName.trim() === "") {
+    // Gate client job posting - require email verification
+    if (userIsClient) {
+      const prismaUser = await prisma.user.findUnique({
+        where: { email: user.email },
+        select: { emailVerifiedAt: true },
+      });
+
+      if (!prismaUser?.emailVerifiedAt) {
         return NextResponse.json(
-          { error: "Client name is required" },
-          { status: 400 }
+          { error: "Please verify your email before posting a job." },
+          { status: 403 }
         );
       }
+    }
 
-      // Validate client email (only required for tradies)
-      if (!clientEmail || typeof clientEmail !== "string" || clientEmail.trim() === "") {
-        return NextResponse.json(
-          { error: "Client email is required" },
-          { status: 400 }
-        );
-      }
-
-      // Basic email validation
+    // Client details are NOT required at job creation for privacy/safety
+    // They will be entered manually after AI generation
+    // Only validate if provided (for backwards compatibility with existing jobs)
+    if (clientEmail && typeof clientEmail === "string" && clientEmail.trim() !== "") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(clientEmail.trim())) {
         return NextResponse.json(
@@ -90,15 +94,15 @@ export async function POST(request: Request) {
       : "Painter";
 
     // Parse and validate optional pricing fields (only relevant for tradies)
-    const parsedLabourRate = !isClient && labourRatePerHour !== undefined && labourRatePerHour !== null && labourRatePerHour !== ""
+    const parsedLabourRate = !userIsClient && labourRatePerHour !== undefined && labourRatePerHour !== null && labourRatePerHour !== ""
       ? Number(labourRatePerHour)
       : null;
-    const parsedHelperRate = !isClient && helperRatePerHour !== undefined && helperRatePerHour !== null && helperRatePerHour !== ""
+    const parsedHelperRate = !userIsClient && helperRatePerHour !== undefined && helperRatePerHour !== null && helperRatePerHour !== ""
       ? Number(helperRatePerHour)
       : null;
 
     // Validate rates are positive numbers if provided (only for tradies)
-    if (!isClient) {
+    if (!userIsClient) {
       if (parsedLabourRate !== null && (isNaN(parsedLabourRate) || parsedLabourRate <= 0)) {
         return NextResponse.json(
           { error: "Labour rate must be a positive number" },
@@ -111,11 +115,93 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+      // Validate helpers array if provided
+      if (helpers !== undefined && helpers !== null) {
+        if (!Array.isArray(helpers)) {
+          return NextResponse.json(
+            { error: "Helpers must be an array" },
+            { status: 400 }
+          );
+        }
+        for (const helper of helpers) {
+          if (!helper.id || typeof helper.id !== "string") {
+            return NextResponse.json(
+              { error: "Each helper must have a valid id" },
+              { status: 400 }
+            );
+          }
+          if (!helper.ratePerHour || typeof helper.ratePerHour !== "number" || helper.ratePerHour <= 0) {
+            return NextResponse.json(
+              { error: "Each helper must have a positive rate per hour" },
+              { status: 400 }
+            );
+          }
+        }
+      }
     }
     
-    // For clients, use their own email/name instead of requiring client details
-    const finalClientName = isClient ? (user.email.split("@")[0] || "Client") : clientName.trim();
-    const finalClientEmail = isClient ? user.email : clientEmail.trim().toLowerCase();
+    // For clients, use their own email/name
+    // For tradies, client details are optional at creation (will be entered manually after AI generation)
+    const finalClientName = userIsClient 
+      ? (user.email.split("@")[0] || "Client") 
+      : (clientName?.trim() || "");
+    const finalClientEmail = userIsClient 
+      ? user.email 
+      : (clientEmail?.trim().toLowerCase() || "");
+
+    // Auto-select default rate template if none provided and user is not a client
+    let finalRateTemplateId = rateTemplateId || null;
+    if (!userIsClient && !finalRateTemplateId) {
+      try {
+        const defaultTemplate = await (prisma as any).rateTemplate.findFirst({
+          where: {
+            userId: user.id,
+            isDefault: true,
+            AND: [
+              {
+                OR: [
+                  { tradeType: null },
+                  { tradeType: normalizedTradeType },
+                ],
+              },
+              {
+                OR: [
+                  { propertyType: null },
+                  { propertyType: propertyType.trim() },
+                ],
+              },
+            ],
+          },
+        });
+        if (defaultTemplate) {
+          finalRateTemplateId = defaultTemplate.id;
+        }
+      } catch (error) {
+        console.warn("Failed to auto-select default rate template:", error);
+      }
+    }
+
+    // If rate template is selected, optionally pre-fill job rates from template
+    let finalLabourRate = parsedLabourRate;
+    let finalHelperRate = parsedHelperRate;
+    if (!userIsClient && finalRateTemplateId && !finalLabourRate && !finalHelperRate) {
+      try {
+        const template = await (prisma as any).rateTemplate.findUnique({
+          where: { id: finalRateTemplateId },
+        });
+        if (template) {
+          // Pre-fill rates from template (user can still override)
+          if (template.hourlyRate != null) {
+            finalLabourRate = template.hourlyRate;
+          }
+          if (template.helperHourlyRate != null) {
+            finalHelperRate = template.helperHourlyRate;
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to load rate template for pre-fill:", error);
+      }
+    }
 
     // Prepare job data
     const jobData: CreateJobData = {
@@ -126,9 +212,11 @@ export async function POST(request: Request) {
       notes: notes?.trim() || undefined,
       clientName: finalClientName,
       clientEmail: finalClientEmail,
-      labourRatePerHour: parsedLabourRate,
-      helperRatePerHour: parsedHelperRate,
+      labourRatePerHour: finalLabourRate,
+      helperRatePerHour: finalHelperRate, // Legacy
+      helpers: helpers && Array.isArray(helpers) && helpers.length > 0 ? helpers : undefined, // New: array of helpers
       materialsAreRoughEstimate: materialsAreRoughEstimate === true,
+      rateTemplateId: finalRateTemplateId,
     };
 
     // Get real admin if impersonating (for audit logging)
@@ -140,6 +228,42 @@ export async function POST(request: Request) {
     // Create the job
     const job = await createEmptyJob(user.id, jobData);
     jobId = job.id;
+
+    // Set assignment metadata for client jobs
+    let updatedJob = job;
+    if (userIsClient) {
+      updatedJob.leadSource = "CLIENT_PORTAL";
+      updatedJob.clientUserId = user.id;
+      updatedJob.assignmentStatus = "UNASSIGNED";
+      updatedJob.status = "draft"; // No AI generation for client posts
+      await saveJob(updatedJob);
+    } else {
+      // For tradie-created jobs, set leadSource to MANUAL
+      updatedJob.leadSource = "MANUAL";
+      
+      // Link to Client CRM if client details are provided
+      if (finalClientName && finalClientEmail) {
+        try {
+          const { findOrCreateClientForJob } = await import("@/lib/clientCrm");
+          // Extract suburb from address if available
+          const suburb = address ? extractSuburbFromAddress(address) : undefined;
+          
+          const { clientId } = await findOrCreateClientForJob({
+            ownerUserId: user.id,
+            name: finalClientName,
+            email: finalClientEmail,
+            suburb: suburb,
+          });
+          
+          updatedJob.clientId = clientId;
+        } catch (error) {
+          // Log but don't fail job creation if client linking fails
+          console.error("Failed to link client to job:", error);
+        }
+      }
+      
+      await saveJob(updatedJob);
+    }
 
     // Track activity and increment job count
     incrementUserJobCount(user.id).catch((err) => {
@@ -159,14 +283,9 @@ export async function POST(request: Request) {
     }
 
     // Only generate AI job pack for tradies (not for client job posts)
-    let updatedJob = job;
-    if (!isClient) {
+    if (!userIsClient) {
       // Generate AI job pack (pass user to load business profile rates)
-      updatedJob = await generateJobPack(job, user);
-    } else {
-      // For client posts, set status to draft (no AI generation)
-      updatedJob.status = "draft";
-      await saveJob(updatedJob);
+      updatedJob = await generateJobPack(updatedJob, user);
     }
 
     return NextResponse.json({ job: updatedJob }, { status: 200 });
@@ -192,5 +311,21 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Helper to extract suburb from address string
+ */
+function extractSuburbFromAddress(address: string): string | undefined {
+  // Try to extract suburb (word before postcode, or common suburb patterns)
+  const postcodeMatch = address.match(/\b(\d{4})\b/);
+  if (postcodeMatch) {
+    const beforePostcode = address.substring(0, address.indexOf(postcodeMatch[1])).trim();
+    const words = beforePostcode.split(/[,\s]+/);
+    if (words.length > 0) {
+      return words[words.length - 1]; // Last word before postcode
+    }
+  }
+  return undefined;
 }
 

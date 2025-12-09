@@ -52,6 +52,15 @@ interface JobPackPdfButtonProps {
   aiClientNotes?: string;
   materialsOverrideText?: string | null;
   materialsAreRoughEstimate?: boolean;
+  materialsTotal?: number | null;
+  clientSignatureId?: string | null;
+  clientSignedName?: string | null;
+  clientSignedEmail?: string | null;
+  clientAcceptedAt?: string | null;
+  clientAcceptedByName?: string | null;
+  clientAcceptanceNote?: string | null;
+  clientAcceptedQuoteVer?: number | null;
+  quoteNumber?: string | null;
 }
 
 export default function JobPackPdfButton({
@@ -72,6 +81,15 @@ export default function JobPackPdfButton({
   aiClientNotes,
   materialsOverrideText,
   materialsAreRoughEstimate,
+  materialsTotal,
+  clientSignatureId,
+  clientSignedName,
+  clientSignedEmail,
+  clientAcceptedAt,
+  clientAcceptedByName,
+  clientAcceptanceNote,
+  clientAcceptedQuoteVer,
+  quoteNumber,
 }: JobPackPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -86,28 +104,62 @@ export default function JobPackPdfButton({
   const handleDownloadPdf = async () => {
     setIsGenerating(true);
 
+    // Fetch job materials if they exist
+    let jobMaterials: Array<{
+      name: string;
+      unitLabel: string;
+      quantity: number;
+      lineTotal: number | null;
+    }> = [];
+    try {
+      const materialsRes = await fetch(`/api/jobs/${jobId}/materials`);
+      if (materialsRes.ok) {
+        const materialsData = await materialsRes.json();
+        jobMaterials = (materialsData.materials || []).map((m: any) => ({
+          name: m.name,
+          unitLabel: m.unitLabel,
+          quantity: m.quantity,
+          lineTotal: m.lineTotal,
+        }));
+      }
+    } catch (err) {
+      console.warn("Failed to fetch job materials for PDF:", err);
+    }
+
     // Fetch client signature if exists (for job owners/trades)
     let clientSignature: {
       signedName: string;
+      signedEmail: string;
       signedAt: string;
       signatureImage: string | null;
     } | null = null;
 
-    try {
-      const sigResponse = await fetch(`/api/jobs/${jobId}/sign-document?docType=QUOTE&includeImage=true`);
-      if (sigResponse.ok) {
-        const sigData = await sigResponse.json();
-        if (sigData.success && sigData.signature) {
+    if (clientSignatureId && clientSignedName && clientAcceptedAt) {
+      try {
+        const sigResponse = await fetch(`/api/jobs/${jobId}/signature/${clientSignatureId}`);
+        if (sigResponse.ok) {
+          const sigData = await sigResponse.json();
+          if (sigData.success) {
+            clientSignature = {
+              signedName: clientSignedName,
+              signedEmail: clientSignedEmail || "",
+              signedAt: clientAcceptedAt,
+              signatureImage: sigData.imageDataUrl || null,
+            };
+          }
+        }
+      } catch (sigError) {
+        console.warn("Failed to load signature for PDF:", sigError);
+        // Continue without signature image, but still show acceptance info
+        if (clientSignedName && clientAcceptedAt) {
           clientSignature = {
-            signedName: sigData.signature.signedName,
-            signedAt: sigData.signature.signedAt,
-            signatureImage: sigData.signature.signatureImage || null,
+            signedName: clientSignedName,
+            signedEmail: clientSignedEmail || "",
+            signedAt: clientAcceptedAt,
+            signatureImage: null,
           };
         }
       }
-    } catch (sigError) {
-      console.warn("Failed to load signature for PDF:", sigError);
-      // Continue without signature
     }
 
     try {
@@ -205,6 +257,32 @@ export default function JobPackPdfButton({
         y += 5;
       }
       y += 6;
+
+      // =========================================
+      // AI GENERATED CONTENT WARNING
+      // =========================================
+      checkNewPage(30);
+      doc.setFillColor(254, 243, 199); // amber-50
+      doc.rect(margin, y - 2, maxWidth, 28, "F");
+      doc.setDrawColor(251, 191, 36); // amber-400 border
+      doc.setLineWidth(0.5);
+      doc.rect(margin, y - 2, maxWidth, 28);
+      
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(146, 64, 14); // amber-900
+      doc.text("⚠️ AI-GENERATED CONTENT WARNING", margin + 4, y + 4);
+      
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(120, 53, 15); // amber-800
+      const warningText = "This document contains AI-generated content that must be reviewed and verified by you before use. You are responsible for ensuring compliance with all applicable Australian laws and regulations, including building codes, safety standards, workplace health and safety requirements, and consumer protection laws.";
+      const warningLines = doc.splitTextToSize(warningText, maxWidth - 8);
+      for (const line of warningLines) {
+        doc.text(line, margin + 4, y + 10);
+        y += 4;
+      }
+      y += 8;
 
       doc.setTextColor(0, 0, 0);
 
@@ -355,8 +433,60 @@ export default function JobPackPdfButton({
       // =========================================
       const hasOverride = materialsOverrideText && materialsOverrideText.trim().length > 0;
       const showMaterialsDisclaimer = materialsAreRoughEstimate || !hasOverride;
+      const hasJobMaterials = jobMaterials && jobMaterials.length > 0;
 
-      if (hasOverride) {
+      // Prefer JobMaterial line items if they exist, otherwise fall back to AI/override
+      if (hasJobMaterials) {
+        addSectionHeading("Materials");
+
+        // Table header
+        checkNewPage(20);
+        doc.setFillColor(241, 245, 249); // slate-100
+        doc.rect(margin, y - 2, maxWidth, 8, "F");
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("Material", margin + 2, y + 3);
+        doc.text("Qty", margin + 110, y + 3);
+        doc.text("Unit", margin + 130, y + 3);
+        doc.text("Total", margin + 160, y + 3);
+        y += 10;
+
+        // Table rows
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        let materialsTableTotal = 0;
+        for (const material of jobMaterials) {
+          checkNewPage(8);
+          const itemLines = doc.splitTextToSize(material.name || "", 100);
+          doc.text(itemLines[0] || "", margin + 2, y);
+          doc.text(material.quantity.toString(), margin + 110, y);
+          doc.text(material.unitLabel, margin + 130, y);
+          const lineTotal = material.lineTotal || 0;
+          materialsTableTotal += lineTotal;
+          doc.text(`$${lineTotal.toFixed(2)}`, margin + 160, y);
+          y += 6;
+          // Handle multi-line item names
+          for (let j = 1; j < itemLines.length; j++) {
+            checkNewPage();
+            doc.text(itemLines[j], margin + 2, y);
+            y += 5;
+          }
+        }
+
+        // Materials total row
+        checkNewPage(10);
+        y += 2;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, y, margin + maxWidth, y);
+        y += 6;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Materials Total:", margin + 2, y);
+        const finalTotal = materialsTotal != null ? materialsTotal : materialsTableTotal;
+        doc.text(`$${finalTotal.toFixed(2)}`, margin + 160, y);
+        doc.setFont("helvetica", "normal");
+        y += 8;
+      } else if (hasOverride) {
         // Show override text instead of AI materials
         addSectionHeading("Materials");
         
@@ -443,31 +573,19 @@ export default function JobPackPdfButton({
       // =========================================
       // CLIENT ACCEPTANCE & SIGNATURE
       // =========================================
-      if (clientSignature) {
-        checkNewPage(60);
+      if (clientAcceptedAt && (clientAcceptedByName || clientSignedName)) {
+        checkNewPage(80);
         y += 10;
         addSectionHeading("Client Acceptance");
         
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
-        addWrappedText(`Signed by: ${clientSignature.signedName}`, 11);
-        addWrappedText(`Role: Client`, 11);
-        addWrappedText(
-          `Signed at: ${new Date(clientSignature.signedAt).toLocaleString("en-AU", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}`,
-          11
-        );
-
-        // Add signature image if available
-        if (clientSignature.signatureImage) {
+        
+        // Add signature image first if available
+        if (clientSignature?.signatureImage) {
           try {
             checkNewPage(50);
-            y += 8;
+            y += 5;
             // Add signature image (scale to reasonable size)
             const imgWidth = 80;
             const imgHeight = 30;
@@ -479,12 +597,47 @@ export default function JobPackPdfButton({
               imgWidth,
               imgHeight
             );
-            y += imgHeight + 5;
+            y += imgHeight + 8;
           } catch (imgError) {
             console.warn("Failed to add signature image to PDF:", imgError);
             // Continue without image
           }
         }
+        
+        // Accepted by (prefer clientAcceptedByName, fallback to clientSignedName)
+        const acceptedByName = clientAcceptedByName || clientSignedName || "Unknown";
+        addWrappedText(`Accepted by: ${acceptedByName}`, 11);
+        
+        if (clientSignedEmail) {
+          addWrappedText(`Email: ${clientSignedEmail}`, 11);
+        }
+        
+        addWrappedText(
+          `Accepted on: ${new Date(clientAcceptedAt).toLocaleString("en-AU", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`,
+          11
+        );
+        
+        // Quote version info
+        if (quoteNumber && clientAcceptedQuoteVer) {
+          addWrappedText(`Quote: ${quoteNumber} v${clientAcceptedQuoteVer}`, 11);
+        }
+        
+        // Client note if present
+        if (clientAcceptanceNote && clientAcceptanceNote.trim()) {
+          y += 5;
+          doc.setFont("helvetica", "bold");
+          addWrappedText("Client note:", 11);
+          doc.setFont("helvetica", "normal");
+          addWrappedText(clientAcceptanceNote, 10);
+        }
+        
+        y += 5;
       }
 
       // =========================================
