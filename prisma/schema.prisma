@@ -63,10 +63,18 @@ model User {
   serviceRadiusKm     Int?      // typical max distance they travel from base
   servicePostcodes    String?   // comma/line separated postcodes/suburbs, free text
   hourlyRate          Int?      // hourly rate in dollars (stored as Int)
+  dayRate             Int?      // optional day rate in dollars
   calloutFee          Int?      // callout fee in dollars
   ratePerM2Interior   Int?      // rate per square metre interior
   ratePerM2Exterior   Int?      // rate per square metre exterior
   ratePerLmTrim       Int?      // rate per linear metre (e.g. trims, handrails)
+  
+  // Business Rates & Defaults
+  gstRegistered       Boolean   @default(false) // whether prices should include GST
+  defaultMarginPct    Decimal?  // default % markup on materials
+  defaultDepositPct   Decimal?  // default % deposit requested
+  defaultPaymentTerms String?   // e.g. "7 days", "14 days", etc.
+  tradeRatesJson      String?   // trade-specific rates stored as JSON string (e.g. painter: walls/ceilings per m²)
   
   // Digital signature (for document signing)
   signatureImage      String?   // Data URL or image path for user signature

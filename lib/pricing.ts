@@ -21,6 +21,19 @@ export interface EffectiveRates {
   calloutFee?: number;
   minCharge?: number;
   materialMarkupPercent?: number;
+  // Business & Rates settings
+  defaultMarginPct?: number | null;
+  defaultDepositPct?: number | null;
+  gstRegistered?: boolean;
+  defaultPaymentTerms?: string | null;
+  tradeRates?: {
+    painter?: {
+      wallsPerM2?: number;
+      ceilingsPerM2?: number;
+      trimPerM?: number;
+      doorsEach?: number;
+    };
+  } | null;
 }
 
 // ============================================================================
@@ -54,15 +67,21 @@ export async function getEffectiveRates(args: {
   let rateTemplate = null;
   
   try {
-    // Load business profile
+    // Load business profile and Business & Rates settings
     prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: {
         hourlyRate: true,
+        dayRate: true,
         calloutFee: true,
         ratePerM2Interior: true,
         ratePerM2Exterior: true,
         ratePerLmTrim: true,
+        gstRegistered: true,
+        defaultMarginPct: true,
+        defaultDepositPct: true,
+        defaultPaymentTerms: true,
+        tradeRatesJson: true,
       },
     });
 
@@ -113,6 +132,33 @@ export async function getEffectiveRates(args: {
   // Fallback to KV pricing settings for material markup if not in template
   if (resolvedRates.materialMarkupPercent == null && user.materialMarkupPercent != null) {
     resolvedRates.materialMarkupPercent = user.materialMarkupPercent;
+  }
+
+  // Add Business & Rates settings from Prisma
+  if (prismaUser) {
+    // Use defaultMarginPct from Business & Rates if materialMarkupPercent not already set
+    if (resolvedRates.materialMarkupPercent == null && prismaUser.defaultMarginPct != null) {
+      resolvedRates.materialMarkupPercent = Number(prismaUser.defaultMarginPct);
+    }
+    
+    resolvedRates.defaultMarginPct = prismaUser.defaultMarginPct ? Number(prismaUser.defaultMarginPct) : null;
+    resolvedRates.defaultDepositPct = prismaUser.defaultDepositPct ? Number(prismaUser.defaultDepositPct) : null;
+    resolvedRates.gstRegistered = prismaUser.gstRegistered ?? false;
+    resolvedRates.defaultPaymentTerms = prismaUser.defaultPaymentTerms ?? null;
+    
+    // Parse tradeRatesJson if present
+    if (prismaUser.tradeRatesJson) {
+      try {
+        resolvedRates.tradeRates = JSON.parse(prismaUser.tradeRatesJson);
+      } catch {
+        resolvedRates.tradeRates = null;
+      }
+    }
+    
+    // Add dayRate if not already set from template
+    if (resolvedRates.dayRate == null && prismaUser.dayRate != null) {
+      resolvedRates.dayRate = prismaUser.dayRate;
+    }
   }
 
   return resolvedRates;

@@ -111,6 +111,10 @@ export interface Job {
   subtotal?: number | null; // labour + materials
   gstAmount?: number | null;
   totalInclGst?: number | null;
+  // Applied rates snapshot (from user's Business & Rates settings at time of generation)
+  appliedMarginPct?: number | null; // margin % applied to materials
+  appliedDepositPct?: number | null; // deposit % requested
+  appliedGstIncluded?: boolean | null; // whether GST is included in pricing
   // Quote metadata
   quoteNumber?: string | null; // e.g. "Q-2024-0012"
   quoteVersion?: number | null; // current version number (1, 2, 3, ...)
@@ -582,6 +586,16 @@ export async function getAllActiveJobs(limit: number = 50): Promise<Job[]> {
 
 /**
  * Generates an AI job pack for the given job
+ * 
+ * INTEGRATION WITH BUSINESS & RATES SETTINGS:
+ * - Loads user's Business & Rates settings from Prisma (hourlyRate, defaultMarginPct, 
+ *   defaultDepositPct, gstRegistered, tradeRatesJson, dayRate, calloutFee)
+ * - Stores applied rates snapshot on job (appliedMarginPct, appliedDepositPct, appliedGstIncluded)
+ *   only if not already set (preserves manual edits)
+ * - Passes user rates into AI prompt so model uses exact rates instead of inventing values
+ * - Includes deposit % and payment terms in client notes if configured
+ * - Falls back to existing defaults if settings are missing (backwards compatible)
+ * 
  * @param job - The job to generate a pack for
  * @param user - The user creating/owning the job (for loading business profile rates)
  */
@@ -605,6 +619,17 @@ export async function generateJobPack(job: Job, user?: SafeUser): Promise<Job> {
       effectiveRates = await getEffectiveRates({ user, job });
       // Store effective rates on the job for future reference
       job.effectiveRates = effectiveRates;
+      
+      // Store applied rates snapshot on job (only if not already set - preserve manual edits)
+      if (job.appliedMarginPct == null && effectiveRates.defaultMarginPct != null) {
+        job.appliedMarginPct = effectiveRates.defaultMarginPct;
+      }
+      if (job.appliedDepositPct == null && effectiveRates.defaultDepositPct != null) {
+        job.appliedDepositPct = effectiveRates.defaultDepositPct;
+      }
+      if (job.appliedGstIncluded == null && effectiveRates.gstRegistered != null) {
+        job.appliedGstIncluded = effectiveRates.gstRegistered;
+      }
     }
 
     // Build labour rate instructions based on effective rates or defaults
@@ -691,18 +716,31 @@ Speak in clear, practical language that Aussie tradies understand. No fluff - ju
     // Use effective rates if available, otherwise fall back to job overrides
     const hourlyRate = effectiveRates.hourlyRate ?? job.labourRatePerHour;
     const helperRate = effectiveRates.helperHourlyRate ?? job.helperRatePerHour;
+    const dayRate = effectiveRates.dayRate;
     const ratePerM2Interior = effectiveRates.ratePerM2Interior;
     const ratePerM2Exterior = effectiveRates.ratePerM2Exterior;
     const ratePerLmTrim = effectiveRates.ratePerLmTrim;
     const calloutFee = effectiveRates.calloutFee;
-    const materialMarkup = effectiveRates.materialMarkupPercent;
+    const materialMarkup = effectiveRates.materialMarkupPercent ?? effectiveRates.defaultMarginPct;
+    const depositPct = effectiveRates.defaultDepositPct;
+    const gstRegistered = effectiveRates.gstRegistered;
+    const paymentTerms = effectiveRates.defaultPaymentTerms;
 
+    // Core rates
     if (hourlyRate) {
-      pricingContextParts.push(`Labour rate: $${hourlyRate}/hr`);
+      pricingContextParts.push(`Hourly rate: $${hourlyRate}/hr`);
+    }
+    if (dayRate) {
+      pricingContextParts.push(`Day rate: $${dayRate}/day`);
     }
     if (helperRate) {
       pricingContextParts.push(`Helper/2nd worker rate: $${helperRate}/hr`);
     }
+    if (calloutFee) {
+      pricingContextParts.push(`Callout fee: $${calloutFee}`);
+    }
+    
+    // Trade-specific rates (painter focus)
     if (ratePerM2Interior) {
       pricingContextParts.push(`Interior rate: $${ratePerM2Interior}/m²`);
     }
@@ -712,19 +750,44 @@ Speak in clear, practical language that Aussie tradies understand. No fluff - ju
     if (ratePerLmTrim) {
       pricingContextParts.push(`Linear metre rate (trim/handrail): $${ratePerLmTrim}/lm`);
     }
-    if (calloutFee) {
-      pricingContextParts.push(`Callout fee: $${calloutFee}`);
+    
+    // Painter-specific rates from tradeRatesJson
+    if (effectiveRates.tradeRates?.painter) {
+      const painterRates = effectiveRates.tradeRates.painter;
+      if (painterRates.wallsPerM2) {
+        pricingContextParts.push(`Walls per m²: $${painterRates.wallsPerM2}/m²`);
+      }
+      if (painterRates.ceilingsPerM2) {
+        pricingContextParts.push(`Ceilings per m²: $${painterRates.ceilingsPerM2}/m²`);
+      }
+      if (painterRates.trimPerM) {
+        pricingContextParts.push(`Trim per metre: $${painterRates.trimPerM}/m`);
+      }
+      if (painterRates.doorsEach) {
+        pricingContextParts.push(`Doors each: $${painterRates.doorsEach}`);
+      }
     }
+    
+    // Pricing defaults
     if (materialMarkup !== undefined && materialMarkup !== null) {
-      pricingContextParts.push(`Material markup: ${materialMarkup}%`);
+      pricingContextParts.push(`Margin on materials: ${materialMarkup}%`);
+    }
+    if (depositPct !== undefined && depositPct !== null) {
+      pricingContextParts.push(`Typical deposit: ${depositPct}%`);
+    }
+    if (gstRegistered) {
+      pricingContextParts.push(`GST registered: Yes (prices include GST)`);
+    }
+    if (paymentTerms) {
+      pricingContextParts.push(`Payment terms: ${paymentTerms}`);
     }
     if (job.materialsAreRoughEstimate) {
       pricingContextParts.push(`Materials: Treat all material prices as rough estimates only`);
     }
     
     const pricingContext = pricingContextParts.length > 0
-      ? `**Pricing Context:**\n${pricingContextParts.join("\n")}\n\nIMPORTANT: Use these exact rates when calculating labour costs, materials costs, and total estimates.`
-      : "**Pricing Context:** Use typical WA rates for this trade";
+      ? `**Pricing Context - USE THESE EXACT RATES:**\n${pricingContextParts.join("\n")}\n\nIMPORTANT: You MUST use these exact rates when calculating labour costs, materials costs, and total estimates. Do NOT invent new rates. If any rate is missing, clearly state in your response that pricing is approximate only.`
+      : "**Pricing Context:** No specific rates provided. Use typical WA rates for this trade, but clearly state that all pricing is approximate and must be verified.";
 
     // Load job materials if they exist
     let materialsContext = "";
@@ -779,6 +842,19 @@ Speak in clear, practical language that Aussie tradies understand. No fluff - ju
       console.warn("Failed to load attachments for AI context:", error);
     }
 
+    // Build client notes guidance including deposit and payment terms
+    let clientNotesGuidance = "";
+    
+    if (depositPct !== undefined && depositPct !== null) {
+      clientNotesGuidance += `\n- Include payment terms: ${depositPct}% deposit required upfront, balance on completion.`;
+    }
+    if (paymentTerms) {
+      clientNotesGuidance += `\n- Payment terms: ${paymentTerms}.`;
+    }
+    if (!depositPct && !paymentTerms) {
+      clientNotesGuidance += `\n- Include standard payment terms (e.g. deposit required, balance on completion).`;
+    }
+
     const userPrompt = `Generate a complete job pack for this ${job.tradeType.toLowerCase()} job:
 
 **Job Title:** ${job.title}
@@ -818,8 +894,14 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
     { "item": "Dulux Wash & Wear 10L", "quantity": "2", "estimatedCost": "$350" },
     { "item": "Dulux Ceiling White 10L", "quantity": "1", "estimatedCost": "$120" }
   ],
-  "clientNotes": "Professional notes about payment terms (e.g. 30% deposit), expected timeline, access requirements, etc."
-}`;
+  "clientNotes": "Professional notes about payment terms${depositPct ? ` (${depositPct}% deposit required)` : ""}, expected timeline, access requirements, etc.${clientNotesGuidance}"
+}
+
+IMPORTANT REMINDERS:
+- All pricing is ESTIMATE ONLY. The tradie must verify quantities and current supplier prices before sending to client.
+- Material prices are approximate and must be checked against current supplier pricing (e.g. Dulux/Bunnings).
+- Labour hours are estimates based on typical work - actual time may vary.
+- The client must understand this is a quote/estimate, not a fixed price, until quantities are confirmed on site.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",

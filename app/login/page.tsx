@@ -92,15 +92,15 @@ function LoginForm() {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-      <div className="text-center mb-8">
+    <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-8">
+      <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-        <p className="text-slate-600">Sign in to your OMNEXORA account</p>
+        <p className="text-sm text-slate-600">Sign in to your OMNEXORA account</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {searchParams.get("reset") === "success" && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm">
             Password reset successful! You can now sign in with your new password.
           </div>
         )}
@@ -120,7 +120,7 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
+            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed"
             required
             disabled={isLoading}
           />
@@ -132,7 +132,7 @@ function LoginForm() {
             </label>
             <Link
               href="/forgot-password"
-              className="text-sm text-amber-600 hover:text-amber-500 font-medium"
+              className="text-sm text-amber-600 hover:text-amber-500 font-medium transition-colors"
             >
               Forgot password?
             </Link>
@@ -143,24 +143,24 @@ function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
+            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed"
             required
             disabled={isLoading}
           />
         </div>
         <button
           type="submit"
-          className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors shadow-lg shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isLoading}
         >
           {isLoading ? "Signing in..." : "Sign In"}
         </button>
       </form>
 
-      <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+      <div className="mt-6 pt-6 border-t border-slate-200 text-center">
         <p className="text-sm text-slate-600">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="font-semibold text-amber-600 hover:text-amber-500">
+          <Link href="/register" className="font-semibold text-amber-600 hover:text-amber-500 transition-colors">
             Sign up
           </Link>
         </p>

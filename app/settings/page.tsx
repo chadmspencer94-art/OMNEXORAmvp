@@ -186,40 +186,46 @@ export default function SettingsPage() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="mb-6 flex gap-3 border-b border-slate-200">
+      <div className="mb-6 flex gap-1 border-b border-slate-200 overflow-x-auto">
         <Link
           href="/settings"
-          className="px-4 py-2 text-sm font-medium text-amber-600 border-b-2 border-amber-500"
+          className="px-4 py-2 text-sm font-medium text-amber-600 border-b-2 border-amber-500 whitespace-nowrap"
         >
           Pricing
         </Link>
         <Link
           href="/settings/business-profile"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
         >
           Business Profile
         </Link>
         <Link
+          href="/settings/business-rates"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
+        >
+          Business & Rates
+        </Link>
+        <Link
           href="/settings/rates"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
         >
           Rate Templates
         </Link>
         <Link
           href="/settings/materials"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
         >
           Materials
         </Link>
         <Link
           href="/settings/verification"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
         >
           Verification
         </Link>
         <Link
           href="/settings/signature"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
         >
           Signature
         </Link>

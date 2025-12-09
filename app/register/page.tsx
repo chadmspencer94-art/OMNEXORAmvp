@@ -60,10 +60,10 @@ export default function RegisterPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-          <div className="text-center mb-8">
+        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-8">
+          <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-slate-900 mb-2">Create Account</h1>
-            <p className="text-slate-600">Start generating AI job packs today</p>
+            <p className="text-sm text-slate-600">Start generating AI job packs today</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -83,7 +83,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={() => setRole("tradie")}
                   disabled={isLoading}
-                  className={`p-4 border-2 rounded-xl text-center transition-all ${
+                  className={`p-4 border-2 rounded-xl text-center transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
                     role === "tradie"
                       ? "border-amber-500 bg-amber-50 text-amber-900"
                       : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -97,7 +97,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={() => setRole("client")}
                   disabled={isLoading}
-                  className={`p-4 border-2 rounded-xl text-center transition-all ${
+                  className={`p-4 border-2 rounded-xl text-center transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
                     role === "client"
                       ? "border-amber-500 bg-amber-50 text-amber-900"
                       : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -120,7 +120,7 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed"
                 required
                 disabled={isLoading}
               />
@@ -135,7 +135,7 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed"
                 required
                 minLength={8}
                 disabled={isLoading}
@@ -152,7 +152,7 @@ export default function RegisterPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed"
                 required
                 minLength={8}
                 disabled={isLoading}
@@ -160,17 +160,17 @@ export default function RegisterPage() {
             </div>
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors shadow-lg shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
               {isLoading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+          <div className="mt-6 pt-6 border-t border-slate-200 text-center">
             <p className="text-sm text-slate-600">
               Already have an account?{" "}
-              <Link href="/login" className="font-semibold text-amber-600 hover:text-amber-500">
+              <Link href="/login" className="font-semibold text-amber-600 hover:text-amber-500 transition-colors">
                 Sign in
               </Link>
             </p>

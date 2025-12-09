@@ -139,26 +139,31 @@ function JobRow({ job }: { job: Job }) {
   };
   
   return (
-    <tr className="hover:bg-slate-50 transition-colors">
-      <td className="px-6 py-4">
-        <div className="flex flex-col">
-          <span className="text-slate-900 font-medium">{job.title}</span>
+    <tr className="hover:bg-slate-50 transition-colors border-b border-slate-100">
+      <td className="px-4 sm:px-6 py-4">
+        <div className="flex flex-col min-w-0">
+          <Link
+            href={`/jobs/${job.id}`}
+            className="text-slate-900 font-medium hover:text-amber-600 transition-colors truncate"
+          >
+            {job.title}
+          </Link>
           {job.address && (
-            <span className="text-slate-500 text-sm truncate max-w-xs">{job.address}</span>
+            <span className="text-slate-500 text-sm truncate">{job.address}</span>
           )}
         </div>
       </td>
-      <td className="px-6 py-4 text-slate-600">{job.tradeType}</td>
-      <td className="px-6 py-4">
+      <td className="px-4 sm:px-6 py-4 text-slate-600 text-sm">{job.tradeType}</td>
+      <td className="px-4 sm:px-6 py-4">
         <JobWorkflowStatusBadge status={job.jobStatus || "pending"} />
       </td>
-      <td className="px-6 py-4">
+      <td className="px-4 sm:px-6 py-4">
         <ClientStatusBadge status={job.clientStatus || "draft"} />
       </td>
-      <td className="px-6 py-4">
+      <td className="px-4 sm:px-6 py-4">
         <StatusBadge status={job.status} />
       </td>
-      <td className="px-6 py-4">
+      <td className="px-4 sm:px-6 py-4">
         {hasSchedule ? (
           <div className="flex flex-col">
             <span className="text-slate-900 text-sm font-medium">
@@ -174,30 +179,30 @@ function JobRow({ job }: { job: Job }) {
           <span className="text-slate-400 text-sm">Not scheduled</span>
         )}
       </td>
-      <td className="px-6 py-4 text-slate-600">{formatDate(job.createdAt)}</td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-3">
+      <td className="px-4 sm:px-6 py-4 text-slate-600 text-sm">{formatDate(job.createdAt)}</td>
+      <td className="px-4 sm:px-6 py-4">
+        <div className="flex items-center gap-2">
           <Link
             href={`/jobs/${job.id}`}
-            className="text-amber-600 hover:text-amber-700 font-medium text-sm"
+            className="text-amber-600 hover:text-amber-700 font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-1 rounded"
           >
-            View →
+            View
           </Link>
           <button
             onClick={handleDuplicate}
             disabled={isDuplicating}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1"
             title="Duplicate job"
           >
             {isDuplicating ? (
               <>
                 <Loader2 className="w-3 h-3 animate-spin" />
-                <span>Copying...</span>
+                <span className="hidden sm:inline">Copying...</span>
               </>
             ) : (
               <>
                 <Copy className="w-3 h-3" />
-                <span>Duplicate</span>
+                <span className="hidden sm:inline">Duplicate</span>
               </>
             )}
           </button>

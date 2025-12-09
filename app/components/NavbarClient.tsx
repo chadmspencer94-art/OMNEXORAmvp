@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 type UserRole = "tradie" | "builder" | "client" | "supplier" | "admin";
 // Support both new and legacy verification statuses for backwards compatibility
@@ -117,6 +117,7 @@ function VerificationBadge({ role, status }: { role: UserRole; status: Verificat
 
 export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -271,15 +272,22 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
-            {isLoggedIn && navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-medium"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {isLoggedIn && navLinks.map((link) => {
+              const isActive = pathname === link.href || (link.href !== "/dashboard" && pathname?.startsWith(link.href));
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    isActive
+                      ? "text-white bg-slate-800"
+                      : "text-slate-300 hover:text-white hover:bg-slate-800"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
             <div className={`ml-4 ${isLoggedIn ? "pl-4 border-l border-slate-700" : ""} flex items-center space-x-3`}>
               {logoutError && (
                 <span className="text-red-400 text-xs">{logoutError}</span>
@@ -353,18 +361,25 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
       {mobileMenuOpen && (
         <div className="md:hidden bg-slate-800 border-t border-slate-700">
           <div className="px-4 py-3 space-y-1">
-            {isLoggedIn && navLinks.map((link) => (
-              <button
-                key={link.href}
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  router.push(link.href);
-                }}
-                className="w-full text-left px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium"
-              >
-                {link.label}
-              </button>
-            ))}
+            {isLoggedIn && navLinks.map((link) => {
+              const isActive = pathname === link.href || (link.href !== "/dashboard" && pathname?.startsWith(link.href));
+              return (
+                <button
+                  key={link.href}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push(link.href);
+                  }}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors text-sm font-medium ${
+                    isActive
+                      ? "text-white bg-slate-700"
+                      : "text-slate-300 hover:text-white hover:bg-slate-700"
+                  }`}
+                >
+                  {link.label}
+                </button>
+              );
+            })}
             <div className={`${isLoggedIn ? "pt-3 mt-3 border-t border-slate-700" : ""}`}>
               {logoutError && (
                 <p className="px-4 py-2 text-red-400 text-sm">{logoutError}</p>

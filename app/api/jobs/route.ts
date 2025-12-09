@@ -203,6 +203,21 @@ export async function POST(request: Request) {
       }
     }
 
+    // If no hourly rate provided and no rate template, use user's default hourlyRate from business settings
+    if (!userIsClient && !finalLabourRate) {
+      try {
+        const prismaUser = await prisma.user.findUnique({
+          where: { email: user.email },
+          select: { hourlyRate: true },
+        });
+        if (prismaUser?.hourlyRate != null) {
+          finalLabourRate = prismaUser.hourlyRate;
+        }
+      } catch (error) {
+        // Silently fail - don't break job creation if business settings can't be loaded
+      }
+    }
+
     // Prepare job data
     const jobData: CreateJobData = {
       title: title.trim(),
