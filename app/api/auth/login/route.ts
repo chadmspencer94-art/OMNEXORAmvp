@@ -27,7 +27,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the user
-    const user = await verifyUser(email, password);
+    let user;
+    try {
+      user = await verifyUser(email, password);
+    } catch (verifyError) {
+      console.error("Error verifying user:", verifyError);
+      return NextResponse.json(
+        { error: "An error occurred during login. Please try again." },
+        { status: 500 }
+      );
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -37,7 +46,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Create a session
-    const sessionId = await createSession(user.id);
+    let sessionId;
+    try {
+      sessionId = await createSession(user.id);
+    } catch (sessionError) {
+      console.error("Error creating session:", sessionError);
+      return NextResponse.json(
+        { error: "An error occurred during login. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Update last login timestamp (don't await - fire and forget for performance)
     updateLastLogin(user.id).catch((err) => {

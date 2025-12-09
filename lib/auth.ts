@@ -573,27 +573,33 @@ export async function createSession(userId: string): Promise<string> {
 export async function getUserFromSession(
   sessionId: string
 ): Promise<SafeUser | null> {
-  // Look up session
-  const session = await kv.get<Session>(`session:${sessionId}`);
-  if (!session) {
+  try {
+    // Look up session
+    const session = await kv.get<Session>(`session:${sessionId}`);
+    if (!session) {
+      return null;
+    }
+
+    // If impersonating, return the impersonated user
+    const targetUserId = session.actingAsUserId || session.userId;
+
+    // Load user by id (may be an older record missing newer fields)
+    const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${targetUserId}`);
+    if (!rawUser) {
+      return null;
+    }
+
+    // Normalize to ensure all fields are present (handles older records)
+    const user = normalizeUser(rawUser);
+
+    // Return safe user without password hash
+    const { passwordHash: _, ...safeUser } = user;
+    return safeUser;
+  } catch (error) {
+    // If KV lookup fails, return null (session invalid)
+    console.error("Error getting user from session:", error);
     return null;
   }
-
-  // If impersonating, return the impersonated user
-  const targetUserId = session.actingAsUserId || session.userId;
-
-  // Load user by id (may be an older record missing newer fields)
-  const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${targetUserId}`);
-  if (!rawUser) {
-    return null;
-  }
-
-  // Normalize to ensure all fields are present (handles older records)
-  const user = normalizeUser(rawUser);
-
-  // Return safe user without password hash
-  const { passwordHash: _, ...safeUser } = user;
-  return safeUser;
 }
 
 /**
@@ -639,14 +645,21 @@ export async function deleteSession(sessionId: string): Promise<void> {
  * @returns The current user or null if not logged in
  */
 export async function getCurrentUser(): Promise<SafeUser | null> {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  try {
+    const cookieStore = await cookies();
+    const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
-  if (!sessionId) {
+    if (!sessionId) {
+      return null;
+    }
+
+    return await getUserFromSession(sessionId);
+  } catch (error) {
+    // If session lookup fails (e.g., KV unavailable), return null
+    // This allows the app to continue functioning in degraded mode
+    console.error("Error getting current user from session:", error);
     return null;
   }
-
-  return getUserFromSession(sessionId);
 }
 
 /**
