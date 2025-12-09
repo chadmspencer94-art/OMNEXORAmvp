@@ -26,19 +26,32 @@ export async function requireCompleteProfile(currentPath?: string): Promise<{
   // Clients don't need onboarding
   if (user.role === "client") {
     // Return a minimal user object for clients
-    const prismaUser = await prisma.user.findUnique({
-      where: { email: user.email },
-    });
-    if (!prismaUser) {
+    try {
+      const prismaUser = await prisma.user.findUnique({
+        where: { email: user.email },
+      });
+      if (!prismaUser) {
+        redirect("/login");
+      }
+      return prismaUser;
+    } catch (error) {
+      // If database query fails, redirect to login for safety
+      console.error("Failed to fetch client user from Prisma:", error);
       redirect("/login");
     }
-    return prismaUser;
   }
 
   // Fetch full user from Prisma to check onboarding status
-  const prismaUser = await prisma.user.findUnique({
-    where: { email: user.email },
-  });
+  let prismaUser;
+  try {
+    prismaUser = await prisma.user.findUnique({
+      where: { email: user.email },
+    });
+  } catch (error) {
+    // If database query fails, redirect to login for safety
+    console.error("Failed to fetch user from Prisma:", error);
+    redirect("/login");
+  }
 
   if (!prismaUser) {
     redirect("/login");
@@ -60,15 +73,21 @@ export async function requireCompleteProfile(currentPath?: string): Promise<{
   // Auto-complete for legacy users who already have complete profiles
   if (!prismaUser.profileCompletedAt && isBusinessProfileComplete(prismaUser)) {
     // Silently mark as complete (don't redirect, just update)
-    await prisma.user.update({
-      where: { id: prismaUser.id },
-      data: { profileCompletedAt: new Date() },
-    });
-    // Return updated user
-    return {
-      ...prismaUser,
-      profileCompletedAt: new Date(),
-    };
+    try {
+      await prisma.user.update({
+        where: { id: prismaUser.id },
+        data: { profileCompletedAt: new Date() },
+      });
+      // Return updated user
+      return {
+        ...prismaUser,
+        profileCompletedAt: new Date(),
+      };
+    } catch (error) {
+      // If update fails, just return the existing user without the update
+      console.error("Failed to update profileCompletedAt:", error);
+      return prismaUser;
+    }
   }
 
   return prismaUser;

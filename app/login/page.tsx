@@ -93,12 +93,12 @@ function LoginForm() {
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-8">
-      <div className="text-center mb-6">
+      <div className="text-center mb-8">
         <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
         <p className="text-sm text-slate-600">Sign in to your OMNEXORA account</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {searchParams.get("reset") === "success" && (
           <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm">
             Password reset successful! You can now sign in with your new password.

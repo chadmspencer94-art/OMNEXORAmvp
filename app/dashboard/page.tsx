@@ -85,34 +85,48 @@ export default async function DashboardPage() {
 
   // Load user data from Prisma to get business profile fields
   // Use email to find user since KV and Prisma may use different IDs
-  const { prisma } = await import("@/lib/prisma");
-  const prismaUser = await prisma.user.findUnique({
-    where: { email: user.email },
-    select: {
-      id: true,
-      role: true,
-      businessName: true,
-      tradingName: true,
-      primaryTrade: true,
-      abn: true,
-      hourlyRate: true,
-      serviceRadiusKm: true,
-      servicePostcodes: true,
-      verificationStatus: true,
-      profileCompletedAt: true,
-      emailVerifiedAt: true,
-      onboardingDismissed: true,
-      onboardingCompletedAt: true,
-      // Fields needed for onboarding status computation
-      calloutFee: true,
-      ratePerM2Interior: true,
-      ratePerM2Exterior: true,
-      ratePerLmTrim: true,
-      serviceAreaCity: true,
-    },
-  });
+  // Wrap in try-catch to handle database connection issues gracefully
+  let prismaUser = null;
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    prismaUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: {
+        id: true,
+        role: true,
+        businessName: true,
+        tradingName: true,
+        primaryTrade: true,
+        abn: true,
+        hourlyRate: true,
+        serviceRadiusKm: true,
+        servicePostcodes: true,
+        verificationStatus: true,
+        profileCompletedAt: true,
+        emailVerifiedAt: true,
+        onboardingDismissed: true,
+        onboardingCompletedAt: true,
+        // Fields needed for onboarding status computation
+        calloutFee: true,
+        ratePerM2Interior: true,
+        ratePerM2Exterior: true,
+        ratePerLmTrim: true,
+        serviceAreaCity: true,
+      },
+    });
+  } catch (error) {
+    // Log error but don't crash - dashboard can still function without Prisma data
+    console.error("Failed to load user data from Prisma:", error);
+  }
 
-  const jobs = await getJobsForUser(user.id);
+  // Load jobs with error handling
+  let jobs: Job[] = [];
+  try {
+    jobs = await getJobsForUser(user.id);
+  } catch (error) {
+    // Log error but don't crash - dashboard can still function without jobs
+    console.error("Failed to load jobs:", error);
+  }
   
   // Filter for client jobs (assigned via portal)
   const clientJobs = jobs.filter(
@@ -171,10 +185,15 @@ export default async function DashboardPage() {
   // Get onboarding status (only for tradie/business users, not clients or admins)
   let onboardingStatus = null;
   if (prismaUser && !isClient && !userIsAdmin && prismaUser.role !== "client") {
-    onboardingStatus = await getOnboardingStatus(prismaUser);
-    // Don't show if all done or dismissed
-    if (onboardingStatus.allDone || onboardingStatus.dismissed) {
-      onboardingStatus = null;
+    try {
+      onboardingStatus = await getOnboardingStatus(prismaUser);
+      // Don't show if all done or dismissed
+      if (onboardingStatus.allDone || onboardingStatus.dismissed) {
+        onboardingStatus = null;
+      }
+    } catch (error) {
+      // Log error but don't crash - dashboard can still function without onboarding status
+      console.error("Failed to load onboarding status:", error);
     }
   }
 

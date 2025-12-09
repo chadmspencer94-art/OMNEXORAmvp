@@ -264,7 +264,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
             onClick={() => {
               router.push(isLoggedIn ? "/dashboard" : "/");
             }}
-            className="flex items-center text-2xl font-bold text-white tracking-tight hover:opacity-80 transition-opacity"
+            className="flex items-center text-xl sm:text-2xl font-bold text-white tracking-tight hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900 rounded"
             suppressHydrationWarning
           >
             OMNEXORA
@@ -278,7 +278,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                  className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${
                     isActive
                       ? "text-white bg-slate-800"
                       : "text-slate-300 hover:text-white hover:bg-slate-800"
@@ -309,7 +309,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                    className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900"
                   >
                     {isLoggingOut ? "..." : "Logout"}
                   </button>
@@ -317,7 +317,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
               ) : (
                 <Link
                   href="/login"
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg transition-colors text-sm font-semibold"
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg transition-colors text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900"
                 >
                   Login
                 </Link>

@@ -189,43 +189,43 @@ export default function SettingsPage() {
       <div className="mb-6 flex gap-1 border-b border-slate-200 overflow-x-auto">
         <Link
           href="/settings"
-          className="px-4 py-2 text-sm font-medium text-amber-600 border-b-2 border-amber-500 whitespace-nowrap"
+          className="px-4 py-2.5 text-sm font-medium text-amber-600 border-b-2 border-amber-500 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
         >
           Pricing
         </Link>
         <Link
           href="/settings/business-profile"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
+          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
         >
           Business Profile
         </Link>
         <Link
           href="/settings/business-rates"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
+          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
         >
           Business & Rates
         </Link>
         <Link
           href="/settings/rates"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
+          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
         >
           Rate Templates
         </Link>
         <Link
           href="/settings/materials"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
+          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
         >
           Materials
         </Link>
         <Link
           href="/settings/verification"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
+          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
         >
           Verification
         </Link>
         <Link
           href="/settings/signature"
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors"
+          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
         >
           Signature
         </Link>
@@ -356,7 +356,7 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors shadow-lg shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? "Saving..." : "Save Settings"}
           </button>

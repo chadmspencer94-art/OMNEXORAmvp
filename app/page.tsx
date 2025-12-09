@@ -7,38 +7,38 @@ export default function Home() {
   return (
     <main className="min-h-[calc(100vh-4rem)]">
       {/* Hero Section */}
-      <section className="flex flex-col items-center justify-center px-4 py-12 sm:py-16 lg:py-20">
+      <section className="flex flex-col items-center justify-center px-4 py-12 sm:py-16 lg:py-24">
         <div className="w-full max-w-3xl mx-auto text-center">
           {/* Badge */}
-          <div className="mb-5 sm:mb-6">
-            <span className="inline-block px-3 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full">
+          <div className="mb-6">
+            <span className="inline-flex items-center px-3 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full">
               Built for Australian Tradies
             </span>
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-3 sm:mb-4 leading-tight tracking-tight">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-4 leading-tight tracking-tight">
             OMNEXORA
           </h1>
 
           {/* Sub-heading */}
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-amber-500 mb-4 sm:mb-5 leading-snug">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-amber-500 mb-5 leading-snug">
             AI Job Packs for Tradies
           </h2>
 
           {/* Tagline */}
-          <p className="text-lg sm:text-xl lg:text-2xl text-slate-700 mb-5 sm:mb-6 max-w-xl mx-auto leading-relaxed font-medium">
+          <p className="text-lg sm:text-xl lg:text-2xl text-slate-700 mb-6 max-w-xl mx-auto leading-relaxed font-medium">
             win back time for what most matters
           </p>
 
           {/* Supporting Paragraph */}
-          <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10">
+          <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-10">
             Generate professional job packs in minutes. From quotes to scope of work, 
             let AI handle the paperwork so you can focus on what you do best.
           </p>
 
           {/* SWMS Highlight - Refined as a clean notice card */}
-          <div className="mb-8 sm:mb-10 max-w-xl mx-auto">
+          <div className="mb-10 max-w-xl mx-auto">
             <div className="inline-flex items-start gap-3 px-4 py-3 bg-amber-50/50 border border-amber-200/60 rounded-lg shadow-sm text-left">
               <svg
                 className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
@@ -67,7 +67,7 @@ export default function Home() {
           </div>
 
           {/* Primary CTA */}
-          <div className="mb-8 sm:mb-12">
+          <div className="mb-12">
             {isLoggedIn ? (
               <Link
                 href="/dashboard"
@@ -144,9 +144,6 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <p className="mt-10 sm:mt-12 text-center text-sm text-slate-500">
-            Built for Australian Tradies
-          </p>
         </div>
       </section>
     </main>
