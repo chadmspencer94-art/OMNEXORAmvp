@@ -20,6 +20,11 @@ export async function requireAuthenticatedUser() {
 }
 
 /**
+ * Alias for requireAuthenticatedUser for backwards compatibility.
+ */
+export const requireUser = requireAuthenticatedUser;
+
+/**
  * Require that a user is NOT logged in.
  * Used for /login, /register, etc.
  */
