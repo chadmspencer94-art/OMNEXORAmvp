@@ -42,14 +42,16 @@ function formatDate(dateString: string): string {
 }
 
 interface ClientJobDetailPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function ClientJobDetailPage({ params }: ClientJobDetailPageProps) {
-  const user = await requireClientUser(`/client/jobs/${params.id}`);
+  // Await params (Next.js 16+ requires params to be a Promise)
+  const { id } = await params;
+  const user = await requireClientUser(`/client/jobs/${id}`);
 
   // Load the job
-  const job = await getJobById(params.id);
+  const job = await getJobById(id);
 
   if (!job) {
     notFound();
@@ -61,7 +63,7 @@ export default async function ClientJobDetailPage({ params }: ClientJobDetailPag
 
   if (jobClientEmail !== normalizedClientEmail) {
     // Job doesn't belong to this client
-    redirect("/client/dashboard");
+    redirect(`/client/dashboard`);
   }
 
   const clientStatus = (job.clientStatus || "draft") as ClientStatus;

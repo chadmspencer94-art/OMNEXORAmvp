@@ -15,7 +15,7 @@ type RouteParams = {
  */
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> | { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
     // Check authentication
@@ -35,8 +35,8 @@ export async function PATCH(
       );
     }
 
-    // Get jobId from route params
-    const params = await Promise.resolve(context.params);
+    // Await params (Next.js 16+ requires params to be a Promise)
+    const params = await context.params;
     const jobId = params.id;
 
     // Get the job

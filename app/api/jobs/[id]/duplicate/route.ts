@@ -15,7 +15,7 @@ type RouteParams = {
  */
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> | { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
     // Check authentication
@@ -35,8 +35,8 @@ export async function POST(
       );
     }
 
-    // Get jobId from route params
-    const params = await Promise.resolve(context.params);
+    // Await params (Next.js 16+ requires params to be a Promise)
+    const params = await context.params;
     const jobId = params.id;
 
     // Verify the job exists and belongs to the user

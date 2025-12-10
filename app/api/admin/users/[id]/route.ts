@@ -15,7 +15,7 @@ type RouteParams = {
  */
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> | { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
     // Check authentication and admin status
@@ -34,8 +34,8 @@ export async function PATCH(
       );
     }
 
-    // Handle params - await if it's a Promise, otherwise use directly
-    const params = await Promise.resolve(context.params);
+    // Await params (Next.js 16+ requires params to be a Promise)
+    const params = await context.params;
     const userId = params.id;
 
     console.log(`[Admin API] Updating user with ID: ${userId}`);
