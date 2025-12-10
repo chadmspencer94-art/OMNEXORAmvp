@@ -167,7 +167,6 @@ Create a comprehensive maintenance guide that is specific to ${tradeInfo} work. 
     }
 
     // Save document as draft (not confirmed)
-    const { saveJob } = await import("@/lib/jobs");
     job.maintenanceText = documentContent.trim();
     job.maintenanceConfirmed = false;
     await saveJob(job);

@@ -152,7 +152,6 @@ Create a comprehensive handover checklist that is specific to ${tradeInfo} work.
     }
 
     // Save document as draft (not confirmed)
-    const { saveJob } = await import("@/lib/jobs");
     job.handoverText = documentContent.trim();
     job.handoverConfirmed = false;
     await saveJob(job);

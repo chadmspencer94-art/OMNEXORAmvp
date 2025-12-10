@@ -169,6 +169,11 @@ Create a professional Progress Claim / Tax Invoice that includes all required se
       );
     }
 
+    // Save document as draft (not confirmed)
+    job.progressClaimText = documentContent.trim();
+    job.progressClaimConfirmed = false;
+    await saveJob(job);
+
     return NextResponse.json(
       {
         success: true,
