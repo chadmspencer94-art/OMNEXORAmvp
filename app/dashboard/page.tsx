@@ -1,74 +1,41 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { requireOnboardedUser } from "@/lib/authChecks";
-import { getUsersByVerificationStatus } from "@/lib/auth";
-import { getJobsForUser, type Job, type JobStatus } from "@/lib/jobs";
-import { getUnresolvedFeedbackCount } from "@/lib/feedback";
-import { formatDateTimeForDisplay } from "@/lib/format";
-import DevVerifyButton from "./DevVerifyButton";
-import VerifiedBadge from "@/app/components/VerifiedBadge";
-import OmnexoraHeader from "@/app/components/OmnexoraHeader";
-import FeedbackButton from "@/app/components/FeedbackButton";
-import MatchingJobsSection from "./MatchingJobsSection";
-import GettingStartedCard from "./GettingStartedCard";
-import OnboardingCard from "@/app/components/OnboardingCard";
-import EmailVerificationBanner from "@/app/components/EmailVerificationBanner";
-import AnalyticsSection from "./AnalyticsSection";
+import { getJobsForUser, type Job } from "@/lib/jobs";
 import { getOnboardingStatus } from "@/lib/onboarding-status";
+import { getUsersByVerificationStatus } from "@/lib/auth";
+import { getUnresolvedFeedbackCount } from "@/lib/feedback";
+import OmnexoraHeader from "@/app/components/OmnexoraHeader";
+import EmailVerificationBanner from "@/app/components/EmailVerificationBanner";
+import DevVerifyButton from "./DevVerifyButton";
+import OnboardingCard from "@/app/components/OnboardingCard";
+import GettingStartedCard from "./GettingStartedCard";
+import VerifiedBadge from "@/app/components/VerifiedBadge";
+import FeedbackButton from "@/app/components/FeedbackButton";
+import AnalyticsSection from "./AnalyticsSection";
+import MatchingJobsSection from "./MatchingJobsSection";
 
-// Authenticated page using requireOnboardedUser and Prisma - must be dynamic
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
-
-// Check if we're in development mode (for showing dev tools)
-const isDev = process.env.NODE_ENV !== "production";
-
-function StatusBadge({ status }: { status: JobStatus }) {
-  const styles: Record<JobStatus, string> = {
-    draft: "bg-slate-100 text-slate-700",
-    ai_pending: "bg-amber-100 text-amber-700",
-    ai_complete: "bg-green-100 text-green-700",
-    ai_failed: "bg-red-100 text-red-700",
-    pending_regeneration: "bg-orange-100 text-orange-700",
-    generating: "bg-amber-100 text-amber-700",
-  };
-
-  const labels: Record<JobStatus, string> = {
-    draft: "Draft",
-    ai_pending: "Generating...",
-    ai_complete: "Complete",
-    ai_failed: "Failed",
-    pending_regeneration: "Needs Update",
-    generating: "Regenerating...",
-  };
-
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
-      {labels[status]}
-    </span>
-  );
-}
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
+// RecentJobRow component for displaying job rows in the dashboard
 function RecentJobRow({ job }: { job: Job }) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+    <div className="flex items-center justify-between py-4 border-b border-slate-100 last:border-0">
       <div className="flex-1 min-w-0">
-        <Link href={`/jobs/${job.id}`} className="text-slate-900 font-medium hover:text-amber-600 truncate block">
+        <Link href={`/jobs/${job.id}`} className="text-slate-900 font-medium hover:text-amber-600 truncate block mb-1">
           {job.title}
         </Link>
-        <p className="text-slate-500 text-sm">{job.tradeType} • {job.propertyType}</p>
+        <p className="text-slate-500 text-sm">
+          {job.address || "No address provided"} • {new Date(job.createdAt).toLocaleDateString()}
+        </p>
       </div>
       <div className="flex items-center gap-4 ml-4">
-        <StatusBadge status={job.status} />
-        <span className="text-slate-500 text-sm">{formatDate(job.createdAt)}</span>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          job.status === "ai_complete" ? "bg-green-100 text-green-700" :
+          job.status === "ai_pending" ? "bg-amber-100 text-amber-700" :
+          "bg-slate-100 text-slate-700"
+        }`}>
+          {job.status === "ai_complete" ? "Complete" :
+           job.status === "ai_pending" ? "Generating..." :
+           "Draft"}
+        </span>
       </div>
     </div>
   );
@@ -76,13 +43,6 @@ function RecentJobRow({ job }: { job: Job }) {
 
 export default async function DashboardPage() {
   const user = await requireOnboardedUser();
-  
-  console.log("[dashboard] starting page render for user", user?.id);
-
-  // Redirect clients to their dashboard
-  if (user.role === "client") {
-    redirect("/client/dashboard");
-  }
   
   // TypeScript: user is guaranteed to be non-client after redirect above
   const isClient = false;
@@ -185,6 +145,7 @@ export default async function DashboardPage() {
   const isVerified = verificationStatus === "verified";
   const isTradie = userRole === "tradie";
   const userIsAdmin = user.isAdmin ?? false;
+  const isDev = process.env.NODE_ENV !== "production";
 
   // Get onboarding status (only for tradie/business users, not clients or admins)
   let onboardingStatus = null;

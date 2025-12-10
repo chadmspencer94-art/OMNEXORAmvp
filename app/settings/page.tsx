@@ -147,7 +147,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email Verification</label>
-              <p className="mt-1">
+              <div className="mt-1">
                 {userInfo.emailVerifiedAt ? (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300">
                     ✓ Verified
@@ -179,7 +179,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 )}
-              </p>
+              </div>
             </div>
           </div>
         </div>

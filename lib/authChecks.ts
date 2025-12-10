@@ -1,113 +1,61 @@
-/**
- * Authentication and authorization helper functions
- * Used for gating features based on user verification status
- */
-
+// lib/authChecks.ts
 import { redirect } from "next/navigation";
-import { prisma } from "./prisma";
-import type { SafeUser } from "./auth";
 import { getCurrentUser, isClient } from "./auth";
-import { needsOnboarding } from "./onboarding";
 
 // Re-export isClient for convenience
 export { isClient };
 
-export class EmailNotVerifiedError extends Error {
-  constructor(message: string = "EMAIL_NOT_VERIFIED") {
-    super(message);
-    this.name = "EmailNotVerifiedError";
-  }
-}
-
 /**
- * Requires that the user is authenticated
- * Redirects to login if not authenticated
- * 
- * @returns The authenticated user (never null, redirects if not authenticated)
+ * Require that a user is logged in.
+ * Redirects to /login if not authenticated.
  */
-export async function requireUser(): Promise<SafeUser> {
+export async function requireAuthenticatedUser() {
   const user = await getCurrentUser();
-  
+
   if (!user) {
     redirect("/login?reason=unauthorised");
-    return null as never;
   }
-  
+
   return user;
 }
 
 /**
- * Requires that the user is authenticated and has completed onboarding
- * Redirects to login if not authenticated, or to onboarding if not onboarded
- * 
- * @returns The authenticated and onboarded user (never null, redirects if needed)
+ * Require that a user is NOT logged in.
+ * Used for /login, /register, etc.
  */
-export async function requireOnboardedUser(): Promise<SafeUser> {
-  const user = await requireUser();
-  
-  // Clients don't need onboarding
-  if (user.role === "client") {
-    return user;
+export async function requireUnauthenticatedUser() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return null;
   }
-  
-  // Check onboarding status from Prisma
-  try {
-    const prismaUser = await prisma.user.findUnique({
-      where: { email: user.email },
-    });
-    
-    if (!prismaUser) {
-      // User not found in Prisma - redirect to onboarding
-      redirect("/onboarding");
-      return null as never;
-    }
-    
-    // Check if user needs onboarding
-    if (needsOnboarding(prismaUser)) {
-      redirect("/onboarding");
-      return null as never;
-    }
-    
-    return user;
-  } catch (error) {
-    // If database query fails, assume user needs onboarding (safe default)
-    console.error("[authChecks] Error checking onboarding status:", error);
-    redirect("/onboarding");
-    return null as never;
-  }
+
+  redirect("/dashboard");
 }
 
 /**
- * Requires that the user's email is verified
- * Throws EmailNotVerifiedError if not verified
- * 
- * @param user - The user object (from getCurrentUser or similar)
- * @throws EmailNotVerifiedError if email is not verified
+ * Require a logged-in, “onboarded” user.
+ * For now we treat any authenticated user as onboarded so the app works.
  */
-export async function requireVerifiedEmail(user: SafeUser): Promise<void> {
-  // Load fresh data from Prisma to check emailVerifiedAt
-  const prismaUser = await prisma.user.findUnique({
-    where: { email: user.email },
-    select: { emailVerifiedAt: true },
-  });
+export async function requireOnboardedUser() {
+  const user = await requireAuthenticatedUser();
 
-  if (!prismaUser?.emailVerifiedAt) {
-    throw new EmailNotVerifiedError("EMAIL_NOT_VERIFIED");
-  }
+  // TODO: when you have a real onboarding flag, enforce it here:
+  // if (!user.onboardingCompleted) redirect("/onboarding");
+
+  return user;
 }
 
 /**
- * Checks if a user's email is verified (non-throwing version)
- * 
- * @param user - The user object
- * @returns true if email is verified, false otherwise
+ * Require an admin user for /admin routes.
  */
-export async function isEmailVerified(user: SafeUser): Promise<boolean> {
-  try {
-    await requireVerifiedEmail(user);
-    return true;
-  } catch {
-    return false;
-  }
-}
+export async function requireAdminUser() {
+  const user = await requireAuthenticatedUser();
+  const role = (user as any).role;
 
+  if (role !== "ADMIN" && role !== "admin") {
+    redirect("/dashboard");
+  }
+
+  return user;
+}

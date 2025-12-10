@@ -121,8 +121,14 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   // Use server-provided user directly - no client-side auth checks to avoid hydration mismatches
   const user = initialUser;
+
+  // Ensure pathname-dependent rendering only happens after hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close mobile menu when user logs out
   useEffect(() => {
@@ -133,12 +139,42 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
 
   // Refresh navbar when window gets focus (user might have logged in/out in another tab)
   useEffect(() => {
+    let refreshTimeout: NodeJS.Timeout | null = null;
+    let isRefreshing = false;
+    
     const handleFocus = () => {
-      router.refresh();
+      // Debounce refresh calls to avoid multiple rapid refreshes
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+      
+      refreshTimeout = setTimeout(() => {
+        // Only refresh if not already refreshing and component is still mounted
+        if (!isRefreshing && mounted) {
+          isRefreshing = true;
+          try {
+            router.refresh();
+          } catch (error) {
+            // Silently fail if refresh fails (e.g., during navigation or server unavailable)
+            console.debug("[NavbarClient] Failed to refresh on focus:", error);
+          } finally {
+            // Reset flag after a short delay
+            setTimeout(() => {
+              isRefreshing = false;
+            }, 1000);
+          }
+        }
+      }, 300);
     };
+    
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [router]);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+    };
+  }, [router, mounted]);
 
   const isLoggedIn = !!user;
   const isClient = user?.role === "client";
@@ -173,7 +209,12 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
         setLogoutError(data.error || "Logout failed");
         setIsLoggingOut(false);
         // Refresh to get updated auth state from server
-        router.refresh();
+        try {
+          router.refresh();
+        } catch (error) {
+          // Silently fail if refresh fails
+          console.debug("[NavbarClient] Failed to refresh after logout error:", error);
+        }
         return;
       }
 
@@ -181,13 +222,23 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
       // Close menu and redirect to login, then refresh to update navbar state
       setMobileMenuOpen(false);
       router.replace("/login");
-      router.refresh();
+      try {
+        router.refresh();
+      } catch (error) {
+        // Silently fail if refresh fails
+        console.debug("[NavbarClient] Failed to refresh after logout:", error);
+      }
     } catch {
       setLogoutError("An unexpected error occurred");
       setIsLoggingOut(false);
       // Close menu and refresh to get updated auth state from server
       setMobileMenuOpen(false);
-      router.refresh();
+      try {
+        router.refresh();
+      } catch (error) {
+        // Silently fail if refresh fails
+        console.debug("[NavbarClient] Failed to refresh after logout exception:", error);
+      }
     }
   };
 
@@ -208,7 +259,8 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
             {isLoggedIn && navLinks.map((link) => {
-              const isActive = pathname === link.href || (link.href !== "/dashboard" && pathname?.startsWith(link.href));
+              // Only calculate active state after hydration to avoid mismatch
+              const isActive = mounted && (pathname === link.href || (link.href !== "/dashboard" && pathname?.startsWith(link.href)));
               return (
                 <Link
                   key={link.href}
@@ -297,7 +349,8 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
         <div className="md:hidden bg-slate-800 border-t border-slate-700">
           <div className="px-4 py-3 space-y-1">
             {isLoggedIn && navLinks.map((link) => {
-              const isActive = pathname === link.href || (link.href !== "/dashboard" && pathname?.startsWith(link.href));
+              // Only calculate active state after hydration to avoid mismatch
+              const isActive = mounted && (pathname === link.href || (link.href !== "/dashboard" && pathname?.startsWith(link.href)));
               return (
                 <button
                   key={link.href}

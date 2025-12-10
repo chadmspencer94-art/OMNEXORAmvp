@@ -2,10 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  // Disable Turbopack for Windows compatibility (symlink permission issues)
-  experimental: {
-    turbo: false,
-  },
+  // Turbopack can be disabled by not using --turbo flag when running next dev
 };
 
 export default nextConfig;
