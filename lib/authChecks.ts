@@ -76,10 +76,17 @@ export async function requireAdminUser() {
 /**
  * Requires that a user's email is verified.
  * Throws EmailNotVerifiedError if email is not verified.
+ * Admin users bypass this check.
  * @param user - The user to check
  * @throws EmailNotVerifiedError if email is not verified
  */
 export async function requireVerifiedEmail(user: SafeUser): Promise<void> {
+  // Admin users bypass email verification
+  const { isAdmin } = await import("./auth");
+  if (isAdmin(user)) {
+    return;
+  }
+
   // Check if emailVerifiedAt exists on user object (might be added dynamically)
   if ((user as any).emailVerifiedAt) {
     return;
