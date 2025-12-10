@@ -11,11 +11,46 @@ export const revalidate = 0;
 export default async function AdminDashboardPage() {
   const user = await requireActiveUser("/admin/dashboard");
 
+  console.log("[admin] dashboard page accessed by user", user?.id);
+
   if (!isAdmin(user)) {
+    console.log("[admin] non-admin user attempted to access admin dashboard, redirecting");
     redirect("/dashboard");
   }
 
-  const data = await getAdminDashboardData();
+  let data;
+  try {
+    data = await getAdminDashboardData();
+  } catch (error) {
+    console.error("[admin] Error fetching admin dashboard data:", error);
+    // Return empty data structure instead of crashing
+    data = {
+      users: {
+        totalUsers: 0,
+        totalClients: 0,
+        totalTradies: 0,
+        totalAdmins: 0,
+        usersByPlan: [],
+        usersLast7Days: 0,
+        usersLast30Days: 0,
+      },
+      jobs: {
+        totalJobs: 0,
+        jobsLast7Days: 0,
+        jobsLast30Days: 0,
+        jobsByStatus: [],
+        jobsByClientStatus: [],
+      },
+      verifications: {
+        pendingCount: 0,
+        pendingList: [],
+      },
+      feedback: {
+        openCount: 0,
+        recentOpen: [],
+      },
+    };
+  }
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-AU", {

@@ -1,20 +1,22 @@
 import { redirect } from "next/navigation";
-import { requireActiveUser } from "@/lib/auth";
+import { requireUser } from "@/lib/authChecks";
 import { prisma } from "@/lib/prisma";
 import { needsOnboarding, isBusinessProfileComplete } from "@/lib/onboarding";
 import OnboardingWizard from "./OnboardingWizard";
 
-// Authenticated page using requireActiveUser and Prisma - must be dynamic
+// Authenticated page using requireUser and Prisma - must be dynamic
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
 
 export default async function OnboardingPage() {
-  const user = await requireActiveUser("/onboarding");
+  const user = await requireUser();
+
+  console.log("[onboarding] onboarding page accessed by user", user?.id);
 
   // Clients don't need onboarding
   if (user.role === "client") {
-    redirect("/dashboard");
+    redirect("/client/dashboard");
   }
 
   // Fetch full user from Prisma with error handling
@@ -25,12 +27,13 @@ export default async function OnboardingPage() {
     });
   } catch (error) {
     // If database query fails, redirect to login for safety
-    console.error("Failed to fetch user from Prisma in onboarding:", error);
-    redirect("/login");
+    console.error("[onboarding] Failed to fetch user from Prisma in onboarding:", error);
+    redirect("/login?reason=unauthorised");
   }
 
   if (!prismaUser) {
-    redirect("/login");
+    console.log("[onboarding] user not found in Prisma, redirecting to login");
+    redirect("/login?reason=unauthorised");
   }
 
   // If profile is already complete, redirect to dashboard
@@ -44,7 +47,7 @@ export default async function OnboardingPage() {
         });
       } catch (error) {
         // If update fails, log but continue - user can still proceed
-        console.error("Failed to update profileCompletedAt:", error);
+        console.error("[onboarding] Failed to update profileCompletedAt:", error);
       }
     }
     redirect("/dashboard");

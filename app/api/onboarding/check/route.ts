@@ -35,16 +35,19 @@ export async function GET(request: NextRequest) {
       });
     } catch (dbError) {
       // If database query fails, assume user needs onboarding (safe default)
-      console.error("Database error in onboarding check:", dbError);
+      console.error("[onboarding] Database error in onboarding check:", dbError);
       return NextResponse.json({
+        onboarded: false,
         needsOnboarding: true,
         skipped: false,
-      });
+        error: "check_failed",
+      }, { status: 200 });
     }
 
     // If user doesn't exist in Prisma yet, treat as needing onboarding
     if (!prismaUser) {
       return NextResponse.json({
+        onboarded: false,
         needsOnboarding: true,
         skipped: false,
       });
@@ -58,21 +61,25 @@ export async function GET(request: NextRequest) {
       skipped = !!prismaUser.onboardingSkippedAt;
     } catch (onboardingError) {
       // If needsOnboarding check fails, default to needing onboarding
-      console.error("Error computing onboarding status:", onboardingError);
+      console.error("[onboarding] Error computing onboarding status:", onboardingError);
       needs = true;
       skipped = false;
     }
 
     return NextResponse.json({
+      onboarded: !needs,
       needsOnboarding: needs,
       skipped,
     });
   } catch (error) {
-    console.error("Error checking onboarding status:", error);
-    return NextResponse.json(
-      { error: "Failed to check onboarding status" },
-      { status: 500 }
-    );
+    console.error("[onboarding] Error checking onboarding status:", error);
+    // Return safe default instead of 500 error
+    return NextResponse.json({
+      onboarded: false,
+      needsOnboarding: true,
+      skipped: false,
+      error: "check_failed",
+    }, { status: 200 });
   }
 }
 

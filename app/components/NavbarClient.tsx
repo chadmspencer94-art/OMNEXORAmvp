@@ -121,66 +121,8 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
-  const [user, setUser] = useState<NavbarClientProps["user"]>(initialUser);
-  const [mounted, setMounted] = useState(false);
-
-  // Mark as mounted after hydration to prevent hydration mismatches
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Check auth after mount to avoid hydration issues
-  useEffect(() => {
-    if (!mounted) return;
-    
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/auth/me", { 
-          cache: "no-store",
-          credentials: "include"
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.user) {
-            setUser({
-              email: data.user.email,
-              role: data.user.role || "tradie",
-              verificationStatus: data.user.verificationStatus || "unverified",
-              verifiedAt: data.user.verifiedAt ?? null,
-              isAdmin: data.user.isAdmin ?? false,
-            });
-          } else {
-            // No user in response - definitely logged out
-            setUser(null);
-          }
-        } else {
-          // Not authenticated (401/403)
-          setUser(null);
-        }
-      } catch (error) {
-        // If check fails, assume logged out for safety
-        console.error("Auth check failed:", error);
-        setUser(null);
-      }
-    };
-
-    // Check auth on mount (after hydration)
-    checkAuth();
-    
-    // Also refresh when window gets focus (user might have logged in/out in another tab)
-    const handleFocus = () => {
-      checkAuth();
-    };
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [mounted]);
-
-  // Sync with server prop when it changes (from router.refresh() or navigation)
-  useEffect(() => {
-    if (mounted) {
-      setUser(initialUser);
-    }
-  }, [initialUser, mounted]);
+  // Use server-provided user directly - no client-side auth checks to avoid hydration mismatches
+  const user = initialUser;
 
   // Close mobile menu when user logs out
   useEffect(() => {
@@ -188,6 +130,15 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
       setMobileMenuOpen(false);
     }
   }, [user, mobileMenuOpen]);
+
+  // Refresh navbar when window gets focus (user might have logged in/out in another tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      router.refresh();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [router]);
 
   const isLoggedIn = !!user;
   const isClient = user?.role === "client";
@@ -210,8 +161,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     setLogoutError(null);
-    // Immediately clear user state and close mobile menu for instant UI update
-    setUser(null);
+    // Close mobile menu immediately for instant UI update
     setMobileMenuOpen(false);
     try {
       const response = await fetch("/api/auth/logout", {
@@ -222,50 +172,35 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
         const data = await response.json();
         setLogoutError(data.error || "Logout failed");
         setIsLoggingOut(false);
-        // Re-check auth to restore correct state if logout failed
-        const authResponse = await fetch("/api/auth/me", { cache: "no-store" });
-        if (authResponse.ok) {
-          const authData = await authResponse.json();
-          if (authData.user) {
-            setUser({
-              email: authData.user.email,
-              role: authData.user.role || "tradie",
-              verificationStatus: authData.user.verificationStatus || "unverified",
-              verifiedAt: authData.user.verifiedAt ?? null,
-              isAdmin: authData.user.isAdmin ?? false,
-            });
-          }
-        }
+        // Refresh to get updated auth state from server
+        router.refresh();
         return;
       }
 
       // Clear session cookie is handled by server
-      // Ensure user state is cleared and menu is closed
-      setUser(null);
+      // Close menu and redirect to login, then refresh to update navbar state
       setMobileMenuOpen(false);
-      // Redirect to login and refresh to update navbar state
       router.replace("/login");
       router.refresh();
     } catch {
       setLogoutError("An unexpected error occurred");
       setIsLoggingOut(false);
-      // Ensure user state is cleared and menu is closed even on error
-      setUser(null);
+      // Close menu and refresh to get updated auth state from server
       setMobileMenuOpen(false);
+      router.refresh();
     }
   };
 
   return (
-    <nav className="bg-slate-900 border-b border-slate-800" suppressHydrationWarning>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" suppressHydrationWarning>
-        <div className="flex items-center justify-between h-16" suppressHydrationWarning>
+    <nav className="bg-slate-900 border-b border-slate-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <button
             onClick={() => {
               router.push(isLoggedIn ? "/dashboard" : "/");
             }}
             className="flex items-center text-xl sm:text-2xl font-bold text-white tracking-tight hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900 rounded"
-            suppressHydrationWarning
           >
             OMNEXORA
           </button>

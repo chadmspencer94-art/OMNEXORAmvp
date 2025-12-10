@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus, ClipboardList } from "lucide-react";
-import { requireActiveUser } from "@/lib/auth";
+import { requireOnboardedUser } from "@/lib/authChecks";
 import { getJobsForUserPaginated } from "@/lib/jobs";
 import { buildPagination } from "@/lib/pagination";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import JobsList from "./JobsList";
 
-// Authenticated page using requireActiveUser - must be dynamic
+// Authenticated page using requireOnboardedUser - must be dynamic
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
@@ -17,23 +17,34 @@ interface JobsPageProps {
 }
 
 export default async function JobsPage({ searchParams }: JobsPageProps) {
-  const user = await requireActiveUser("/jobs");
+  const user = await requireOnboardedUser();
   
+  console.log("[jobs] starting page render for user", user?.id);
+
   // Redirect clients to their dashboard
   if (user.role === "client") {
     redirect("/client/dashboard");
   }
-  
-  // Check onboarding status and redirect if needed (for tradie/business users)
-  const { requireCompleteProfile } = await import("@/lib/onboarding-guard");
-  await requireCompleteProfile("/jobs");
 
   const params = await searchParams;
   const { page } = buildPagination(params.page, 20);
   const showRemovedNotice = params.removed === "true";
   const showErrorNotice = params.error === "job_removed";
 
-  const jobsResult = await getJobsForUserPaginated(user.id, false, page, 20);
+  let jobsResult: Awaited<ReturnType<typeof getJobsForUserPaginated>>;
+  try {
+    jobsResult = await getJobsForUserPaginated(user.id, false, page, 20);
+  } catch (error) {
+    console.error("[jobs] Error fetching jobs:", error);
+    // Return empty result instead of crashing
+    jobsResult = {
+      items: [],
+      totalItems: 0,
+      totalPages: 0,
+      page: page,
+      pageSize: 20,
+    };
+  }
   const jobs = jobsResult.items;
 
   // Get verification status for header

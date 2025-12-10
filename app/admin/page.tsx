@@ -9,7 +9,10 @@ export const revalidate = 0;
 export default async function AdminPage() {
   const user = await requireActiveUser("/admin");
 
+  console.log("[admin] admin page accessed by user", user?.id);
+
   if (!isAdmin(user)) {
+    console.log("[admin] non-admin user attempted to access admin page, redirecting");
     redirect("/dashboard");
   }
 

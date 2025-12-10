@@ -6,12 +6,14 @@ export async function GET() {
     const user = await getCurrentUser();
 
     if (!user) {
+      console.log("[auth] /api/auth/me: no user found");
       return NextResponse.json(
         { error: "Not authenticated" },
         { status: 401 }
       );
     }
 
+    console.log("[auth] /api/auth/me: returning user data for", user.id);
     // Return safe user data including role, verification status, admin flag, and pricing settings
     return NextResponse.json({
       user: {
@@ -30,7 +32,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Error fetching current user:", error);
+    console.error("[auth] Error fetching current user:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

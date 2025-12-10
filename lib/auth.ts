@@ -586,6 +586,7 @@ export async function getUserFromSession(
     // Load user by id (may be an older record missing newer fields)
     const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${targetUserId}`);
     if (!rawUser) {
+      console.error("[auth] getUserFromSession: user not found for session", sessionId, "targetUserId:", targetUserId);
       return null;
     }
 
@@ -597,7 +598,7 @@ export async function getUserFromSession(
     return safeUser;
   } catch (error) {
     // If KV lookup fails, return null (session invalid)
-    console.error("Error getting user from session:", error);
+    console.error("[auth] Error getting user from session:", error);
     return null;
   }
 }
@@ -653,7 +654,11 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
       return null;
     }
 
-    return await getUserFromSession(sessionId);
+    const user = await getUserFromSession(sessionId);
+    if (user) {
+      console.log("[auth] getCurrentUser: found user", user.id);
+    }
+    return user;
   } catch (error: any) {
     // Handle DYNAMIC_SERVER_USAGE errors silently (expected during build/static generation)
     // These occur when Next.js tries to statically generate pages that use cookies()
@@ -673,7 +678,7 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
     
     // For other errors (e.g., KV unavailable), log but don't crash
     // This allows the app to continue functioning in degraded mode
-    console.error("Error getting current user from session:", error);
+    console.error("[auth] Failed to get current user from session", error);
     return null;
   }
 }
@@ -713,28 +718,41 @@ export function assertAdmin(user: SafeUser | null): void {
  * @returns The active user (never null, redirects if issues)
  */
 export async function requireActiveUser(redirectTo?: string): Promise<SafeUser> {
-  const user = await getCurrentUser();
-  
-  if (!user) {
-    const { redirect } = await import("next/navigation");
-    const loginPath = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login";
-    redirect(loginPath);
-    // redirect() never returns, but TypeScript doesn't know that
-    throw new Error("Redirected to login");
-  }
+  try {
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      console.log("[auth] requireActiveUser: no user found, redirecting to login");
+      const { redirect } = await import("next/navigation");
+      const loginPath = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}&reason=unauthorised` : "/login?reason=unauthorised";
+      redirect(loginPath);
+      // redirect() never returns, but TypeScript doesn't know that
+      // Use a type assertion to satisfy TypeScript - this code will never execute
+      return null as never;
+    }
 
-  // Check if account is suspended (planStatus can be a string, not just PlanStatus enum)
-  // SUSPENDED is a valid status that can be set by admins, even though it's not in the PlanStatus type
-  const planStatus = user.planStatus as string | undefined;
-  if (planStatus === "SUSPENDED") {
-    const { redirect } = await import("next/navigation");
-    redirect("/account-suspended");
-    // redirect() never returns, but TypeScript doesn't know that
-    throw new Error("Redirected to account-suspended");
-  }
+    console.log("[auth] requireActiveUser: user found", user.id);
 
-  // At this point, user is guaranteed to be non-null and not suspended
-  return user;
+    // Check if account is suspended (planStatus can be a string, not just PlanStatus enum)
+    // SUSPENDED is a valid status that can be set by admins, even though it's not in the PlanStatus type
+    const planStatus = user.planStatus as string | undefined;
+    if (planStatus === "SUSPENDED") {
+      console.log("[auth] requireActiveUser: account suspended, redirecting");
+      const { redirect } = await import("next/navigation");
+      redirect("/account-suspended");
+      // redirect() never returns, but TypeScript doesn't know that
+      return null as never;
+    }
+
+    // At this point, user is guaranteed to be non-null and not suspended
+    return user;
+  } catch (error) {
+    // If getCurrentUser throws (shouldn't happen, but be defensive), log and redirect
+    console.error("[auth] requireActiveUser: error getting user", error);
+    const { redirect } = await import("next/navigation");
+    redirect("/login?reason=unauthorised");
+    return null as never;
+  }
 }
 
 /**
@@ -751,7 +769,7 @@ export async function requireClientUser(redirectTo?: string): Promise<SafeUser> 
     // Non-clients should go to their dashboard
     redirect("/dashboard");
     // redirect() never returns, but TypeScript doesn't know that
-    throw new Error("Redirected to dashboard");
+    return null as never;
   }
 
   return user;
@@ -771,7 +789,7 @@ export async function requireTradieUser(redirectTo?: string): Promise<SafeUser> 
     // Clients should go to their dashboard
     redirect("/client/dashboard");
     // redirect() never returns, but TypeScript doesn't know that
-    throw new Error("Redirected to client dashboard");
+    return null as never;
   }
 
   return user;

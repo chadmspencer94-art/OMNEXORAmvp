@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireActiveUser, isClient } from "@/lib/auth";
+import { requireOnboardedUser, isClient } from "@/lib/authChecks";
 import { getClientsForUser } from "@/lib/clientCrm";
 import { formatDateTimeForDisplay } from "@/lib/format";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import ClientListSearch from "./ClientListSearch";
 
-// Authenticated page using requireActiveUser - must be dynamic
+// Authenticated page using requireOnboardedUser - must be dynamic
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
@@ -16,7 +16,9 @@ interface ClientsPageProps {
 }
 
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
-  const user = await requireActiveUser("/clients");
+  const user = await requireOnboardedUser();
+
+  console.log("[clients] starting page render for user", user?.id);
 
   // Redirect clients away from CRM
   if (isClient(user)) {
@@ -28,11 +30,25 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const page = parseInt(params.page || "1", 10);
 
   // Fetch clients for this user
-  const { clients, total, totalPages } = await getClientsForUser(user.id, {
-    search,
-    page,
-    pageSize: 20,
-  });
+  let clients: Awaited<ReturnType<typeof getClientsForUser>>["clients"];
+  let total: number;
+  let totalPages: number;
+  try {
+    const result = await getClientsForUser(user.id, {
+      search,
+      page,
+      pageSize: 20,
+    });
+    clients = result.clients;
+    total = result.total;
+    totalPages = result.totalPages;
+  } catch (error) {
+    console.error("[clients] Error fetching clients:", error);
+    // Return empty results instead of crashing
+    clients = [];
+    total = 0;
+    totalPages = 0;
+  }
 
   // Extract suburb from address helper (reused from elsewhere)
   const extractSuburb = (address?: string | null): string => {

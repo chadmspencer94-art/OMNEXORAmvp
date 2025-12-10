@@ -11,6 +11,8 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as LoginRequestBody;
     const { email, password } = body;
 
+    console.log("[login] attempting login for email", email);
+
     // Validate input
     if (!email || typeof email !== "string") {
       return NextResponse.json(
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
     try {
       user = await verifyUser(email, password);
     } catch (verifyError) {
-      console.error("Error verifying user:", verifyError);
+      console.error("[login] Error verifying user:", verifyError);
       return NextResponse.json(
         { error: "An error occurred during login. Please try again." },
         { status: 500 }
@@ -39,27 +41,32 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
+      console.error("[login] Invalid credentials for email", email);
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }
       );
     }
 
+    console.log("[login] user verified, creating session for user", user.id);
+
     // Create a session
     let sessionId;
     try {
       sessionId = await createSession(user.id);
     } catch (sessionError) {
-      console.error("Error creating session:", sessionError);
+      console.error("[login] Error creating session:", sessionError);
       return NextResponse.json(
         { error: "An error occurred during login. Please try again." },
         { status: 500 }
       );
     }
 
+    console.log("[login] session created successfully", sessionId);
+
     // Update last login timestamp (don't await - fire and forget for performance)
     updateLastLogin(user.id).catch((err) => {
-      console.error("Failed to update last login:", err);
+      console.error("[login] Failed to update last login:", err);
     });
 
     // Create response and set the session cookie directly on it
@@ -73,9 +80,10 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set(SESSION_COOKIE_NAME, sessionId, SESSION_COOKIE_OPTIONS);
 
+    console.log("[login] login successful for user", user.id);
     return response;
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("[login] Login error:", error);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

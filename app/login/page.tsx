@@ -19,6 +19,7 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
+      console.log("[login] attempting login for email", email);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -27,19 +28,40 @@ function LoginForm() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "Login failed");
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error("[login] failed to parse response", parseError);
+        setError("An unexpected error occurred. Please try again.");
         setIsLoading(false);
         return;
       }
 
-      // Check user role and redirect accordingly
-      let redirectTo = "/dashboard";
+      if (!response.ok) {
+        const errorMessage = data?.error || "Login failed";
+        console.error("[login] login failed", { status: response.status, error: errorMessage });
+        // Show user-friendly error messages
+        if (response.status === 401 || response.status === 400) {
+          setError("Incorrect email or password");
+        } else {
+          setError(errorMessage);
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("[login] login successful, redirecting");
+      // After successful login, redirect to dashboard
+      // Server-side guards on protected pages will handle:
+      // - Redirecting clients to /client/dashboard
+      // - Redirecting non-onboarded users to /onboarding
+      // This avoids client-side checks that can cause flicker
       
       // Validate redirect to prevent open redirect attacks
       const redirectParam = searchParams.get("redirect");
+      let redirectTo = "/dashboard";
+      
       if (redirectParam) {
         // Only allow relative paths starting with / (not // or external URLs)
         const isValidRedirect = 
@@ -52,41 +74,12 @@ function LoginForm() {
         }
       }
       
-      // Check user role and redirect clients to their dashboard
-      try {
-        const userResponse = await fetch("/api/auth/me");
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          if (userData.user) {
-            // Clients go to client dashboard
-            if (userData.user.role === "client") {
-              redirectTo = "/client/dashboard";
-            } else if (redirectTo === "/dashboard") {
-              // Check onboarding status for tradie/business users
-              try {
-                const onboardingCheck = await fetch("/api/onboarding/check");
-                if (onboardingCheck.ok) {
-                  const onboardingData = await onboardingCheck.json();
-                  // If user needs onboarding and hasn't skipped, redirect to onboarding
-                  if (onboardingData.needsOnboarding && !onboardingData.skipped) {
-                    redirectTo = "/onboarding";
-                  }
-                }
-              } catch {
-                // If check fails, proceed to dashboard (guard will handle redirect if needed)
-              }
-            }
-          }
-        }
-      } catch {
-        // If check fails, proceed with default redirect
-      }
-      
       // Use replace to avoid adding to history, then refresh to update navbar
       router.replace(redirectTo);
       router.refresh();
-    } catch {
-      setError("An unexpected error occurred");
+    } catch (error) {
+      console.error("[login] unexpected error during login", error);
+      setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
   };
@@ -173,47 +166,7 @@ function LoginForm() {
 // This ensures the page always checks current auth status
 export const dynamic = "force-dynamic";
 
-function LoginPageClient() {
-  const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
-
-  // Guard: Check if user is already logged in on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/auth/me");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.user) {
-            // User is already logged in, redirect to dashboard
-            router.replace("/dashboard");
-            return;
-          }
-        }
-      } catch {
-        // If check fails, user is not logged in - show login form
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    checkAuth();
-  }, [router]);
-
-  if (isChecking) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-            <div className="text-center">
-              <p className="text-slate-600">Loading...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
       <div className="w-full max-w-md">
@@ -230,5 +183,3 @@ function LoginPageClient() {
     </div>
   );
 }
-
-export default LoginPageClient;

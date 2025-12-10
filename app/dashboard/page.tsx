@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireActiveUser, getUsersByVerificationStatus } from "@/lib/auth";
+import { requireOnboardedUser } from "@/lib/authChecks";
+import { getUsersByVerificationStatus } from "@/lib/auth";
 import { getJobsForUser, type Job, type JobStatus } from "@/lib/jobs";
 import { getUnresolvedFeedbackCount } from "@/lib/feedback";
 import { formatDateTimeForDisplay } from "@/lib/format";
@@ -8,17 +9,17 @@ import DevVerifyButton from "./DevVerifyButton";
 import VerifiedBadge from "@/app/components/VerifiedBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
-
-// Authenticated page using requireActiveUser and Prisma - must be dynamic
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
 import MatchingJobsSection from "./MatchingJobsSection";
 import GettingStartedCard from "./GettingStartedCard";
 import OnboardingCard from "@/app/components/OnboardingCard";
 import EmailVerificationBanner from "@/app/components/EmailVerificationBanner";
 import AnalyticsSection from "./AnalyticsSection";
 import { getOnboardingStatus } from "@/lib/onboarding-status";
+
+// Authenticated page using requireOnboardedUser and Prisma - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 // Check if we're in development mode (for showing dev tools)
 const isDev = process.env.NODE_ENV !== "production";
@@ -74,16 +75,14 @@ function RecentJobRow({ job }: { job: Job }) {
 }
 
 export default async function DashboardPage() {
-  const user = await requireActiveUser("/dashboard");
+  const user = await requireOnboardedUser();
   
+  console.log("[dashboard] starting page render for user", user?.id);
+
   // Redirect clients to their dashboard
   if (user.role === "client") {
     redirect("/client/dashboard");
   }
-
-  // Check onboarding status and redirect if needed
-  const { requireCompleteProfile } = await import("@/lib/onboarding-guard");
-  const onboardingUser = await requireCompleteProfile("/dashboard");
   
   // TypeScript: user is guaranteed to be non-client after redirect above
   const isClient = false;
@@ -121,7 +120,7 @@ export default async function DashboardPage() {
     });
   } catch (error) {
     // Log error but don't crash - dashboard can still function without Prisma data
-    console.error("Failed to load user data from Prisma:", error);
+    console.error("[dashboard] Failed to load user data from Prisma:", error);
   }
 
   // Load jobs with error handling
