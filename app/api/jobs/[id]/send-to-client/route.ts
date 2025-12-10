@@ -53,21 +53,37 @@ export async function POST(
       );
     }
 
-    // Email verification check: require verified email
-    try {
-      const { requireVerifiedEmail } = await import("@/lib/authChecks");
-      await requireVerifiedEmail(user);
-    } catch (error: any) {
-      if (error.name === "EmailNotVerifiedError") {
-        return NextResponse.json(
-          {
-            error: "EMAIL_NOT_VERIFIED",
-            message: "Please verify your email before sending job packs to clients.",
-          },
-          { status: 403 }
-        );
+    // Plan check: free users cannot send job packs to clients
+    const { hasPaidPlan } = await import("@/lib/planChecks");
+    const { isAdmin } = await import("@/lib/auth");
+    
+    if (!hasPaidPlan(user) && !isAdmin(user)) {
+      return NextResponse.json(
+        {
+          error: "PAID_PLAN_REQUIRED",
+          message: "A paid membership is required to send job packs to clients. Please upgrade your plan to continue.",
+        },
+        { status: 403 }
+      );
+    }
+
+    // Email verification check: require verified email (for paid users)
+    if (hasPaidPlan(user) && !isAdmin(user)) {
+      try {
+        const { requireVerifiedEmail } = await import("@/lib/authChecks");
+        await requireVerifiedEmail(user);
+      } catch (error: any) {
+        if (error.name === "EmailNotVerifiedError") {
+          return NextResponse.json(
+            {
+              error: "EMAIL_NOT_VERIFIED",
+              message: "Please verify your email before sending job packs to clients.",
+            },
+            { status: 403 }
+          );
+        }
+        throw error;
       }
-      throw error;
     }
 
     // Business verification check: only verified tradies can send emails to clients

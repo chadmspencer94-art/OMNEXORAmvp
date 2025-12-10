@@ -25,6 +25,7 @@ interface EmailToClientButtonProps {
   exclusions?: string;
   quoteJson?: string;
   verificationStatus?: VerificationStatus;
+  planTier?: string;
 }
 
 export default function EmailToClientButton({
@@ -38,11 +39,21 @@ export default function EmailToClientButton({
   exclusions,
   quoteJson,
   verificationStatus,
+  planTier = "FREE",
 }: EmailToClientButtonProps) {
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
 
   const handleEmail = () => {
+    // PLAN CHECK: Free users cannot email job packs to clients
+    const hasPaidPlan = planTier !== "FREE";
+    if (!hasPaidPlan) {
+      setAlertMessage("A paid membership is required to email job packs to clients. Please upgrade your plan to continue.");
+      setShowAlert(true);
+      setTimeout(() => setShowAlert(false), 8000);
+      return;
+    }
+    
     // VERIFICATION GUARD: Only verified businesses can email job packs to clients.
     // This is a soft guard for the prototype phase. For public launch, this guard
     // can be toggled or extended once full verification flows are implemented.
@@ -148,8 +159,9 @@ export default function EmailToClientButton({
     window.location.href = mailtoUrl;
   };
 
-  // Show a subtle visual difference for unverified users (but still clickable to show the message)
-  const canEmail = verificationStatus === "verified";
+  // Show a subtle visual difference for unverified or free plan users (but still clickable to show the message)
+  const hasPaidPlan = planTier !== "FREE";
+  const canEmail = verificationStatus === "verified" && hasPaidPlan;
 
   return (
     <div className="relative">
@@ -160,7 +172,7 @@ export default function EmailToClientButton({
             ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
             : "bg-slate-100 text-slate-400 cursor-not-allowed"
         }`}
-        title={canEmail ? "Email job pack to client" : "Verification required to email clients"}
+        title={canEmail ? "Email job pack to client" : (!hasPaidPlan ? "Paid plan required" : "Verification required to email clients")}
       >
         <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />

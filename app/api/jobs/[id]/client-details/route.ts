@@ -56,6 +56,37 @@ export async function PATCH(
       );
     }
 
+    // Plan check: free users cannot save client details
+    const { hasPaidPlan } = await import("@/lib/planChecks");
+    const { isAdmin } = await import("@/lib/auth");
+    
+    if (!hasPaidPlan(currentUser) && !isAdmin(currentUser)) {
+      // Get plan tier from Prisma
+      let planTier = "FREE";
+      try {
+        const { prisma } = await import("@/lib/prisma");
+        const prismaUser = await prisma.user.findUnique({
+          where: { email: currentUser.email },
+          select: { planTier: true },
+        });
+        if (prismaUser?.planTier) {
+          planTier = prismaUser.planTier;
+        }
+      } catch (error) {
+        console.warn("Failed to fetch plan tier:", error);
+      }
+      
+      if (planTier === "FREE") {
+        return NextResponse.json(
+          {
+            error: "A paid membership is required to save client details and send job packs. Please upgrade your plan to continue.",
+            code: "PAID_PLAN_REQUIRED"
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // Parse request body
     const body = await request.json();
     const { clientName, clientEmail } = body;

@@ -600,16 +600,23 @@ export async function getAllActiveJobs(limit: number = 50): Promise<Job[]> {
  * @param user - The user creating/owning the job (for loading business profile rates)
  */
 export async function generateJobPack(job: Job, user?: SafeUser): Promise<Job> {
-  // Email verification check: require verified email for job pack generation
+  // Email verification check: require verified email for job pack generation (only for paid users)
+  // Free users can generate but cannot save client details or send to clients
   if (user) {
-    try {
-      const { requireVerifiedEmail } = await import("./authChecks");
-      await requireVerifiedEmail(user);
-    } catch (error: any) {
-      if (error.name === "EmailNotVerifiedError") {
-        throw new Error("EMAIL_NOT_VERIFIED: Please verify your email before generating job packs.");
+    const { hasPaidPlan } = await import("./planChecks");
+    const { isAdmin } = await import("./auth");
+    
+    // Only require email verification for paid users (not free users or admins)
+    if (hasPaidPlan(user) && !isAdmin(user)) {
+      try {
+        const { requireVerifiedEmail } = await import("./authChecks");
+        await requireVerifiedEmail(user);
+      } catch (error: any) {
+        if (error.name === "EmailNotVerifiedError") {
+          throw new Error("EMAIL_NOT_VERIFIED: Please verify your email before generating job packs.");
+        }
+        throw error;
       }
-      throw error;
     }
   }
   try {

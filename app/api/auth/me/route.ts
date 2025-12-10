@@ -14,6 +14,22 @@ export async function GET() {
     }
 
     console.log("[auth] /api/auth/me: returning user data for", user.id);
+    
+    // Get plan tier from Prisma
+    let planTier = "FREE";
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      const prismaUser = await prisma.user.findUnique({
+        where: { email: user.email },
+        select: { planTier: true },
+      });
+      if (prismaUser?.planTier) {
+        planTier = prismaUser.planTier;
+      }
+    } catch (error) {
+      console.warn("[auth] Failed to fetch plan tier:", error);
+    }
+    
     // Return safe user data including role, verification status, admin flag, and pricing settings
     return NextResponse.json({
       user: {
@@ -29,6 +45,7 @@ export async function GET() {
         dayRate: user.dayRate ?? null,
         materialMarkupPercent: user.materialMarkupPercent ?? null,
         roughEstimateOnly: user.roughEstimateOnly ?? null,
+        planTier: planTier,
       },
     });
   } catch (error) {

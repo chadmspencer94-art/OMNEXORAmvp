@@ -11,6 +11,7 @@ interface SendToClientButtonProps {
   jobTitle: string;
   sentToClientAt?: string | null;
   verificationStatus?: string;
+  planTier?: string;
 }
 
 export default function SendToClientButton({
@@ -20,6 +21,7 @@ export default function SendToClientButton({
   jobTitle,
   sentToClientAt: initialSentAt,
   verificationStatus,
+  planTier = "FREE",
 }: SendToClientButtonProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,8 +37,16 @@ export default function SendToClientButton({
   const [aiContentConfirmed, setAiContentConfirmed] = useState(false);
 
   const isVerified = verificationStatus === "verified";
+  const hasPaidPlan = planTier !== "FREE";
+  const canSend = isVerified && hasPaidPlan;
 
   const handleOpenModal = () => {
+    if (!hasPaidPlan) {
+      setError("A paid membership is required to send job packs to clients. Please upgrade your plan to continue.");
+      setTimeout(() => setError(""), 8000);
+      return;
+    }
+    
     if (!isVerified) {
       setError("Only verified businesses can send job packs to clients.");
       setTimeout(() => setError(""), 5000);
@@ -134,15 +144,15 @@ export default function SendToClientButton({
         <button
           onClick={handleOpenModal}
           className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-            isVerified
+            canSend
               ? "bg-amber-500 hover:bg-amber-400 text-slate-900"
               : "bg-slate-100 text-slate-400 cursor-not-allowed"
           }`}
-          title={isVerified ? "Send job pack to client via email" : "Verification required"}
+          title={canSend ? "Send job pack to client via email" : (!hasPaidPlan ? "Paid plan required" : "Verification required")}
         >
           <Send className="w-4 h-4 mr-2" />
           <span>Send to Client</span>
-          {!isVerified && (
+          {!canSend && (
             <Lock className="w-3 h-3 ml-1.5 text-amber-500" />
           )}
         </button>

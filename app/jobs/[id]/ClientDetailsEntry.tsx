@@ -9,6 +9,7 @@ interface ClientDetailsEntryProps {
   currentClientName?: string | null;
   currentClientEmail?: string | null;
   onSave: (clientName: string, clientEmail: string) => Promise<void>;
+  planTier?: string;
 }
 
 export default function ClientDetailsEntry({
@@ -16,6 +17,7 @@ export default function ClientDetailsEntry({
   currentClientName,
   currentClientEmail,
   onSave,
+  planTier = "FREE",
 }: ClientDetailsEntryProps) {
   const [clientName, setClientName] = useState(currentClientName || "");
   const [clientEmail, setClientEmail] = useState(currentClientEmail || "");
@@ -33,6 +35,13 @@ export default function ClientDetailsEntry({
     e.preventDefault();
     setError("");
     setSuccess(false);
+
+    // Plan check: free users cannot save client details
+    const hasPaidPlan = planTier !== "FREE";
+    if (!hasPaidPlan) {
+      setError("A paid membership is required to save client details and send job packs. Please upgrade your plan to continue.");
+      return;
+    }
 
     // Validation
     if (!clientName.trim()) {
@@ -72,6 +81,8 @@ export default function ClientDetailsEntry({
     clientName !== (currentClientName || "") || 
     clientEmail !== (currentClientEmail || "");
 
+  const hasPaidPlan = planTier !== "FREE";
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
       <div className="mb-6">
@@ -82,6 +93,23 @@ export default function ClientDetailsEntry({
           Client information is kept private and never sent to AI systems. Enter client details manually after reviewing the AI-generated job pack.
         </p>
       </div>
+
+      {/* Free Plan Warning Banner */}
+      {!hasPaidPlan && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-900 mb-1">
+                Free Plan Limitations
+              </p>
+              <p className="text-sm text-amber-800">
+                You can generate job packs for free, but a paid membership is required to save client details and send job packs to clients. Upgrade your plan to unlock these features.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI Warning Banner */}
       <div className="mb-6">

@@ -43,6 +43,7 @@ interface JobTemplate {
 export default function NewJobPage() {
   const router = useRouter();
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [planTier, setPlanTier] = useState<string>("FREE");
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<JobTemplate | null>(null);
   const [formData, setFormData] = useState<FormData>({
@@ -63,7 +64,7 @@ export default function NewJobPage() {
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
 
-  // Fetch user role on mount
+  // Fetch user role and plan info on mount
   useEffect(() => {
     async function fetchUserRole() {
       try {
@@ -72,6 +73,10 @@ export default function NewJobPage() {
           const data = await response.json();
           if (data.user) {
             setUserRole(data.user.role || "tradie");
+            // Get plan tier from user data
+            if (data.user.planTier) {
+              setPlanTier(data.user.planTier);
+            }
           } else {
             router.push("/login");
           }
@@ -240,6 +245,25 @@ export default function NewJobPage() {
                       </p>
                       <p className="text-sm text-amber-800">
                         Client details are kept private and will be entered manually after AI generation. This ensures client information is never sent to AI systems and you can review everything before sending.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Free Plan Warning Banner */}
+              {!isClient && planTier === "FREE" && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-amber-900 mb-1">
+                        Free Plan Limitations
+                      </p>
+                      <p className="text-sm text-amber-800">
+                        You can generate job packs for free, but a paid membership is required to save client details and send job packs to clients. Upgrade your plan to unlock these features.
                       </p>
                     </div>
                   </div>
