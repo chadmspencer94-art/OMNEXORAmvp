@@ -903,17 +903,31 @@ IMPORTANT REMINDERS:
 - Labour hours are estimates based on typical work - actual time may vary.
 - The client must understand this is a quote/estimate, not a fixed price, until quantities are confirmed on site.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    });
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+    } catch (apiError: any) {
+      console.error("OpenAI API error:", apiError);
+      throw new Error(`AI service error: ${apiError?.message || "Failed to connect to AI service. Please try again."}`);
+    }
+
+    if (!response?.choices || response.choices.length === 0) {
+      throw new Error("AI service returned an invalid response. Please try again.");
+    }
 
     const content = response.choices[0]?.message?.content || "";
+
+    if (!content || content.trim().length === 0) {
+      throw new Error("AI returned empty response. Please try again.");
+    }
 
     // Try to parse the JSON response
     try {
@@ -950,20 +964,30 @@ IMPORTANT REMINDERS:
         : (typeof parsed.materials === "string" ? parsed.materials : "");
       job.aiClientNotes = typeof parsed.clientNotes === "string" ? parsed.clientNotes : "";
       job.status = "ai_complete";
-    } catch {
-      // If JSON parsing fails, set summary to raw text and mark as failed
-      console.warn("Failed to parse AI response as JSON");
-      job.aiSummary = content;
-      job.status = "ai_failed";
+    } catch (parseError: any) {
+      // If JSON parsing fails, throw a more descriptive error
+      console.error("Failed to parse AI response as JSON:", parseError);
+      console.error("AI response content:", content.substring(0, 500));
+      throw new Error(`Failed to parse AI response. The AI may have returned invalid JSON. Please try again.`);
     }
 
     await saveJob(job);
     return job;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating job pack:", error);
+    
+    // Preserve specific error messages
+    if (error?.message?.includes("EMAIL_NOT_VERIFIED")) {
+      job.status = "ai_failed";
+      await saveJob(job);
+      throw error; // Re-throw email verification errors as-is
+    }
+    
+    // For other errors, provide a more helpful message
+    const errorMessage = error?.message || "An unexpected error occurred while generating the job pack";
     job.status = "ai_failed";
     await saveJob(job);
-    throw error;
+    throw new Error(errorMessage);
   }
 }
 

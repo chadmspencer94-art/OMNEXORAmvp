@@ -299,12 +299,47 @@ export async function POST(request: Request) {
 
     // Only generate AI job pack for tradies (not for client job posts)
     if (!userIsClient) {
-      // Generate AI job pack (pass user to load business profile rates)
-      updatedJob = await generateJobPack(updatedJob, user);
+      try {
+        // Generate AI job pack (pass user to load business profile rates)
+        updatedJob = await generateJobPack(updatedJob, user);
+      } catch (packError: any) {
+        console.error("Error generating job pack:", packError);
+        
+        // Handle specific error types with better messages
+        let errorMessage = "Failed to generate job pack. Please try again.";
+        let statusCode = 500;
+        
+        if (packError?.message?.includes("EMAIL_NOT_VERIFIED")) {
+          errorMessage = "Please verify your email address before generating job packs. Check your email for a verification link.";
+          statusCode = 403;
+        } else if (packError?.message) {
+          // Include the actual error message for debugging
+          errorMessage = packError.message;
+        }
+        
+        // Mark job as failed
+        if (jobId) {
+          try {
+            const { getJobById } = await import("@/lib/jobs");
+            const failedJob = await getJobById(jobId);
+            if (failedJob) {
+              failedJob.status = "ai_failed";
+              await saveJob(failedJob);
+            }
+          } catch (saveError) {
+            console.error("Error saving failed status:", saveError);
+          }
+        }
+        
+        return NextResponse.json(
+          { error: errorMessage },
+          { status: statusCode }
+        );
+      }
     }
 
     return NextResponse.json({ job: updatedJob }, { status: 200 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating job:", error);
 
     // If we have a job ID, try to mark it as failed
@@ -321,8 +356,16 @@ export async function POST(request: Request) {
       }
     }
 
+    // Provide more specific error messages
+    let errorMessage = "Failed to generate job pack. Please try again.";
+    if (error?.message?.includes("EMAIL_NOT_VERIFIED")) {
+      errorMessage = "Please verify your email address before generating job packs. Check your email for a verification link.";
+    } else if (error?.message) {
+      errorMessage = error.message;
+    }
+
     return NextResponse.json(
-      { error: "Failed to generate job pack. Please try again." },
+      { error: errorMessage },
       { status: 500 }
     );
   }
