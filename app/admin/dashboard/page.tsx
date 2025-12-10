@@ -21,9 +21,21 @@ export default async function AdminDashboardPage() {
   let data;
   try {
     data = await getAdminDashboardData();
+    console.log("[admin] Dashboard data fetched successfully:", {
+      totalUsers: data.users.totalUsers,
+      totalJobs: data.jobs.totalJobs,
+      pendingVerifications: data.verifications.pendingCount,
+      openFeedback: data.feedback.openCount,
+    });
   } catch (error) {
     console.error("[admin] Error fetching admin dashboard data:", error);
+    // Log full error details for debugging
+    if (error instanceof Error) {
+      console.error("[admin] Error message:", error.message);
+      console.error("[admin] Error stack:", error.stack);
+    }
     // Return empty data structure instead of crashing
+    // The function now handles partial failures internally, so this should rarely happen
     data = {
       users: {
         totalUsers: 0,

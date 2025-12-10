@@ -59,142 +59,206 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   // ============================================================================
   // User Metrics
   // ============================================================================
-  const [
-    totalUsers,
-    totalClients,
-    totalTradies,
-    totalAdmins,
-    usersLast7Days,
-    usersLast30Days,
-    allUsers,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { role: "client" } }),
-    prisma.user.count({
-      where: {
-        role: {
-          in: ["tradie", "builder", "supplier"],
+  let totalUsers = 0;
+  let totalClients = 0;
+  let totalTradies = 0;
+  let totalAdmins = 0;
+  let usersLast7Days = 0;
+  let usersLast30Days = 0;
+  let usersByPlan: { planTier: string; count: number }[] = [];
+
+  try {
+    const [
+      usersCount,
+      clientsCount,
+      tradiesCount,
+      adminsCount,
+      users7Days,
+      users30Days,
+      allUsers,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { role: "client" } }),
+      prisma.user.count({
+        where: {
+          role: {
+            in: ["tradie", "builder", "supplier"],
+          },
         },
-      },
-    }),
-    prisma.user.count({ where: { role: "admin" } }),
-    prisma.user.count({
-      where: { createdAt: { gte: sevenDaysAgo } },
-    }),
-    prisma.user.count({
-      where: { createdAt: { gte: thirtyDaysAgo } },
-    }),
-    prisma.user.findMany({
-      select: { planTier: true },
-    }),
-  ]);
+      }),
+      prisma.user.count({ where: { role: "admin" } }),
+      prisma.user.count({
+        where: { createdAt: { gte: sevenDaysAgo } },
+      }),
+      prisma.user.count({
+        where: { createdAt: { gte: thirtyDaysAgo } },
+      }),
+      prisma.user.findMany({
+        select: { planTier: true },
+      }),
+    ]);
 
-  // Group users by plan tier
-  const planTierCounts: Record<string, number> = {};
-  allUsers.forEach((user) => {
-    const tier = user.planTier || "FREE";
-    planTierCounts[tier] = (planTierCounts[tier] || 0) + 1;
-  });
+    totalUsers = usersCount;
+    totalClients = clientsCount;
+    totalTradies = tradiesCount;
+    totalAdmins = adminsCount;
+    usersLast7Days = users7Days;
+    usersLast30Days = users30Days;
 
-  const usersByPlan = Object.entries(planTierCounts).map(([planTier, count]) => ({
-    planTier,
-    count,
-  }));
+    // Group users by plan tier
+    const planTierCounts: Record<string, number> = {};
+    allUsers.forEach((user) => {
+      const tier = user.planTier || "FREE";
+      planTierCounts[tier] = (planTierCounts[tier] || 0) + 1;
+    });
+
+    usersByPlan = Object.entries(planTierCounts).map(([planTier, count]) => ({
+      planTier,
+      count,
+    }));
+  } catch (error) {
+    console.error("[adminDashboard] Error fetching user metrics:", error);
+  }
 
   // ============================================================================
   // Job Metrics (from KV store)
   // ============================================================================
-  // Get all users to fetch their jobs
-  const allUserIds = await prisma.user.findMany({
-    select: { id: true },
-  });
+  let totalJobs = 0;
+  let jobsLast7Days = 0;
+  let jobsLast30Days = 0;
+  let jobsByStatus: { status: string; count: number }[] = [];
+  let jobsByClientStatus: { clientStatus: string; count: number }[] = [];
 
-  // Fetch all jobs from KV
-  const allJobs: Job[] = [];
-  for (const user of allUserIds) {
-    const userJobsKey = `user:${user.id}:jobs`;
-    const jobIds = await kv.lrange<string>(userJobsKey, 0, -1);
-    if (jobIds && jobIds.length > 0) {
-      const jobs = await Promise.all(
-        jobIds.map((id) => kv.get<Job>(`job:${id}`))
-      );
-      allJobs.push(...jobs.filter((job): job is Job => job !== null && !job.isDeleted));
+  try {
+    // Get all users to fetch their jobs
+    const allUserIds = await prisma.user.findMany({
+      select: { id: true },
+    });
+
+    // Fetch all jobs from KV
+    const allJobs: Job[] = [];
+    for (const user of allUserIds) {
+      const userJobsKey = `user:${user.id}:jobs`;
+      const jobIds = await kv.lrange<string>(userJobsKey, 0, -1);
+      if (jobIds && jobIds.length > 0) {
+        const jobs = await Promise.all(
+          jobIds.map((id) => kv.get<Job>(`job:${id}`))
+        );
+        allJobs.push(...jobs.filter((job): job is Job => job !== null && !job.isDeleted));
+      }
     }
-  }
 
-  const totalJobs = allJobs.length;
+    totalJobs = allJobs.length;
 
-  // Filter jobs by date
-  const jobsLast7Days = allJobs.filter(
-    (job) => new Date(job.createdAt) >= sevenDaysAgo
-  ).length;
-  const jobsLast30Days = allJobs.filter(
-    (job) => new Date(job.createdAt) >= thirtyDaysAgo
-  ).length;
+    // Filter jobs by date
+    jobsLast7Days = allJobs.filter(
+      (job) => new Date(job.createdAt) >= sevenDaysAgo
+    ).length;
+    jobsLast30Days = allJobs.filter(
+      (job) => new Date(job.createdAt) >= thirtyDaysAgo
+    ).length;
 
-  // Group jobs by status
-  const statusCounts: Record<string, number> = {};
-  allJobs.forEach((job) => {
-    const status = job.jobStatus || job.status || "unknown";
-    statusCounts[status] = (statusCounts[status] || 0) + 1;
-  });
+    // Group jobs by status
+    const statusCounts: Record<string, number> = {};
+    allJobs.forEach((job) => {
+      const status = job.jobStatus || job.status || "unknown";
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
 
-  const jobsByStatus = Object.entries(statusCounts).map(([status, count]) => ({
-    status,
-    count,
-  }));
-
-  // Group jobs by client status
-  const clientStatusCounts: Record<string, number> = {};
-  allJobs.forEach((job) => {
-    const clientStatus = job.clientStatus || "draft";
-    clientStatusCounts[clientStatus] = (clientStatusCounts[clientStatus] || 0) + 1;
-  });
-
-  const jobsByClientStatus = Object.entries(clientStatusCounts).map(
-    ([clientStatus, count]) => ({
-      clientStatus,
+    jobsByStatus = Object.entries(statusCounts).map(([status, count]) => ({
+      status,
       count,
-    })
-  );
+    }));
+
+    // Group jobs by client status
+    const clientStatusCounts: Record<string, number> = {};
+    allJobs.forEach((job) => {
+      const clientStatus = job.clientStatus || "draft";
+      clientStatusCounts[clientStatus] = (clientStatusCounts[clientStatus] || 0) + 1;
+    });
+
+    jobsByClientStatus = Object.entries(clientStatusCounts).map(
+      ([clientStatus, count]) => ({
+        clientStatus,
+        count,
+      })
+    );
+  } catch (error) {
+    console.error("[adminDashboard] Error fetching job metrics:", error);
+  }
 
   // ============================================================================
   // Verification Queue
   // ============================================================================
-  const pendingVerifications = await prisma.userVerification.findMany({
-    where: { status: "pending" },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-    select: {
-      id: true,
-      userId: true,
-      businessName: true,
-      primaryTrade: true,
-      createdAt: true,
-    },
-  });
+  let pendingCount = 0;
+  let pendingVerifications: Array<{
+    id: string;
+    userId: string;
+    businessName: string | null;
+    primaryTrade: string | null;
+    createdAt: Date;
+  }> = [];
 
-  const pendingCount = await prisma.userVerification.count({
-    where: { status: "pending" },
-  });
+  try {
+    const pendingVerifs = await prisma.userVerification.findMany({
+      where: { status: "pending" },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        userId: true,
+        businessName: true,
+        primaryTrade: true,
+        createdAt: true,
+      },
+    });
+
+    pendingCount = await prisma.userVerification.count({
+      where: { status: "pending" },
+    });
+
+    pendingVerifications = pendingVerifs.map((v) => ({
+      id: v.id,
+      userId: v.userId,
+      businessName: v.businessName,
+      primaryTrade: v.primaryTrade,
+      createdAt: v.createdAt,
+    }));
+  } catch (error) {
+    console.error("[adminDashboard] Error fetching verification queue:", error);
+  }
 
   // ============================================================================
   // Feedback Queue
   // ============================================================================
-  const allFeedback = await getAllFeedback();
-  const openFeedback = allFeedback.filter(
-    (f) => f.status === "OPEN" || f.status === "IN_PROGRESS" || !f.resolved
-  );
+  let openCount = 0;
+  let recentOpen: Array<{
+    id: string;
+    type: string | null;
+    title: string;
+    createdAt: Date;
+    userEmail: string | null;
+  }> = [];
 
-  const recentOpen = openFeedback
-    .slice(0, 10)
-    .map((f) => ({
-      id: f.id,
-      type: f.category || null,
-      title: f.message.substring(0, 100) + (f.message.length > 100 ? "..." : ""),
-      createdAt: new Date(f.createdAt),
-      userEmail: f.userEmail || null,
-    }));
+  try {
+    const allFeedback = await getAllFeedback();
+    const openFeedback = allFeedback.filter(
+      (f) => f.status === "OPEN" || f.status === "IN_PROGRESS" || !f.resolved
+    );
+
+    openCount = openFeedback.length;
+    recentOpen = openFeedback
+      .slice(0, 10)
+      .map((f) => ({
+        id: f.id,
+        type: f.category || null,
+        title: f.message.substring(0, 100) + (f.message.length > 100 ? "..." : ""),
+        createdAt: new Date(f.createdAt),
+        userEmail: f.userEmail || null,
+      }));
+  } catch (error) {
+    console.error("[adminDashboard] Error fetching feedback queue:", error);
+  }
 
   return {
     users: {
@@ -215,16 +279,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     },
     verifications: {
       pendingCount,
-      pendingList: pendingVerifications.map((v) => ({
-        id: v.id,
-        userId: v.userId,
-        businessName: v.businessName,
-        primaryTrade: v.primaryTrade,
-        createdAt: v.createdAt,
-      })),
+      pendingList: pendingVerifications,
     },
     feedback: {
-      openCount: openFeedback.length,
+      openCount,
       recentOpen,
     },
   };
