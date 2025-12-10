@@ -2,6 +2,7 @@ import { kv } from "./kv";
 import { openai } from "./openai";
 import { getEffectiveRates, type EffectiveRates } from "./pricing";
 import type { SafeUser } from "./auth";
+import { isAdmin } from "./auth";
 
 // Re-export EffectiveRates for use in other files
 export type { EffectiveRates } from "./pricing";
@@ -606,7 +607,6 @@ export async function generateJobPack(job: Job, user?: SafeUser): Promise<Job> {
     if (user) {
       let planTier = "FREE";
       try {
-        const { isAdmin } = await import("./auth");
         const { prisma } = await import("./prisma");
         
         // Fetch plan tier from Prisma

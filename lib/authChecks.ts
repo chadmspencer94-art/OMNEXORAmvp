@@ -1,6 +1,6 @@
 // lib/authChecks.ts
 import { redirect } from "next/navigation";
-import { getCurrentUser, isClient, type SafeUser } from "./auth";
+import { getCurrentUser, isClient, isAdmin, type SafeUser } from "./auth";
 
 // Re-export isClient for convenience
 export { isClient };
@@ -82,7 +82,6 @@ export async function requireAdminUser() {
  */
 export async function requireVerifiedEmail(user: SafeUser): Promise<void> {
   // Admin users bypass email verification
-  const { isAdmin } = await import("./auth");
   if (isAdmin(user)) {
     return;
   }

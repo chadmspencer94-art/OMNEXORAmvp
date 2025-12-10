@@ -33,38 +33,10 @@ export default function Home() {
 
           {/* Supporting Paragraph */}
           <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-10">
-            Generate professional job packs in minutes. From quotes to scope of work, 
-            let AI handle the paperwork so you can focus on what you do best.
+            Stop wasting hours on paperwork. OMNEXORA generates complete job packs in minutes—professional quotes, 
+            detailed scope of work, materials lists, and compliance documentation. Review, export, and send to clients instantly. 
+            Get back to the tools, not the spreadsheets.
           </p>
-
-          {/* SWMS Highlight - Refined as a clean notice card */}
-          <div className="mb-10 max-w-xl mx-auto">
-            <div className="inline-flex items-start gap-3 px-4 py-3 bg-amber-50/50 border border-amber-200/60 rounded-lg shadow-sm text-left">
-              <svg
-                className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div>
-                <p className="text-sm font-semibold text-amber-900 mb-0.5">
-                  New: Generate SWMS
-                </p>
-                <p className="text-xs sm:text-sm text-amber-800 leading-relaxed">
-                  Safe Work Method Statements directly in your job packs. 
-                  AI-powered safety documentation for every job.
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* Primary CTA */}
           <div className="mb-12">
@@ -117,8 +89,8 @@ export default function Home() {
 
       {/* Features Section */}
       <section className="px-4 py-12 sm:py-16 lg:py-20 border-t border-slate-200 bg-slate-50/50">
-        <div className="w-full max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10 text-left">
+        <div className="w-full max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-10 text-left">
             <div>
               <h3 className="font-semibold text-slate-900 mb-2 text-base sm:text-lg">
                 Smart Quotes
@@ -137,10 +109,18 @@ export default function Home() {
             </div>
             <div>
               <h3 className="font-semibold text-slate-900 mb-2 text-base sm:text-lg">
-                SWMS Generation
+                Safety Documents
               </h3>
               <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-                AI-powered Safe Work Method Statements included in every job pack.
+                Comprehensive safety documentation including SWMS and compliance requirements for every job.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 mb-2 text-base sm:text-lg">
+                Professional Delivery
+              </h3>
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Export to PDF and email job packs directly to clients in one click.
               </p>
             </div>
           </div>

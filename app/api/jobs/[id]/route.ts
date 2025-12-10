@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getJobById, saveJob, type UpdateJobData, type TradeType } from "@/lib/jobs";
 
 const VALID_TRADE_TYPES: TradeType[] = ["Painter", "Plasterer", "Carpenter", "Electrician", "Other"];
@@ -25,7 +25,6 @@ export async function PATCH(
     }
 
     // Authorization: ensure user owns this job OR is admin (admins can update any job)
-    const { isAdmin } = await import("@/lib/auth");
     if (job.userId !== user.id && !isAdmin(user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isClient } from "@/lib/auth";
+import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById, saveJob, generateJobPack } from "@/lib/jobs";
 
 /**

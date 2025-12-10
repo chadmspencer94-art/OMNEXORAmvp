@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isClient } from "@/lib/auth";
+import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById, cloneJobForUser } from "@/lib/jobs";
 
 type RouteParams = {
@@ -49,7 +49,6 @@ export async function POST(
     }
 
     // Authorization: ensure user owns this job OR is admin (admins can duplicate any job)
-    const { isAdmin } = await import("@/lib/auth");
     if (sourceJob.userId !== currentUser.id && !isAdmin(currentUser)) {
       return NextResponse.json(
         { error: "You do not have permission to duplicate this job" },

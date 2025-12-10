@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getJobById, softDeleteJob } from "@/lib/jobs";
 
 export async function PATCH(
@@ -23,7 +23,6 @@ export async function PATCH(
     }
 
     // Authorization: ensure user owns this job OR is admin (admins can delete any job)
-    const { isAdmin } = await import("@/lib/auth");
     if (job.userId !== user.id && !isAdmin(user)) {
       return NextResponse.json(
         { error: "Forbidden. You do not own this job." },
