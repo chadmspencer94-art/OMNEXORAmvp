@@ -1,9 +1,17 @@
 // lib/authChecks.ts
 import { redirect } from "next/navigation";
-import { getCurrentUser, isClient } from "./auth";
+import { getCurrentUser, isClient, type SafeUser } from "./auth";
 
 // Re-export isClient for convenience
 export { isClient };
+
+// Custom error class for email verification
+class EmailNotVerifiedError extends Error {
+  name = "EmailNotVerifiedError";
+  constructor(message: string = "Email not verified") {
+    super(message);
+  }
+}
 
 /**
  * Require that a user is logged in.
@@ -63,4 +71,37 @@ export async function requireAdminUser() {
   }
 
   return user;
+}
+
+/**
+ * Requires that a user's email is verified.
+ * Throws EmailNotVerifiedError if email is not verified.
+ * @param user - The user to check
+ * @throws EmailNotVerifiedError if email is not verified
+ */
+export async function requireVerifiedEmail(user: SafeUser): Promise<void> {
+  // Check if emailVerifiedAt exists on user object (might be added dynamically)
+  if ((user as any).emailVerifiedAt) {
+    return;
+  }
+
+  // Otherwise, check Prisma database
+  try {
+    const { prisma } = await import("./prisma");
+    const prismaUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: { emailVerifiedAt: true },
+    });
+
+    if (!prismaUser || !prismaUser.emailVerifiedAt) {
+      throw new EmailNotVerifiedError("Email not verified");
+    }
+  } catch (error) {
+    // If it's already our custom error, re-throw it
+    if (error instanceof EmailNotVerifiedError) {
+      throw error;
+    }
+    // If database query fails, assume not verified for safety
+    throw new EmailNotVerifiedError("Email not verified");
+  }
 }
