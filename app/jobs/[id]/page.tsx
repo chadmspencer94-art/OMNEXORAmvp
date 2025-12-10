@@ -2,6 +2,11 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { requireActiveUser, isAdmin } from "@/lib/auth";
+
+// Authenticated page using requireActiveUser - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 import { getJobById, type Job, type JobStatus, type JobWorkflowStatus, type AIReviewStatus, type ClientStatus, type EffectiveRates } from "@/lib/jobs";
 import type { UserRole } from "@/lib/auth";
 import { formatEffectiveRatesForDisplay, calculateEstimateRange } from "@/lib/pricing";

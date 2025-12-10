@@ -654,8 +654,24 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
     }
 
     return await getUserFromSession(sessionId);
-  } catch (error) {
-    // If session lookup fails (e.g., KV unavailable), return null
+  } catch (error: any) {
+    // Handle DYNAMIC_SERVER_USAGE errors silently (expected during build/static generation)
+    // These occur when Next.js tries to statically generate pages that use cookies()
+    // Swallow these errors and just treat as "no user" - do NOT log them
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      (error as any).digest === "DYNAMIC_SERVER_USAGE"
+    ) {
+      return null;
+    }
+    
+    if (error?.message?.includes("Dynamic server usage") || error?.message?.includes("couldn't be rendered statically")) {
+      return null;
+    }
+    
+    // For other errors (e.g., KV unavailable), log but don't crash
     // This allows the app to continue functioning in degraded mode
     console.error("Error getting current user from session:", error);
     return null;

@@ -5,6 +5,11 @@ import { getJobsForUser } from "@/lib/jobs";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import CalendarView from "./CalendarView";
 
+// Authenticated page using requireActiveUser - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 interface CalendarPageProps {
   searchParams: Promise<{ year?: string; month?: string }>;
 }

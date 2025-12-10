@@ -8,6 +8,13 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+// Root layout uses Navbar which calls getCurrentUser() (uses cookies())
+// This makes all pages dynamic, which is necessary for authenticated routes
+// Public pages (/, /login, /register) can still be cached by Next.js even if marked dynamic
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 export const metadata: Metadata = {
   title: "OMNEXORA - AI Job Packs for Tradies",
   description: "Generate AI-powered job packs for Australian tradies to cut admin and win back time for what most matters",

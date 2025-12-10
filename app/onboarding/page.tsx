@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { needsOnboarding, isBusinessProfileComplete } from "@/lib/onboarding";
 import OnboardingWizard from "./OnboardingWizard";
 
+// Authenticated page using requireActiveUser and Prisma - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 export default async function OnboardingPage() {
   const user = await requireActiveUser("/onboarding");
 
@@ -12,10 +17,17 @@ export default async function OnboardingPage() {
     redirect("/dashboard");
   }
 
-  // Fetch full user from Prisma
-  const prismaUser = await prisma.user.findUnique({
-    where: { email: user.email },
-  });
+  // Fetch full user from Prisma with error handling
+  let prismaUser;
+  try {
+    prismaUser = await prisma.user.findUnique({
+      where: { email: user.email },
+    });
+  } catch (error) {
+    // If database query fails, redirect to login for safety
+    console.error("Failed to fetch user from Prisma in onboarding:", error);
+    redirect("/login");
+  }
 
   if (!prismaUser) {
     redirect("/login");
@@ -25,10 +37,15 @@ export default async function OnboardingPage() {
   if (prismaUser.profileCompletedAt || isBusinessProfileComplete(prismaUser)) {
     // Auto-complete for legacy users
     if (!prismaUser.profileCompletedAt && isBusinessProfileComplete(prismaUser)) {
-      await prisma.user.update({
-        where: { id: prismaUser.id },
-        data: { profileCompletedAt: new Date() },
-      });
+      try {
+        await prisma.user.update({
+          where: { id: prismaUser.id },
+          data: { profileCompletedAt: new Date() },
+        });
+      } catch (error) {
+        // If update fails, log but continue - user can still proceed
+        console.error("Failed to update profileCompletedAt:", error);
+      }
     }
     redirect("/dashboard");
   }

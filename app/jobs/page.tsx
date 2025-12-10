@@ -7,6 +7,11 @@ import { buildPagination } from "@/lib/pagination";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import JobsList from "./JobsList";
 
+// Authenticated page using requireActiveUser - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 interface JobsPageProps {
   searchParams: Promise<{ removed?: string; error?: string; page?: string }>;
 }

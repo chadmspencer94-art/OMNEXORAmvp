@@ -14,9 +14,22 @@ export default async function Navbar() {
   
   try {
     user = await getCurrentUser();
-  } catch (error) {
-    // Log the error but don't crash - show logged-out state instead
-    console.error("Failed to get current user:", error);
+  } catch (error: any) {
+    // Handle DYNAMIC_SERVER_USAGE errors silently (expected during build/static generation)
+    // Swallow these errors - do NOT log them
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      (error as any).digest === "DYNAMIC_SERVER_USAGE"
+    ) {
+      user = null;
+    } else if (error?.message?.includes("Dynamic server usage") || error?.message?.includes("couldn't be rendered statically")) {
+      user = null;
+    } else {
+      // For other errors, log but don't crash - show logged-out state instead
+      console.error("Failed to get current user:", error);
+    }
   }
 
   return (

@@ -5,6 +5,10 @@ import { getJobById } from "@/lib/jobs";
 import PrintButton from "./PrintButton";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
 
+// Authenticated page using requireActiveUser - must be dynamic
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface SpecDocPageProps {
   params: Promise<{ id: string }>;
 }

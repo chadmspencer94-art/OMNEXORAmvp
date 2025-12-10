@@ -8,6 +8,11 @@ import DevVerifyButton from "./DevVerifyButton";
 import VerifiedBadge from "@/app/components/VerifiedBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
+
+// Authenticated page using requireActiveUser and Prisma - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 import MatchingJobsSection from "./MatchingJobsSection";
 import GettingStartedCard from "./GettingStartedCard";
 import OnboardingCard from "@/app/components/OnboardingCard";

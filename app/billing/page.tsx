@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { requireActiveUser } from "@/lib/auth";
 
+// Authenticated page using requireActiveUser - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 export default async function BillingPage() {
   await requireActiveUser("/billing");
   return (

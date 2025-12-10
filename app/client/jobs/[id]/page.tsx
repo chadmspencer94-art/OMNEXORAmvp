@@ -5,6 +5,10 @@ import { getJobById, type Job, type ClientStatus } from "@/lib/jobs";
 import ClientJobPackView from "./ClientJobPackView";
 import ClientAcceptanceForm from "./ClientAcceptanceForm";
 
+// Authenticated page using requireClientUser - must be dynamic
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function ClientStatusBadge({ status }: { status: ClientStatus }) {
   const styles: Record<ClientStatus, string> = {
     draft: "bg-slate-100 text-slate-700",

@@ -4,6 +4,11 @@ import { requireActiveUser, isAdmin } from "@/lib/auth";
 import { getAllFeedback } from "@/lib/feedback";
 import FeedbackLogClient from "./FeedbackLogClient";
 
+// Admin route uses cookies() via requireActiveUser - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 export default async function AdminFeedbackPage() {
   const user = await requireActiveUser("/admin/feedback");
 

@@ -3,6 +3,11 @@ import { redirect } from "next/navigation";
 import { requireActiveUser, isAdmin } from "@/lib/auth";
 import { getAdminDashboardData } from "@/lib/adminDashboard";
 
+// Admin route uses cookies() via requireActiveUser and Prisma - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 export default async function AdminDashboardPage() {
   const user = await requireActiveUser("/admin/dashboard");
 

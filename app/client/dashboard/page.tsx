@@ -2,6 +2,11 @@ import Link from "next/link";
 import { requireClientUser } from "@/lib/auth";
 import { getJobsForClient, type Job, type ClientStatus } from "@/lib/jobs";
 
+// Authenticated page using requireClientUser - must be dynamic
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 function ClientStatusBadge({ status }: { status: ClientStatus }) {
   const styles: Record<ClientStatus, string> = {
     draft: "bg-slate-100 text-slate-700",

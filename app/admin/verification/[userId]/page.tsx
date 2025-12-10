@@ -4,6 +4,10 @@ import { getUserVerification } from "@/lib/verification";
 import { prisma } from "@/lib/prisma";
 import VerificationDetailView from "./VerificationDetailView";
 
+// Admin route uses cookies() via requireActiveUser and Prisma - must be dynamic
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface AdminVerificationDetailPageProps {
   params: Promise<{ userId: string }>;
 }
