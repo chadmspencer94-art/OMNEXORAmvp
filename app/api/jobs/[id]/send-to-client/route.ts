@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
 import { sendJobPackEmail, buildJobPackEmailHtml, buildJobPackEmailText } from "@/lib/email";
 import { ensureQuoteNumber, getNextQuoteVersion } from "@/lib/quotes";
@@ -46,7 +46,6 @@ export async function POST(
     }
 
     // Authorization: ensure user owns this job OR is admin (admins can send any job pack)
-    const { isAdmin } = await import("@/lib/auth");
     if (job.userId !== user.id && !isAdmin(user)) {
       return NextResponse.json(
         { error: "Not authorized to access this job" },
@@ -56,7 +55,6 @@ export async function POST(
 
     // Plan check: free users cannot send job packs to clients
     const { hasPaidPlan } = await import("@/lib/planChecks");
-    const { isAdmin } = await import("@/lib/auth");
     
     if (!hasPaidPlan(user) && !isAdmin(user)) {
       return NextResponse.json(

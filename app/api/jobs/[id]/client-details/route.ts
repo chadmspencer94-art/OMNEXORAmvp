@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isClient } from "@/lib/auth";
+import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
 
 type RouteParams = {
@@ -49,7 +49,6 @@ export async function PATCH(
     }
 
     // Verify ownership - admins can update any job
-    const { isAdmin } = await import("@/lib/auth");
     if (job.userId !== currentUser.id && !isAdmin(currentUser)) {
       return NextResponse.json(
         { error: "You do not have permission to update this job" },
@@ -59,7 +58,6 @@ export async function PATCH(
 
     // Plan check: free users cannot save client details
     const { hasPaidPlan } = await import("@/lib/planChecks");
-    const { isAdmin } = await import("@/lib/auth");
     
     if (!hasPaidPlan(currentUser) && !isAdmin(currentUser)) {
       // Get plan tier from Prisma
