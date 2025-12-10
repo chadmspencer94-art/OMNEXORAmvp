@@ -600,26 +600,47 @@ export async function getAllActiveJobs(limit: number = 50): Promise<Job[]> {
  * @param user - The user creating/owning the job (for loading business profile rates)
  */
 export async function generateJobPack(job: Job, user?: SafeUser): Promise<Job> {
-  // Email verification check: require verified email for job pack generation (only for paid users)
-  // Free users can generate but cannot save client details or send to clients
-  if (user) {
-    const { hasPaidPlan } = await import("./planChecks");
-    const { isAdmin } = await import("./auth");
-    
-    // Only require email verification for paid users (not free users or admins)
-    if (hasPaidPlan(user) && !isAdmin(user)) {
+  try {
+    // Email verification check: require verified email for job pack generation (only for paid users)
+    // Free users can generate but cannot save client details or send to clients
+    if (user) {
+      let planTier = "FREE";
       try {
-        const { requireVerifiedEmail } = await import("./authChecks");
-        await requireVerifiedEmail(user);
-      } catch (error: any) {
-        if (error.name === "EmailNotVerifiedError") {
-          throw new Error("EMAIL_NOT_VERIFIED: Please verify your email before generating job packs.");
+        const { isAdmin } = await import("./auth");
+        const { prisma } = await import("./prisma");
+        
+        // Fetch plan tier from Prisma
+        try {
+          const prismaUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: { planTier: true },
+          });
+          if (prismaUser?.planTier) {
+            planTier = prismaUser.planTier;
+          }
+        } catch (dbError) {
+          console.warn("Failed to fetch plan tier for job pack generation:", dbError);
+          // Default to FREE if fetch fails
         }
-        throw error;
+        
+        // Only require email verification for paid users (not free users or admins)
+        const hasPaidPlan = isAdmin(user) || planTier !== "FREE";
+        if (hasPaidPlan && !isAdmin(user)) {
+          try {
+            const { requireVerifiedEmail } = await import("./authChecks");
+            await requireVerifiedEmail(user);
+          } catch (error: any) {
+            if (error.name === "EmailNotVerifiedError") {
+              throw new Error("EMAIL_NOT_VERIFIED: Please verify your email before generating job packs.");
+            }
+            throw error;
+          }
+        }
+      } catch (importError) {
+        console.error("Error importing modules for plan check:", importError);
+        // If imports fail, allow generation to proceed (fail-safe)
       }
     }
-  }
-  try {
     // Get effective rates (job override > business profile > pricing settings)
     let effectiveRates: EffectiveRates = {};
     if (user) {

@@ -66,14 +66,33 @@ export async function POST(
       // Generate the new job pack (pass user to load business profile rates)
       const updatedJob = await generateJobPack(job, user);
       return NextResponse.json({ job: updatedJob });
-    } catch (error) {
+    } catch (error: any) {
       // If generation fails, mark as failed
       console.error("Error generating job pack:", error);
-      job.status = "ai_failed";
-      await saveJob(job);
+      
+      // Handle specific error types with better messages
+      let errorMessage = "Failed to generate job pack. Please try again.";
+      let statusCode = 500;
+      
+      if (error?.message?.includes("EMAIL_NOT_VERIFIED")) {
+        errorMessage = "Please verify your email address before generating job packs. Check your email for a verification link.";
+        statusCode = 403;
+      } else if (error?.message) {
+        // Include the actual error message for debugging
+        errorMessage = error.message;
+      }
+      
+      // Mark job as failed
+      try {
+        job.status = "ai_failed";
+        await saveJob(job);
+      } catch (saveError) {
+        console.error("Error saving failed status:", saveError);
+      }
+      
       return NextResponse.json(
-        { error: "Failed to generate job pack" },
-        { status: 500 }
+        { error: errorMessage },
+        { status: statusCode }
       );
     }
   } catch (error) {
