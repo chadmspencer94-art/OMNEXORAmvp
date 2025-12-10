@@ -639,6 +639,9 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   // Check if user has paid plan (admin users always have access)
   const userHasPaidPlan = userIsAdmin || planTier !== "FREE";
   const userIsFreePlan = !userIsAdmin && planTier === "FREE";
+  
+  // Check if this is a client job (posted via client portal)
+  const isClientJob = job.leadSource === "CLIENT_PORTAL";
 
   // For client view, get tradie verification status
   let tradieVerificationStatus: string | null = null;
