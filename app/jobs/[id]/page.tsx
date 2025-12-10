@@ -1185,10 +1185,6 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       jobId={job.id}
                       hasScopeOfWork={!!job.aiScopeOfWork}
                     />
-                    <SpecDocButton 
-                      jobId={job.id}
-                      hasScopeOfWork={!!job.aiScopeOfWork}
-                    />
                       <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded-full border border-amber-300" title="AI-generated content must be reviewed and verified for compliance with Australian laws and regulations">
                         ⚠️ AI-Generated - Review Required
                       </span>
