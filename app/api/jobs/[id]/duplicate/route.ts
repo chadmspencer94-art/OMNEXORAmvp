@@ -48,7 +48,9 @@ export async function POST(
       );
     }
 
-    if (sourceJob.userId !== currentUser.id) {
+    // Authorization: ensure user owns this job OR is admin (admins can duplicate any job)
+    const { isAdmin } = await import("@/lib/auth");
+    if (sourceJob.userId !== currentUser.id && !isAdmin(currentUser)) {
       return NextResponse.json(
         { error: "You do not have permission to duplicate this job" },
         { status: 403 }

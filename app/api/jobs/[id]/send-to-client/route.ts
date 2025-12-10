@@ -45,8 +45,9 @@ export async function POST(
       );
     }
 
-    // Authorization: ensure user owns this job
-    if (job.userId !== user.id) {
+    // Authorization: ensure user owns this job OR is admin (admins can send any job pack)
+    const { isAdmin } = await import("@/lib/auth");
+    if (job.userId !== user.id && !isAdmin(user)) {
       return NextResponse.json(
         { error: "Not authorized to access this job" },
         { status: 403 }

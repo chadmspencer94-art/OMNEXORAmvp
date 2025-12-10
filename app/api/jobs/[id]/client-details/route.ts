@@ -48,8 +48,9 @@ export async function PATCH(
       );
     }
 
-    // Verify ownership
-    if (job.userId !== currentUser.id) {
+    // Verify ownership - admins can update any job
+    const { isAdmin } = await import("@/lib/auth");
+    if (job.userId !== currentUser.id && !isAdmin(currentUser)) {
       return NextResponse.json(
         { error: "You do not have permission to update this job" },
         { status: 403 }

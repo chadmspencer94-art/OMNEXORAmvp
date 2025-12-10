@@ -30,7 +30,8 @@ export async function POST(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    if (job.userId !== user.id) {
+    // Authorization: ensure user owns this job OR is admin (admins can regenerate any job pack)
+    if (job.userId !== user.id && !isAdmin(user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

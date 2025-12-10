@@ -604,11 +604,10 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
     notFound();
   }
 
-  // Security check - ensure user owns this job OR is admin viewing a client job
+  // Security check - ensure user owns this job OR is admin (admins can view all jobs)
   const userIsAdmin = isAdmin(user);
-  const isClientJob = job.leadSource === "CLIENT_PORTAL" || job.assignmentStatus === "UNASSIGNED";
   
-  if (job.userId !== user.id && !(userIsAdmin && isClientJob)) {
+  if (job.userId !== user.id && !userIsAdmin) {
     redirect("/jobs");
   }
 
