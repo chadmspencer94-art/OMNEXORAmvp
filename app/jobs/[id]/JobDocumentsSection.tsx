@@ -27,12 +27,6 @@ interface DocumentConfig {
 
 const DOCUMENTS: DocumentConfig[] = [
   {
-    type: "SWMS",
-    label: "SWMS",
-    apiPath: "swms",
-    description: "Safe Work Method Statement",
-  },
-  {
     type: "VARIATION",
     label: "Variation",
     apiPath: "variation",
@@ -65,7 +59,7 @@ const DOCUMENTS: DocumentConfig[] = [
 ];
 
 const DOCUMENT_STATUS_FIELDS: Record<DocumentType, { textField: keyof Job; confirmedField: keyof Job }> = {
-  SWMS: { textField: "swmsText", confirmedField: "swmsConfirmed" },
+  SWMS: { textField: "swmsText", confirmedField: "swmsConfirmed" }, // Kept for type compatibility but not displayed
   VARIATION: { textField: "variationText", confirmedField: "variationConfirmed" },
   EOT: { textField: "eotText", confirmedField: "eotConfirmed" },
   PROGRESS_CLAIM: { textField: "progressClaimText", confirmedField: "progressClaimConfirmed" },
@@ -91,7 +85,7 @@ export default function JobDocumentsSection({
   const [editorConfirmed, setEditorConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [documentStatuses, setDocumentStatuses] = useState<Record<DocumentType, { hasContent: boolean; confirmed: boolean }>>({
-    SWMS: { hasContent: false, confirmed: false },
+    SWMS: { hasContent: false, confirmed: false }, // Kept for type compatibility but not displayed
     VARIATION: { hasContent: false, confirmed: false },
     EOT: { hasContent: false, confirmed: false },
     PROGRESS_CLAIM: { hasContent: false, confirmed: false },
@@ -106,7 +100,7 @@ export default function JobDocumentsSection({
         SWMS: {
           hasContent: !!job.swmsText,
           confirmed: !!job.swmsConfirmed,
-        },
+        }, // Kept for type compatibility but not displayed
         VARIATION: {
           hasContent: !!job.variationText,
           confirmed: !!job.variationConfirmed,

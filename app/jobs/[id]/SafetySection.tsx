@@ -96,7 +96,7 @@ export default function SafetySection({
     setError(null);
 
     try {
-      const response = await fetch(`/api/jobs/${jobId}/safety/generate`, {
+      const response = await fetch(`/api/jobs/${jobId}/safety`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
