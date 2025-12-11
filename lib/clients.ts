@@ -1,22 +1,20 @@
-import { getJobsForUser, type Job } from "./jobs";
+import { getJobsForUser, type Job, type JobWorkflowStatus } from "./jobs";
 
 export type ClientSummary = {
   clientKey: string; // stable key, using clientEmail (normalized to lowercase)
-  name: string | null;
-  email: string | null;
-  phone: string | null; // Not currently stored, but reserved for future
-
-  totalJobs: number;
-  acceptedJobs: number;
-  declinedJobs: number;
-  completedJobs: number;
-
-  lastJobDate: string | null; // ISO string
+  clientName: string | null; // best effort: most recent non-empty name
+  clientEmail: string; // the grouping key (normalized)
+  jobCount: number; // number of jobs for this client
+  lastJobDate: string | null; // ISO string - most recent job createdAt or updatedAt
+  lastJobStatus: JobWorkflowStatus | null; // status of the most recent job
 };
 
 /**
  * Gets aggregated client summaries for a tradie/business user
- * Groups jobs by clientEmail and aggregates statistics
+ * Groups jobs by clientEmail and aggregates statistics.
+ * 
+ * This function derives clients from existing job data - no separate database table needed.
+ * Each client is identified by their email address (normalized to lowercase).
  */
 export async function getClientSummariesForUser(userId: string): Promise<ClientSummary[]> {
   // Get all jobs for this user (excluding deleted)
@@ -30,8 +28,7 @@ export async function getClientSummariesForUser(userId: string): Promise<ClientS
   // Group by normalized email (lowercase)
   const clientMap = new Map<string, {
     name: string | null;
-    email: string | null;
-    phone: string | null;
+    email: string;
     jobs: Job[];
   }>();
 
@@ -40,59 +37,60 @@ export async function getClientSummariesForUser(userId: string): Promise<ClientS
     
     if (!clientMap.has(normalizedEmail)) {
       clientMap.set(normalizedEmail, {
-        name: job.clientName || null,
+        name: null, // Will be set later from most recent job
         email: normalizedEmail,
-        phone: null, // Not currently stored on jobs
         jobs: [],
       });
     }
 
     const client = clientMap.get(normalizedEmail)!;
     client.jobs.push(job);
-
-    // Update name if we find a more recent one (or if current is null)
-    if (!client.name && job.clientName) {
-      client.name = job.clientName;
-    }
   }
 
   // Convert to ClientSummary array
   const summaries: ClientSummary[] = [];
 
   for (const [email, client] of clientMap.entries()) {
-    const acceptedJobs = client.jobs.filter(
-      (j) => j.clientStatus === "accepted"
-    ).length;
-
-    const declinedJobs = client.jobs.filter(
-      (j) => j.clientStatus === "declined"
-    ).length;
-
-    const completedJobs = client.jobs.filter(
-      (j) => j.jobStatus === "completed"
-    ).length;
-
-    // Find most recent job date
+    // Find most recent job (by createdAt or updatedAt, whichever is later)
     let lastJobDate: string | null = null;
+    let lastJobStatus: JobWorkflowStatus | null = null;
+    let clientName: string | null = null;
+    
     if (client.jobs.length > 0) {
-      const dates = client.jobs.map((j) => {
-        const created = new Date(j.createdAt).getTime();
-        const updated = new Date(j.updatedAt).getTime();
-        return Math.max(created, updated);
+      // Sort jobs by most recent date (createdAt or updatedAt, whichever is later)
+      const sortedJobs = [...client.jobs].sort((a, b) => {
+        const aDate = Math.max(
+          new Date(a.createdAt).getTime(),
+          new Date(a.updatedAt).getTime()
+        );
+        const bDate = Math.max(
+          new Date(b.createdAt).getTime(),
+          new Date(b.updatedAt).getTime()
+        );
+        return bDate - aDate; // Most recent first
       });
-      lastJobDate = new Date(Math.max(...dates)).toISOString();
+      
+      const mostRecentJob = sortedJobs[0];
+      const created = new Date(mostRecentJob.createdAt).getTime();
+      const updated = new Date(mostRecentJob.updatedAt).getTime();
+      lastJobDate = new Date(Math.max(created, updated)).toISOString();
+      lastJobStatus = mostRecentJob.jobStatus || null;
+      
+      // Get client name from most recent job with a non-empty name (best effort)
+      // Find the most recent job that has a clientName
+      const jobsWithNames = sortedJobs.filter(j => j.clientName && j.clientName.trim() !== "");
+      if (jobsWithNames.length > 0) {
+        clientName = jobsWithNames[0].clientName!.trim();
+      }
     }
 
     summaries.push({
       clientKey: email, // Use email as the key
-      name: client.name,
-      email: client.email,
-      phone: client.phone,
-      totalJobs: client.jobs.length,
-      acceptedJobs,
-      declinedJobs,
-      completedJobs,
+      clientName: clientName, // Use name from most recent job
+      clientEmail: client.email,
+      jobCount: client.jobs.length,
       lastJobDate,
+      lastJobStatus,
     });
   }
 
@@ -104,8 +102,8 @@ export async function getClientSummariesForUser(userId: string): Promise<ClientS
     if (a.lastJobDate) return -1;
     if (b.lastJobDate) return 1;
     // Fallback to name
-    const nameA = a.name || a.email || "";
-    const nameB = b.name || b.email || "";
+    const nameA = a.clientName || a.clientEmail || "";
+    const nameB = b.clientName || b.clientEmail || "";
     return nameA.localeCompare(nameB);
   });
 
@@ -113,9 +111,10 @@ export async function getClientSummariesForUser(userId: string): Promise<ClientS
 }
 
 /**
- * Gets all jobs for a specific client (by email)
+ * Gets all jobs for a specific client (by email) for a given user
+ * Used for filtering jobs by client on the jobs page
  */
-export async function getJobsForClient(
+export async function getJobsForClientByEmail(
   userId: string,
   clientEmail: string
 ): Promise<Job[]> {
@@ -123,8 +122,10 @@ export async function getJobsForClient(
   
   const normalizedEmail = clientEmail.toLowerCase().trim();
   
-  return allJobs.filter(
-    (job) => job.clientEmail?.toLowerCase().trim() === normalizedEmail
-  );
+  return allJobs
+    .filter(
+      (job) => job.clientEmail?.toLowerCase().trim() === normalizedEmail
+    )
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, ClipboardList } from "lucide-react";
+import { Plus, ClipboardList, X } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/authChecks";
 import { getJobsForUserPaginated } from "@/lib/jobs";
+import { getJobsForClientByEmail } from "@/lib/clients";
 import { buildPagination } from "@/lib/pagination";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import JobsList from "./JobsList";
@@ -13,7 +14,7 @@ export const fetchCache = "force-no-store";
 export const revalidate = 0;
 
 interface JobsPageProps {
-  searchParams: Promise<{ removed?: string; error?: string; page?: string }>;
+  searchParams: Promise<{ removed?: string; error?: string; page?: string; clientEmail?: string }>;
 }
 
 export default async function JobsPage({ searchParams }: JobsPageProps) {
@@ -30,10 +31,40 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const { page } = buildPagination(params.page, 20);
   const showRemovedNotice = params.removed === "true";
   const showErrorNotice = params.error === "job_removed";
+  const clientEmailFilter = params.clientEmail ? decodeURIComponent(params.clientEmail) : null;
 
   let jobsResult: Awaited<ReturnType<typeof getJobsForUserPaginated>>;
+  let filteredJobs: typeof jobsResult.items = [];
+  let clientName: string | null = null;
+
   try {
-    jobsResult = await getJobsForUserPaginated(user.id, false, page, 20);
+    if (clientEmailFilter) {
+      // Filter jobs by client email
+      const allClientJobs = await getJobsForClientByEmail(user.id, clientEmailFilter);
+      
+      // Extract client name from the first job (best effort)
+      if (allClientJobs.length > 0 && allClientJobs[0].clientName) {
+        clientName = allClientJobs[0].clientName;
+      }
+
+      // Apply pagination manually since we're filtering
+      const totalItems = allClientJobs.length;
+      const totalPages = Math.ceil(totalItems / 20);
+      const skip = (page - 1) * 20;
+      const take = 20;
+      filteredJobs = allClientJobs.slice(skip, skip + take);
+
+      jobsResult = {
+        items: filteredJobs,
+        totalItems,
+        totalPages,
+        page,
+        pageSize: 20,
+      };
+    } else {
+      // Normal pagination without client filter
+      jobsResult = await getJobsForUserPaginated(user.id, false, page, 20);
+    }
   } catch (error) {
     console.error("[jobs] Error fetching jobs:", error);
     // Return empty result instead of crashing
@@ -85,14 +116,39 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
         </div>
       )}
 
+      {/* Client Filter Banner */}
+      {clientEmailFilter && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-blue-900">
+              Filtered by client: {clientName || clientEmailFilter}
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              Showing {jobsResult.totalItems} job{jobsResult.totalItems === 1 ? "" : "s"} for this client
+            </p>
+          </div>
+          <Link
+            href="/jobs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            <X className="w-4 h-4" />
+            Clear filter
+          </Link>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Jobs</h1>
           <p className="mt-2 text-slate-600">
             {jobsResult.totalItems === 0
-              ? "Create your first AI-powered job pack."
-              : `You have ${jobsResult.totalItems} job${jobsResult.totalItems === 1 ? "" : "s"}.`}
+              ? clientEmailFilter
+                ? "No jobs found for this client."
+                : "Create your first AI-powered job pack."
+              : clientEmailFilter
+                ? `Showing ${jobsResult.totalItems} job${jobsResult.totalItems === 1 ? "" : "s"} for ${clientName || clientEmailFilter}`
+                : `You have ${jobsResult.totalItems} job${jobsResult.totalItems === 1 ? "" : "s"}.`}
           </p>
         </div>
         <div className="mt-4 sm:mt-0">

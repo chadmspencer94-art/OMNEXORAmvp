@@ -385,6 +385,7 @@ export default function JobsList({ jobs, pagination }: JobsListProps) {
                   } else {
                     params.set("page", newPage.toString());
                   }
+                  // Preserve clientEmail filter if present
                   router.push(`/jobs?${params.toString()}`);
                 }}
                 disabled={pagination.page <= 1}
@@ -401,6 +402,7 @@ export default function JobsList({ jobs, pagination }: JobsListProps) {
                 onClick={() => {
                   const params = new URLSearchParams(searchParams.toString());
                   params.set("page", (pagination.page + 1).toString());
+                  // Preserve clientEmail filter if present
                   router.push(`/jobs?${params.toString()}`);
                 }}
                 disabled={pagination.page >= pagination.totalPages}
