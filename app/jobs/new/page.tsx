@@ -164,16 +164,29 @@ export default function NewJobPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Failed to create job");
+        const errorMsg = data.error || "Failed to create job";
+        console.error("[jobs] error creating job:", errorMsg);
+        setError(errorMsg);
         setIsLoading(false);
         return;
       }
 
+      // Validate response has job with id
+      if (!data.job || !data.job.id) {
+        console.error("[jobs] invalid response from job creation API:", data);
+        setError("Failed to create job: Invalid response from server");
+        setIsLoading(false);
+        return;
+      }
+
+      console.log(`[jobs] successfully created job ${data.job.id}, redirecting`);
+      
       // Success - redirect to the job detail page
       // Keep isLoading true to prevent double submission during navigation
       router.push(`/jobs/${data.job.id}`);
-    } catch {
-      setError("An unexpected error occurred. Please try again.");
+    } catch (err: any) {
+      console.error("[jobs] unexpected error creating job:", err);
+      setError(err?.message || "An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
   };

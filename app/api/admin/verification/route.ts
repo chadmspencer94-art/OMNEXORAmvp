@@ -8,6 +8,7 @@ import { getAllVerifications, getVerificationsByStatus } from "@/lib/verificatio
  */
 export async function GET() {
   try {
+    console.log("[admin-verifications] loading verifications list");
     const user = await getCurrentUser();
 
     if (!user) {
@@ -25,20 +26,23 @@ export async function GET() {
     }
 
     const verifications = await getAllVerifications();
+    const pending = verifications.filter((v) => v.status === "pending");
+    
+    console.log(`[admin-verifications] loaded ${verifications.length} verifications (${pending.length} pending)`);
 
     return NextResponse.json({
       verifications,
       counts: {
-        pending: verifications.filter((v) => v.status === "pending").length,
+        pending: pending.length,
         verified: verifications.filter((v) => v.status === "verified").length,
         rejected: verifications.filter((v) => v.status === "rejected").length,
         total: verifications.length,
       },
     });
-  } catch (error) {
-    console.error("Error fetching verifications:", error);
+  } catch (error: any) {
+    console.error("[admin-verifications] error fetching verifications:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error?.message || "Internal server error" },
       { status: 500 }
     );
   }

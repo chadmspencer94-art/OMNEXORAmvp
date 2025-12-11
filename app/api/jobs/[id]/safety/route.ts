@@ -320,15 +320,26 @@ Create a complete Toolbox Talk outline with the following sections:
 Format the response as clear, structured text with section headings. Use bullet points and numbered lists where appropriate. Make it professional and suitable for on-site briefings.`;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    });
+    console.log(`[jobs] generating safety document type ${type} for job ${jobId}`);
+    
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+    } catch (openaiError: any) {
+      console.error("[jobs] OpenAI API error generating safety document:", openaiError);
+      if (openaiError?.message?.includes("API key") || openaiError?.code === "invalid_api_key") {
+        throw new Error("OpenAI API key is not configured. Please contact support.");
+      }
+      throw new Error(`Failed to generate safety document: ${openaiError?.message || "Unknown error"}`);
+    }
 
     const content = completion.choices[0]?.message?.content || "";
     if (!content) {
@@ -371,11 +382,22 @@ Format the response as clear, structured text with section headings. Use bullet 
       });
     }
 
+    console.log(`[jobs] successfully generated safety document ${document.id} for job ${jobId}`);
     return NextResponse.json({ document }, { status: 200 });
-  } catch (error) {
-    console.error("Error generating safety document:", error);
+  } catch (error: any) {
+    console.error("[jobs] error generating safety document:", error);
+    const errorMessage = error?.message || "Failed to generate safety document. Please try again.";
+    
+    // Check if it's an OpenAI API key error
+    if (errorMessage.includes("API key") || errorMessage.includes("OpenAI")) {
+      return NextResponse.json(
+        { error: "OpenAI API key is not configured. Please contact support." },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: "Failed to generate safety document. Please try again." },
+      { error: errorMessage },
       { status: 500 }
     );
   }

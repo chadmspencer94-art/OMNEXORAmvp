@@ -31,18 +31,25 @@ export default function AdminVerificationPageContent() {
 
   const fetchVerifications = useCallback(async () => {
     try {
+      setIsLoading(true);
+      setError("");
       const response = await fetch("/api/admin/verification");
       if (response.ok) {
         const data = await response.json();
         setIsAdmin(true);
-        setVerifications(data.verifications || []);
+        setVerifications(Array.isArray(data.verifications) ? data.verifications : []);
       } else if (response.status === 403) {
         setIsAdmin(false);
-      } else {
+        setError("Access denied. Admin privileges required.");
+      } else if (response.status === 401) {
         router.push("/login");
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || "Failed to load verifications");
       }
-    } catch {
-      setError("Failed to load verifications");
+    } catch (err: any) {
+      console.error("[admin-verifications] error fetching verifications:", err);
+      setError(err?.message || "Failed to load verifications. Please try again.");
     } finally {
       setIsLoading(false);
     }

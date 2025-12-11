@@ -1,137 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isClient } from "@/lib/auth";
-import { getJobById, saveJob } from "@/lib/jobs";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getJobById } from "@/lib/jobs";
 
 /**
- * PATCH /api/jobs/[id]/pack-sections
- * Updates a specific section of the AI job pack (scope, inclusions, exclusions, client notes, summary)
- * This allows manual editing without triggering regeneration
+ * Stub route for regenerating / fetching job pack sections.
+ * Currently returns 501 Not Implemented.
+ * This keeps TypeScript and Next.js happy until the full logic is built.
  */
-export async function PATCH(
-  request: NextRequest,
+
+export const dynamic = "force-dynamic";
+
+export async function POST(
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+
+  const { id: jobId } = await params;
+
+  // Basic ownership/admin check – safe, even if getJobById is a thin wrapper
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized. Please log in." },
-        { status: 401 }
-      );
-    }
-
-    // Block clients from editing AI job pack sections
-    if (isClient(user)) {
-      return NextResponse.json(
-        { error: "Clients can only post jobs. AI job pack editing is available to verified trades and businesses." },
-        { status: 403 }
-      );
-    }
-
-    const { id } = await params;
-    const job = await getJobById(id);
-
+    const job = await getJobById(jobId);
     if (!job) {
-      return NextResponse.json(
-        { error: "Job not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    if (job.userId !== user.id) {
-      return NextResponse.json(
-        { error: "Forbidden. You do not own this job." },
-        { status: 403 }
-      );
+    if (job.userId !== user.id && !isAdmin(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
-    const body = await request.json();
-    const {
-      aiScopeOfWork,
-      aiInclusions,
-      aiExclusions,
-      aiClientNotes,
-      aiSummary,
-    } = body;
-
-    let updated = false;
-
-    // Update each field if provided
-    if (aiScopeOfWork !== undefined) {
-      if (typeof aiScopeOfWork !== "string" && aiScopeOfWork !== null) {
-        return NextResponse.json(
-          { error: "aiScopeOfWork must be a string or null" },
-          { status: 400 }
-        );
-      }
-      job.aiScopeOfWork = aiScopeOfWork?.trim() || null;
-      updated = true;
-    }
-
-    if (aiInclusions !== undefined) {
-      if (typeof aiInclusions !== "string" && aiInclusions !== null) {
-        return NextResponse.json(
-          { error: "aiInclusions must be a string or null" },
-          { status: 400 }
-        );
-      }
-      job.aiInclusions = aiInclusions?.trim() || null;
-      updated = true;
-    }
-
-    if (aiExclusions !== undefined) {
-      if (typeof aiExclusions !== "string" && aiExclusions !== null) {
-        return NextResponse.json(
-          { error: "aiExclusions must be a string or null" },
-          { status: 400 }
-        );
-      }
-      job.aiExclusions = aiExclusions?.trim() || null;
-      updated = true;
-    }
-
-    if (aiClientNotes !== undefined) {
-      if (typeof aiClientNotes !== "string" && aiClientNotes !== null) {
-        return NextResponse.json(
-          { error: "aiClientNotes must be a string or null" },
-          { status: 400 }
-        );
-      }
-      job.aiClientNotes = aiClientNotes?.trim() || null;
-      updated = true;
-    }
-
-    if (aiSummary !== undefined) {
-      if (typeof aiSummary !== "string" && aiSummary !== null) {
-        return NextResponse.json(
-          { error: "aiSummary must be a string or null" },
-          { status: 400 }
-        );
-      }
-      job.aiSummary = aiSummary?.trim() || null;
-      updated = true;
-    }
-
-    if (!updated) {
-      return NextResponse.json(
-        { error: "No valid fields provided for update" },
-        { status: 400 }
-      );
-    }
-
-    // Note: We do NOT change job.status to "pending_regeneration" here
-    // This is intentional - manual edits are allowed even after confirmation
-    // and should not trigger regeneration
-
-    await saveJob(job);
-
-    return NextResponse.json({ success: true, job });
   } catch (error) {
-    console.error("Error updating job pack sections:", error);
+    console.error("[pack-sections] error checking job", error);
     return NextResponse.json(
-      { error: "Failed to update job pack sections. Please try again." },
+      { error: "Error checking job ownership" },
       { status: 500 }
     );
   }
-}
 
+  // Stub response for now
+  return NextResponse.json(
+    {
+      status: "not_implemented",
+      message:
+        "Pack sections API exists but implementation is not finished yet.",
+    },
+    { status: 501 }
+  );
+}

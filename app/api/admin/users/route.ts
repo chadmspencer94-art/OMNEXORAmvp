@@ -39,6 +39,7 @@ interface UserListItem {
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log("[admin-users] loading users list");
     // Check authentication and admin status
     const currentUser = await getCurrentUser();
     if (!currentUser) {
@@ -190,11 +191,12 @@ export async function GET(request: NextRequest) {
       totalItems
     );
 
+    console.log(`[admin-users] loaded ${users.length} users (page ${page}, total ${totalItems})`);
     return NextResponse.json(result);
-  } catch (error) {
-    console.error("Error fetching users:", error);
+  } catch (error: any) {
+    console.error("[admin-users] error fetching users:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error?.message || "Internal server error" },
       { status: 500 }
     );
   }

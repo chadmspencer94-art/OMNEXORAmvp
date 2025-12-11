@@ -96,6 +96,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log(`[business-profile] saving details for user ${user.id}`);
+
     const body = await request.json();
     const {
       businessName,
@@ -179,11 +181,14 @@ export async function POST(request: NextRequest) {
     let updatedUser;
     if (existingUser) {
       // Update existing user
+      console.log(`[business-profile] updating existing user ${user.id} in Prisma`);
       updatedUser = await prisma.user.update({
         where: { email: user.email },
         data: updateData,
       });
+      console.log(`[business-profile] successfully updated user ${user.id}`);
     } else {
+      console.warn(`[business-profile] user ${user.id} not found in Prisma, data will be saved when user is synced`);
       // User doesn't exist in Prisma yet - we can't create without passwordHash
       // Return the update data as if it was saved (it will be saved when user is synced to Prisma)
       // For now, just return success - the data will be persisted when user is properly synced
@@ -228,10 +233,11 @@ export async function POST(request: NextRequest) {
         ratePerLmTrim: updatedUser.ratePerLmTrim ?? null,
       },
     });
-  } catch (error) {
-    console.error("Error updating business profile:", error);
+  } catch (error: any) {
+    console.error("[business-profile] error updating business profile:", error);
+    const errorMessage = error?.message || "Internal server error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

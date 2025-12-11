@@ -9,6 +9,7 @@ export async function POST(request: Request) {
   let jobId: string | null = null;
 
   try {
+    console.log("[jobs] creating new job");
     // Check authentication
     const user = await getCurrentUser();
     if (!user) {
@@ -300,8 +301,10 @@ export async function POST(request: Request) {
     // Only generate AI job pack for tradies (not for client job posts)
     if (!userIsClient) {
       try {
+        console.log(`[jobs] generating job pack for job ${updatedJob.id}`);
         // Generate AI job pack (pass user to load business profile rates)
         updatedJob = await generateJobPack(updatedJob, user);
+        console.log(`[jobs] successfully generated job pack for job ${updatedJob.id}`);
       } catch (packError: any) {
         console.error("Error generating job pack:", packError);
         
@@ -338,9 +341,10 @@ export async function POST(request: Request) {
       }
     }
 
+    console.log(`[jobs] successfully created job ${updatedJob.id}`);
     return NextResponse.json({ job: updatedJob }, { status: 200 });
   } catch (error: any) {
-    console.error("Error creating job:", error);
+    console.error("[jobs] error creating job:", error);
 
     // If we have a job ID, try to mark it as failed
     if (jobId) {

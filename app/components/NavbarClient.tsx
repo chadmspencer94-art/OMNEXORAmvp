@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { featureFlags } from "@/lib/featureFlags";
 
 type UserRole = "tradie" | "builder" | "client" | "supplier" | "admin";
 // Support both new and legacy verification statuses for backwards compatibility
@@ -180,6 +181,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   const isClient = user?.role === "client";
 
   // Role-aware navigation links
+  // Core routes are always shown; experimental features are controlled by feature flags
   const navLinks = isClient
     ? [
         { href: "/client/dashboard", label: "Dashboard" },
@@ -188,9 +190,9 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
     : [
         { href: "/dashboard", label: "Dashboard" },
         { href: "/jobs", label: "Jobs" },
-        { href: "/calendar", label: "Calendar" },
+        ...(featureFlags.showCalendar ? [{ href: "/calendar", label: "Calendar" }] : []),
         { href: "/clients", label: "Clients" },
-        { href: "/billing", label: "Billing" },
+        ...(featureFlags.showBilling ? [{ href: "/billing", label: "Billing" }] : []),
         { href: "/settings", label: "Settings" },
       ];
 

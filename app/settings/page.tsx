@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { featureFlags } from "@/lib/featureFlags";
 
 interface PricingSettings {
   hourlyRate: number | null;
@@ -205,30 +206,36 @@ export default function SettingsPage() {
         >
           Business & Rates
         </Link>
-        <Link
-          href="/settings/rates"
-          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-        >
-          Rate Templates
-        </Link>
-        <Link
-          href="/settings/materials"
-          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-        >
-          Materials
-        </Link>
+        {featureFlags.showRateTemplates && (
+          <Link
+            href="/settings/rates"
+            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
+          >
+            Rate Templates
+          </Link>
+        )}
+        {featureFlags.showMaterials && (
+          <Link
+            href="/settings/materials"
+            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
+          >
+            Materials
+          </Link>
+        )}
         <Link
           href="/settings/verification"
           className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
         >
           Verification
         </Link>
-        <Link
-          href="/settings/signature"
-          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-        >
-          Signature
-        </Link>
+        {featureFlags.showSignature && (
+          <Link
+            href="/settings/signature"
+            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
+          >
+            Signature
+          </Link>
+        )}
       </div>
 
       {/* Success Message */}

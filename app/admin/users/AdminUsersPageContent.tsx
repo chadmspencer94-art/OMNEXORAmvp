@@ -79,6 +79,7 @@ export default function AdminUsersPageContent() {
   const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError("");
       // Build query params
       const params = new URLSearchParams();
       const currentPage = searchParams.get("page") || "1";
@@ -92,7 +93,7 @@ export default function AdminUsersPageContent() {
       if (response.ok) {
         const data = await response.json();
         setIsAdmin(true);
-        setUsers(data.items || []);
+        setUsers(Array.isArray(data.items) ? data.items : []);
         setPagination({
           page: data.page || 1,
           pageSize: data.pageSize || 20,
@@ -101,11 +102,16 @@ export default function AdminUsersPageContent() {
         });
       } else if (response.status === 403) {
         setIsAdmin(false);
-      } else {
+        setError("Access denied. Admin privileges required.");
+      } else if (response.status === 401) {
         router.push("/login");
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || "Failed to load users");
       }
-    } catch {
-      setError("Failed to load users");
+    } catch (err: any) {
+      console.error("[admin-users] error fetching users:", err);
+      setError(err?.message || "Failed to load users. Please try again.");
     } finally {
       setIsLoading(false);
     }
