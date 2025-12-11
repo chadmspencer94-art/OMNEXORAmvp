@@ -1132,11 +1132,18 @@ Format the response as clear, structured text with section headings. Use bullet 
 
     await saveJob(job);
     return job;
-  } catch (error) {
-    console.error("Error generating SWMS:", error);
+  } catch (error: any) {
+    console.error("[jobs] error generating SWMS:", error);
     job.swmsStatus = "FAILED";
     await saveJob(job);
-    throw error;
+    
+    // Provide more helpful error messages
+    if (error?.message?.includes("API key") || error?.code === "invalid_api_key") {
+      throw new Error("OpenAI API key is not configured. Please contact support.");
+    }
+    
+    const errorMessage = error?.message || "Failed to generate SWMS. Please try again.";
+    throw new Error(errorMessage);
   }
 }
 

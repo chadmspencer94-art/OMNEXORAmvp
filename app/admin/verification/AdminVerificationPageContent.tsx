@@ -37,19 +37,29 @@ export default function AdminVerificationPageContent() {
       if (response.ok) {
         const data = await response.json();
         setIsAdmin(true);
-        setVerifications(Array.isArray(data.verifications) ? data.verifications : []);
+        // Filter out any verifications with missing user relations (defensive check)
+        const validVerifications = Array.isArray(data.verifications) 
+          ? data.verifications.filter((v: any) => v.user !== null && v.user !== undefined)
+          : [];
+        setVerifications(validVerifications);
       } else if (response.status === 403) {
         setIsAdmin(false);
         setError("Access denied. Admin privileges required.");
       } else if (response.status === 401) {
         router.push("/login");
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.error || "Failed to load verifications");
+        let errorData: { error?: string } = {};
+        try {
+          errorData = await response.json();
+        } catch {
+          // If JSON parsing fails, use default error message
+        }
+        setError(errorData?.error || "Failed to load verifications. Please try again.");
       }
     } catch (err: any) {
       console.error("[admin-verifications] error fetching verifications:", err);
-      setError(err?.message || "Failed to load verifications. Please try again.");
+      const errorMessage = err?.message || "Failed to load verifications. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -224,9 +234,9 @@ export default function AdminVerificationPageContent() {
                 {verifications.map((verification) => (
                   <tr key={verification.id} className="hover:bg-slate-50">
                     <td className="px-4 py-4">
-                      <div className="text-sm font-medium text-slate-900">{verification.user.email}</div>
+                      <div className="text-sm font-medium text-slate-900">{verification.user?.email || "N/A"}</div>
                       <div className="text-xs text-slate-500">
-                        {new Date(verification.createdAt).toLocaleDateString()}
+                        {verification.createdAt ? new Date(verification.createdAt).toLocaleDateString() : "N/A"}
                       </div>
                     </td>
                     <td className="px-4 py-4">

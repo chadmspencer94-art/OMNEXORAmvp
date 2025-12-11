@@ -258,10 +258,20 @@ Focus on common hazards and controls for this type of work in an Australian cont
       { success: true, swms: swmsContent.trim() },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Error generating SWMS:", error);
+  } catch (error: any) {
+    console.error("[jobs] error generating SWMS:", error);
+    const errorMessage = error?.message || "Failed to generate SWMS. Please try again.";
+    
+    // Check if it's an OpenAI API key error
+    if (errorMessage.includes("API key") || errorMessage.includes("OpenAI") || error?.code === "invalid_api_key") {
+      return NextResponse.json(
+        { error: "OpenAI API key is not configured. Please contact support." },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: "Failed to generate SWMS. Please try again." },
+      { error: errorMessage },
       { status: 500 }
     );
   }

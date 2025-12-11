@@ -173,21 +173,30 @@ export async function getVerificationsByStatus(
  * Gets all verification records, sorted by status (pending first) then createdAt desc
  */
 export async function getAllVerifications(): Promise<UserVerification[]> {
-  return prisma.userVerification.findMany({
-    orderBy: [
-      { status: "asc" }, // pending comes before verified/rejected
-      { createdAt: "desc" },
-    ],
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          createdAt: true,
+  try {
+    const verifications = await prisma.userVerification.findMany({
+      orderBy: [
+        { status: "asc" }, // pending comes before verified/rejected
+        { createdAt: "desc" },
+      ],
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            createdAt: true,
+          },
         },
       },
-    },
-  });
+    });
+    
+    // Filter out any verifications with missing user relations (orphaned records)
+    return verifications.filter(v => v.user !== null);
+  } catch (error) {
+    console.error("[verification] error fetching all verifications:", error);
+    // Return empty array instead of throwing - allows admin page to load gracefully
+    return [];
+  }
 }
 

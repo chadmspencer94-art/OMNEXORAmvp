@@ -41,8 +41,9 @@ export async function GET() {
     });
   } catch (error: any) {
     console.error("[admin-verifications] error fetching verifications:", error);
+    const errorMessage = error?.message || "Failed to load verifications. Please try again.";
     return NextResponse.json(
-      { error: error?.message || "Internal server error" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

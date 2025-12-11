@@ -175,7 +175,14 @@ export async function GET(request: NextRequest) {
           businessName: user.businessName || undefined,
           tradingName: user.tradingName || undefined,
           abn: user.abn || undefined,
-          tradeTypes: user.tradeTypes ? JSON.parse(user.tradeTypes) : undefined,
+          tradeTypes: user.tradeTypes ? (() => {
+            try {
+              return JSON.parse(user.tradeTypes);
+            } catch {
+              // If JSON parsing fails, return as string array or undefined
+              return user.tradeTypes.includes(",") ? user.tradeTypes.split(",").map(t => t.trim()) : undefined;
+            }
+          })() : undefined,
           serviceArea: user.serviceArea || undefined,
           serviceAreaCity: user.serviceAreaCity || undefined,
           serviceAreaRadiusKm: user.serviceRadiusKm || undefined,
@@ -195,8 +202,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error: any) {
     console.error("[admin-users] error fetching users:", error);
+    const errorMessage = error?.message || "Failed to load users. Please try again.";
     return NextResponse.json(
-      { error: error?.message || "Internal server error" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

@@ -106,12 +106,18 @@ export default function AdminUsersPageContent() {
       } else if (response.status === 401) {
         router.push("/login");
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.error || "Failed to load users");
+        let errorData: { error?: string } = {};
+        try {
+          errorData = await response.json();
+        } catch {
+          // If JSON parsing fails, use default error message
+        }
+        setError(errorData?.error || "Failed to load users. Please try again.");
       }
     } catch (err: any) {
       console.error("[admin-users] error fetching users:", err);
-      setError(err?.message || "Failed to load users. Please try again.");
+      const errorMessage = err?.message || "Failed to load users. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
