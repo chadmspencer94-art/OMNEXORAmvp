@@ -113,6 +113,19 @@ const ADMIN_EMAILS: string[] = [
   // Add more admin emails as needed
 ];
 
+// ============================================================================
+// Founder Emails
+// ============================================================================
+
+/**
+ * List of email addresses for founder users.
+ * Founders get FOUNDER plan tier automatically.
+ */
+export const FOUNDER_EMAILS: string[] = [
+  "chadmspencer94@gmail.com",
+  // Add more founder emails here later
+];
+
 /**
  * Checks if a user has admin privileges.
  * Checks role="admin", the stored isAdmin flag, and the ADMIN_EMAILS list.
@@ -271,6 +284,7 @@ export async function createUser(
   // Check if this is the primary admin or a test verified email
   const isPrimaryAdmin = normalizedEmail === PRIMARY_ADMIN_EMAIL;
   const isTestVerified = TEST_VERIFIED_EMAILS.includes(normalizedEmail);
+  const isFounder = FOUNDER_EMAILS.includes(normalizedEmail) || isPrimaryAdmin; // Primary admin is also a founder
   
   // FORCE primary admin to always have "admin" role, verified status, and admin flag
   const finalRole: UserRole = isPrimaryAdmin ? "admin" : role;
@@ -279,6 +293,11 @@ export async function createUser(
     : "unverified";
   const verifiedAt = (isPrimaryAdmin || isTestVerified) ? createdAt : null;
   const isAdminFlag = isPrimaryAdmin || ADMIN_EMAILS.includes(normalizedEmail);
+
+  // Set plan tier: FOUNDER for founder emails (including primary admin), otherwise FREE
+  const planTier: PlanTier = isFounder ? "FOUNDER" : "FREE";
+  // Founders get ACTIVE status, others get TRIAL
+  const planStatus: PlanStatus = isFounder ? "ACTIVE" : "TRIAL";
 
   const user: User = {
     id,
@@ -289,9 +308,9 @@ export async function createUser(
     verificationStatus,
     verifiedAt,
     isAdmin: isAdminFlag,
-    // Default plan for new users
-    planTier: "FREE",
-    planStatus: "TRIAL",
+    // Plan for new users: FOUNDER if in founder list, otherwise FREE
+    planTier,
+    planStatus,
     trialEndsAt: null,
     // Initialize activity tracking
     lastLoginAt: null,

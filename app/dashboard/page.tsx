@@ -13,6 +13,8 @@ import VerifiedBadge from "@/app/components/VerifiedBadge";
 import FeedbackButton from "@/app/components/FeedbackButton";
 import AnalyticsSection from "./AnalyticsSection";
 import MatchingJobsSection from "./MatchingJobsSection";
+import OnboardingChecklist from "@/app/components/OnboardingChecklist";
+import { getClientSummariesForUser } from "@/lib/clients";
 
 // RecentJobRow component for displaying job rows in the dashboard
 function RecentJobRow({ job }: { job: Job }) {
@@ -90,6 +92,18 @@ export default async function DashboardPage() {
   } catch (error) {
     // Log error but don't crash - dashboard can still function without jobs
     console.error("Failed to load jobs:", error);
+  }
+
+  // Load clients for onboarding checklist (only for tradies/businesses, not clients)
+  let clients: any[] = [];
+  if (!isClient && prismaUser && prismaUser.role !== "client") {
+    try {
+      const clientSummaries = await getClientSummariesForUser(user.id);
+      clients = clientSummaries;
+    } catch (error) {
+      // Log error but don't crash - checklist can handle empty clients
+      console.error("Failed to load clients for checklist:", error);
+    }
   }
   
   // Filter for client jobs (assigned via portal)
@@ -175,6 +189,14 @@ export default async function DashboardPage() {
     }
   }
 
+  // Check onboarding checklist state (only for tradies/businesses, not clients or admins)
+  const showOnboardingChecklist = !isClient && !userIsAdmin && prismaUser && prismaUser.role !== "client";
+  const hasBusinessProfile = showOnboardingChecklist && prismaUser
+    ? !!(prismaUser.businessName || prismaUser.tradingName)
+    : true;
+  const hasAnyClients = showOnboardingChecklist ? clients.length > 0 : true;
+  const hasAnyJobs = showOnboardingChecklist ? jobs.length > 0 : true;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Brand Header */}
@@ -244,6 +266,15 @@ export default async function DashboardPage() {
           onDismiss={() => {
             // This will be handled by the component's router.refresh()
           }}
+        />
+      )}
+
+      {/* First-time onboarding checklist for tradies/businesses */}
+      {showOnboardingChecklist && (
+        <OnboardingChecklist
+          hasBusinessProfile={hasBusinessProfile}
+          hasAnyClients={hasAnyClients}
+          hasAnyJobs={hasAnyJobs}
         />
       )}
 

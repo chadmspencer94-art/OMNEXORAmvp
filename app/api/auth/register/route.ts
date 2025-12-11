@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createUser, createSession, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS, type UserRole } from "@/lib/auth";
+import { createUser, createSession, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS, type UserRole, FOUNDER_EMAILS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createEmailVerificationToken } from "@/lib/email-verification";
 import { Resend } from "resend";
+import { getSignupMode, isValidInviteCode } from "@/lib/signup-config";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -14,12 +15,40 @@ interface RegisterRequestBody {
   email: string;
   password: string;
   role?: UserRole;
+  inviteCode?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as RegisterRequestBody;
-    const { email, password, role } = body;
+    const { email, password, role, inviteCode } = body;
+
+    // Check signup mode
+    const signupMode = getSignupMode();
+    
+    // If signup is closed, reject registration
+    if (signupMode === "closed") {
+      return NextResponse.json(
+        { error: "Registrations are currently closed. Please contact support." },
+        { status: 403 }
+      );
+    }
+
+    // If signup is invite-only, validate invite code or email
+    if (signupMode === "invite-only") {
+      const normalizedEmail = email.toLowerCase().trim();
+      const isFounderEmail = FOUNDER_EMAILS.includes(normalizedEmail);
+      
+      // Allow founder emails or valid invite codes
+      if (!isFounderEmail) {
+        if (!inviteCode || typeof inviteCode !== "string" || !isValidInviteCode(inviteCode.trim())) {
+          return NextResponse.json(
+            { error: "This invite code isn't valid. If you think this is wrong, contact Chad." },
+            { status: 403 }
+          );
+        }
+      }
+    }
 
     // Validate input
     if (!email || typeof email !== "string") {
