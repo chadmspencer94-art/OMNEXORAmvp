@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       if (!isFounderEmail) {
         if (!inviteCode || typeof inviteCode !== "string" || !isValidInviteCode(inviteCode.trim())) {
           return NextResponse.json(
-            { error: "This invite code isn't valid. If you think this is wrong, contact Chad." },
+            { error: "This invite code isn't valid. Check it or contact Chad." },
             { status: 403 }
           );
         }

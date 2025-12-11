@@ -492,7 +492,10 @@ export default function AdminUsersPageContent() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    User
+                    Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Email
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Role
@@ -504,10 +507,7 @@ export default function AdminUsersPageContent() {
                     Status
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Email Verified
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Last Login
+                    Verification
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Actions
@@ -525,10 +525,13 @@ export default function AdminUsersPageContent() {
                       onClick={() => setSelectedUser(user)}
                     >
                       <td className="px-4 py-4">
-                        <div className="text-sm font-medium text-slate-900">{user.email}</div>
-                        {user.businessName && (
-                          <div className="text-xs text-slate-500 mt-0.5">{user.businessName}</div>
+                        <div className="text-sm font-medium text-slate-900">{user.businessName || user.name || user.email.split("@")[0]}</div>
+                        {user.businessName && user.email && (
+                          <div className="text-xs text-slate-500 mt-0.5">{user.email}</div>
                         )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-slate-900">{user.email}</div>
                       </td>
                       <td className="px-4 py-4">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
@@ -536,7 +539,7 @@ export default function AdminUsersPageContent() {
                             ? "bg-purple-100 text-purple-700 border-purple-300"
                             : "bg-slate-100 text-slate-700 border-slate-300"
                         }`}>
-                          {user.isAdmin || user.role === "admin" ? "Admin" : "User"}
+                          {user.isAdmin || user.role === "admin" ? "Admin" : user.role || "User"}
                         </span>
                       </td>
                       <td className="px-4 py-4">
@@ -550,41 +553,20 @@ export default function AdminUsersPageContent() {
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex flex-col gap-1">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getStatusBadgeColor(user.verificationStatus)}`}>
-                            {user.verificationStatus === "pending" ? "Pending" : user.verificationStatus === "verified" ? "Verified" : "Unverified"}
-                          </span>
-                          {accountStatus !== "ACTIVE" && (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-                              accountStatus === "BANNED" || user.isBanned
-                                ? "bg-red-100 text-red-700 border-red-300"
-                                : "bg-amber-100 text-amber-700 border-amber-300"
-                            }`}>
-                              {accountStatus === "BANNED" ? "Banned" : "Suspended"}
-                            </span>
-                          )}
-                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                          accountStatus === "BANNED" || user.isBanned
+                            ? "bg-red-100 text-red-700 border-red-300"
+                            : accountStatus === "SUSPENDED"
+                            ? "bg-amber-100 text-amber-700 border-amber-300"
+                            : "bg-green-100 text-green-700 border-green-300"
+                        }`}>
+                          {accountStatus === "BANNED" ? "Banned" : accountStatus === "SUSPENDED" ? "Suspended" : "Active"}
+                        </span>
                       </td>
                       <td className="px-4 py-4">
-                        {user.emailVerifiedAt ? (
-                          <div className="flex flex-col gap-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-green-100 text-green-700 border-green-300">
-                              ✓ Verified
-                            </span>
-                            <span className="text-xs text-slate-500">
-                              {new Date(user.emailVerifiedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-amber-100 text-amber-700 border-amber-300">
-                            Not verified
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-xs text-slate-600">
-                          {formatLastLogin(user.lastLoginAt)}
-                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getStatusBadgeColor(user.verificationStatus)}`}>
+                          {user.verificationStatus === "pending" ? "Pending review" : user.verificationStatus === "verified" ? "Verified" : "Not submitted"}
+                        </span>
                       </td>
                       <td className="px-4 py-4">
                         <button

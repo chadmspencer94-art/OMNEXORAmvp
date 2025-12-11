@@ -72,7 +72,7 @@ export default function RegenerateButton({ jobId, status, aiReviewStatus, client
         ) : (
           <>
             <RefreshCw className="w-4 h-4 mr-2" />
-            <span>Regenerate Job Pack</span>
+            <span>Regenerate job pack</span>
           </>
         )}
       </button>

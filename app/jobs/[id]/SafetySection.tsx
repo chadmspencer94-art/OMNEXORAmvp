@@ -264,7 +264,7 @@ export default function SafetySection({
                           ) : (
                             <>
                               <FileText className="w-4 h-4 mr-1" />
-                              Generate {config.label}
+                              Generate {config.type === "SWMS" ? "SWMS" : config.label}
                             </>
                           )}
                         </button>

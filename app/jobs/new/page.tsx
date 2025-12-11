@@ -231,7 +231,7 @@ export default function NewJobPage() {
         <p className="mt-2 text-slate-600">
           {isClient 
             ? "Post your job requirements and let tradies find you. No quote generation needed."
-            : "Create a new AI-powered job pack for your client."}
+            : "Create a new job pack for your client."}
         </p>
       </div>
 
@@ -267,7 +267,7 @@ export default function NewJobPage() {
                         Client Privacy & Safety First
                       </p>
                       <p className="text-sm text-amber-800">
-                        Client details are kept private and will be entered manually after AI generation. This ensures client information is never sent to AI systems and you can review everything before sending.
+                        Client details are kept private and will be entered manually after job pack generation. You can review everything before sending.
                       </p>
                     </div>
                   </div>
@@ -299,7 +299,7 @@ export default function NewJobPage() {
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-2">
-                      Project Title <span className="text-red-500">*</span>
+                      Job name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -337,7 +337,7 @@ export default function NewJobPage() {
 
                     <div>
                       <label htmlFor="propertyType" className="block text-sm font-medium text-slate-700 mb-2">
-                        Property Type <span className="text-red-500">*</span>
+                        Type of work <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -355,7 +355,7 @@ export default function NewJobPage() {
 
                   <div>
                     <label htmlFor="address" className="block text-sm font-medium text-slate-700 mb-2">
-                      Property Address <span className="text-slate-400">(optional)</span>
+                      Property address <span className="text-slate-400">(optional)</span>
                     </label>
                     <input
                       type="text"
@@ -376,7 +376,7 @@ export default function NewJobPage() {
                 <h2 className="text-lg font-semibold text-slate-900 mb-4">Job Details</h2>
                 <div>
                   <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-2">
-                    Job Description / Notes <span className="text-slate-400">(recommended)</span>
+                    Notes for the job <span className="text-slate-400">(optional)</span>
                   </label>
                   
                   {/* Privacy Warning - Only show for tradies */}
@@ -388,10 +388,10 @@ export default function NewJobPage() {
                         </svg>
                         <div>
                           <p className="text-xs font-semibold text-amber-900 mb-1">
-                            ⚠️ Privacy Warning: Do NOT include personal information
+                            Privacy reminder
                           </p>
                           <p className="text-xs text-amber-800">
-                            Do not include client names, email addresses, phone numbers, or other personal information in this field. This information will be sent to AI systems for job pack generation. Client details will be entered manually after you review the AI-generated content.
+                            Do not include client names, email addresses, phone numbers, or other personal information in this field. Client details will be entered manually after job pack generation.
                           </p>
                         </div>
                       </div>
@@ -418,7 +418,7 @@ export default function NewJobPage() {
                     </ul>
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
-                    The more detail you provide, the better your AI job pack will be.
+                    Include any special access or prep notes. The more detail you provide, the better your job pack will be.
                   </p>
                 </div>
               </div>
@@ -426,8 +426,8 @@ export default function NewJobPage() {
               {/* Pricing Context Section - Only show for tradies */}
               {!isClient && (
                 <div className="pt-6 border-t border-slate-200">
-                  <h2 className="text-lg font-semibold text-slate-900 mb-1">Pricing Context</h2>
-                  <p className="text-sm text-slate-500 mb-4">Optional – helps AI generate more accurate quotes</p>
+                  <h2 className="text-lg font-semibold text-slate-900 mb-1">Pricing</h2>
+                  <p className="text-sm text-slate-500 mb-4">Optional – helps generate more accurate quotes</p>
                 
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

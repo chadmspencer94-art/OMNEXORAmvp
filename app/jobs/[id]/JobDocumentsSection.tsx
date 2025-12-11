@@ -28,33 +28,33 @@ interface DocumentConfig {
 const DOCUMENTS: DocumentConfig[] = [
   {
     type: "VARIATION",
-    label: "Variation",
+    label: "Variation / change order",
     apiPath: "variation",
-    description: "Change Order / Variation",
+    description: "Use this when scope or price changes after the original quote.",
   },
   {
     type: "EOT",
-    label: "Extension of Time",
+    label: "Extension of time (EOT)",
     apiPath: "eot",
-    description: "EOT Notice",
+    description: "Request additional time to complete the work.",
   },
   {
     type: "PROGRESS_CLAIM",
-    label: "Progress Claim",
+    label: "Progress claim / tax invoice",
     apiPath: "progress-claim",
-    description: "Tax Invoice / Progress Claim",
+    description: "Invoice for completed work or progress payments.",
   },
   {
     type: "HANDOVER",
-    label: "Handover Checklist",
+    label: "Handover & practical completion",
     apiPath: "handover",
-    description: "Practical Completion",
+    description: "Document final completion and handover to client.",
   },
   {
     type: "MAINTENANCE",
-    label: "Maintenance Guide",
+    label: "Maintenance & care guide",
     apiPath: "maintenance",
-    description: "Care & Maintenance Guide",
+    description: "Provide care instructions for the completed work.",
   },
 ];
 

@@ -254,10 +254,10 @@ export default function SwmsSection({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              SWMS (Safe Work Method Statement) – Beta
+              SWMS (Safe Work Method Statement)
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Generate a Safe Work Method Statement for this job
+              Generate a Safe Work Method Statement for this job. Review this SWMS before use and adjust to suit the site and your business.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -284,7 +284,7 @@ export default function SwmsSection({
                   className="inline-flex items-center px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors text-sm"
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Download SWMS (PDF)
+                  Download SWMS
                 </button>
               </>
             )}

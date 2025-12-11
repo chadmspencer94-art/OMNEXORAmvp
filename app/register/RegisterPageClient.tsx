@@ -68,7 +68,7 @@ export default function RegisterPageClient({ requireInviteCode }: RegisterPageCl
         <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-slate-900 mb-2">Create Account</h1>
-            <p className="text-sm text-slate-600">Start generating AI job packs today</p>
+            <p className="text-sm text-slate-600">Start creating job packs and quotes today</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

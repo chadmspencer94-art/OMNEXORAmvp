@@ -160,7 +160,7 @@ export default function AdminVerificationPageContent() {
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Verification Reviews</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">Business verification</h1>
         <p className="text-slate-600">
           Review and approve tradie business verifications.
         </p>

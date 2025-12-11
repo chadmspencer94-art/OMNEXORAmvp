@@ -95,8 +95,8 @@ function StatusBadge({ status }: { status: JobStatus }) {
 
   const labels: Record<JobStatus, string> = {
     draft: "Draft",
-    ai_pending: "Generating...",
-    ai_complete: "Complete",
+    ai_pending: "Job pack is being generated…",
+    ai_complete: "Job pack ready.",
     ai_failed: "Failed",
     pending_regeneration: "Needs Update",
     generating: "Regenerating...",
@@ -1112,7 +1112,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 )}
                 <div className="px-6 py-4 border-b border-slate-200">
                   <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-                    <h2 className="text-lg font-semibold text-slate-900">AI Generated Job Pack</h2>
+                    <h2 className="text-lg font-semibold text-slate-900">Job Pack</h2>
                     <div className="flex flex-wrap items-center gap-3">
                       {/* Duplicate Job Button - Always available for non-client users */}
                       <DuplicateJobButton jobId={job.id} />
@@ -1130,7 +1130,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                           <p className="font-medium mb-1">
                             {job.clientStatus === "accepted" 
                               ? "Quote signed by client" 
-                              : "AI pack confirmed"}
+                              : "Job pack confirmed"}
                           </p>
                           <p>
                             {job.clientStatus === "accepted"

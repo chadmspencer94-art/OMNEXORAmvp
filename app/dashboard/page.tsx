@@ -295,7 +295,7 @@ export default async function DashboardPage() {
           </h1>
           <p className="mt-2 text-slate-600">
             {totalJobs === 0
-              ? "Welcome to OMNEXORA! Create your first AI job pack to get started."
+              ? "Welcome to OMNEXORA! Create your first job pack to get started."
               : `You have ${totalJobs} job${totalJobs === 1 ? "" : "s"}. ${lastJob ? `Last job: "${lastJob.title}"` : ""}`}
           </p>
         </div>

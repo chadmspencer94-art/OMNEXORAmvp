@@ -115,7 +115,7 @@ export default function VerificationDetailView({
         {verification.status === "pending" && (
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg font-medium">
             <Clock className="w-5 h-5" />
-            Pending Review
+            Pending review
           </span>
         )}
         {verification.status === "rejected" && (
@@ -126,7 +126,7 @@ export default function VerificationDetailView({
         )}
         {verification.status === "unverified" && (
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium">
-            Unverified
+            Not submitted
           </span>
         )}
       </div>
@@ -291,7 +291,7 @@ export default function VerificationDetailView({
 
             <div>
               <label htmlFor="rejectionReason" className="block text-sm font-medium text-slate-700 mb-2">
-                Rejection Reason (Visible to User)
+                Rejection reason (visible to user)
               </label>
               <textarea
                 id="rejectionReason"
@@ -315,7 +315,7 @@ export default function VerificationDetailView({
                 ) : (
                   <CheckCircle className="w-4 h-4" />
                 )}
-                Mark as Verified
+                Approve
               </button>
 
               <button
@@ -328,7 +328,7 @@ export default function VerificationDetailView({
                 ) : (
                   <Clock className="w-4 h-4" />
                 )}
-                Mark as Pending
+                Request more info
               </button>
 
               <button
@@ -341,7 +341,7 @@ export default function VerificationDetailView({
                 ) : (
                   <XCircle className="w-4 h-4" />
                 )}
-                Reject Verification
+                Reject
               </button>
             </div>
           </div>
