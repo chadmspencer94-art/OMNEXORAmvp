@@ -1,5 +1,5 @@
 import { requireTradieUser } from "@/lib/auth";
-import { getClientSummariesForUser } from "@/lib/clients";
+import { getClientSummariesForUser, type ClientSummary } from "@/lib/clients";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import ClientsListClient from "./ClientsListClient";
 
@@ -23,7 +23,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const search = params.search || "";
 
   // Fetch client summaries derived from jobs
-  let clientSummaries;
+  let clientSummaries: ClientSummary[];
   try {
     clientSummaries = await getClientSummariesForUser(user.id);
   } catch (error) {
