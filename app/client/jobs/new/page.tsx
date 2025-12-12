@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import OvisBadge from "@/app/components/OvisBadge";
 
 const PROPERTY_TYPES = [
   "House",
@@ -236,6 +237,11 @@ export default function NewClientJobPage() {
             <p className="text-sm text-slate-600">
               <strong>Note:</strong> Photo uploads will be available soon. For now, please include any important details in the description above.
             </p>
+          </div>
+
+          {/* OVIS Badge */}
+          <div className="flex items-center justify-center pt-4">
+            <OvisBadge variant="card" size="sm" />
           </div>
 
           {/* Submit Button */}

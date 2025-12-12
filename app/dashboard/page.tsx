@@ -15,6 +15,8 @@ import AnalyticsSection from "./AnalyticsSection";
 import MatchingJobsSection from "./MatchingJobsSection";
 import OnboardingChecklist from "@/app/components/OnboardingChecklist";
 import { getClientSummariesForUser } from "@/lib/clients";
+import MobileDashboardTiles from "./MobileDashboardTiles";
+import OvisBadge from "@/app/components/OvisBadge";
 
 // RecentJobRow component for displaying job rows in the dashboard
 function RecentJobRow({ job }: { job: Job }) {
@@ -123,7 +125,16 @@ export default async function DashboardPage() {
   const pendingJobs = jobs.filter((j) => j.status === "ai_pending").length;
   const recentJobs = jobs.slice(0, 5);
   const lastJob = jobs[0];
-
+  
+  // Calculate total quotes (jobs with quotes sent/accepted/declined)
+  const totalQuotes = jobs.filter((j) => 
+    j.clientStatus === "sent" || 
+    j.clientStatus === "accepted" || 
+    j.clientStatus === "declined" ||
+    j.clientAcceptedAt || 
+    j.clientDeclinedAt
+  ).length;
+  
   // Get upcoming scheduled jobs (only for tradie/business users)
   // Note: Clients are already redirected above, so isClient is always false here
   const now = new Date();
@@ -298,6 +309,10 @@ export default async function DashboardPage() {
               ? "Welcome to OMNEXORA! Create your first job pack to get started."
               : `You have ${totalJobs} job${totalJobs === 1 ? "" : "s"}. ${lastJob ? `Last job: "${lastJob.title}"` : ""}`}
           </p>
+          {/* OVIS Badge - Subtle line on mobile only */}
+          <div className="mt-3 md:hidden">
+            <OvisBadge variant="card" size="sm" />
+          </div>
         </div>
         <div className="flex-shrink-0">
           <FeedbackButton />
@@ -317,11 +332,22 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Analytics Section */}
-      <AnalyticsSection />
+      {/* Mobile Dashboard Tiles - Only shown on mobile */}
+      <div className="md:hidden">
+        <MobileDashboardTiles
+          totalJobs={totalJobs}
+          totalQuotes={totalQuotes}
+          completedJobs={completedJobs}
+        />
+      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Desktop Dashboard Content - Hidden on mobile, shown on md and up */}
+      <div className="hidden md:block">
+        {/* Analytics Section */}
+        <AnalyticsSection />
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
           <div className="flex items-center">
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -376,8 +402,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Admin Cards - Only shown for admins */}
-      {userIsAdmin && (
+        {/* Admin Cards - Only shown for admins */}
+        {userIsAdmin && (
         <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link
             href="/admin/verification"
@@ -426,10 +452,10 @@ export default async function DashboardPage() {
             </div>
           </Link>
         </div>
-      )}
+        )}
 
-      {/* Recent Jobs */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        {/* Recent Jobs */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-6 py-4 border-b border-slate-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">Recent Jobs</h2>
@@ -466,14 +492,15 @@ export default async function DashboardPage() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Jobs in your service area - Only shown for tradies */}
-      {isTradie && (
-        <div className="mt-8">
-          <MatchingJobsSection />
         </div>
-      )}
+
+        {/* Jobs in your service area - Only shown for tradies */}
+        {isTradie && (
+          <div className="mt-8">
+            <MatchingJobsSection />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, FileText, Check, Edit2 } from "lucide-react";
 import JobDocumentEditor from "./JobDocumentEditor";
+import OvisBadge from "@/app/components/OvisBadge";
 import type { Job } from "@/lib/jobs";
 
 interface JobDocumentsSectionProps {
@@ -249,8 +250,11 @@ export default function JobDocumentsSection({
     <>
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-6 py-4 border-b border-slate-200">
-          <h2 className="text-lg font-semibold text-slate-900">Job Documents</h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <h2 className="text-lg font-semibold text-slate-900">Job Documents</h2>
+            <OvisBadge variant="inline" size="sm" />
+          </div>
+          <p className="text-xs text-slate-500">
             Generate professional documents for this job. All documents must be reviewed and confirmed before use.
           </p>
         </div>

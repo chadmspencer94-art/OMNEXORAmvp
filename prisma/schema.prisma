@@ -488,3 +488,48 @@ model Client {
   @@index([email])
   @@index([ownerId, email])
 }
+model PriceList {
+  id            String      @id @default(cuid())
+  orgId         String
+  name          String
+  supplier      String?
+  pricingType   PricingType @default(TRADE)
+  currency      String      @default("AUD")
+  effectiveDate DateTime    @default(now())
+  locationLabel String?
+  isActive      Boolean     @default(true)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  items         PriceListItem[]
+
+  @@index([orgId, isActive])
+}
+
+model PriceListItem {
+  id            String     @id @default(cuid())
+  priceListId   String
+  skuName       String
+  brand         String?
+  packSize      String?
+  unit          String?
+ priceExGstCents Int
+  gstApplicable Boolean    @default(true)
+  notes         String?
+  category      String?
+  tags          String?
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  priceList     PriceList  @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+
+  @@index([priceListId])
+  @@index([skuName])
+}
+
+enum PricingType {
+  TRADE
+  SHELF
+}

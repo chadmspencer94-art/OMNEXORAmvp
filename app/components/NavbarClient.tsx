@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { featureFlags } from "@/lib/featureFlags";
+import { resetDemoData } from "@/app/api/demo/reset/actions";
 
 type UserRole = "tradie" | "builder" | "client" | "supplier" | "admin";
 // Support both new and legacy verification statuses for backwards compatibility
@@ -17,6 +18,7 @@ interface NavbarClientProps {
     verifiedAt: string | null;
     isAdmin: boolean;
   } | null;
+  isDemoMode?: boolean;
 }
 
 function VerificationBadge({ role, status }: { role: UserRole; status: VerificationStatus }) {
@@ -116,7 +118,7 @@ function VerificationBadge({ role, status }: { role: UserRole; status: Verificat
   );
 }
 
-export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
+export default function NavbarClient({ user: initialUser, isDemoMode = false }: NavbarClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -179,6 +181,8 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
 
   const isLoggedIn = !!user;
   const isClient = user?.role === "client";
+  const isSuperAdmin = user?.isAdmin === true;
+  const [isResetting, startReset] = useTransition();
 
   // Role-aware navigation links
   // Core routes are always shown; experimental features are controlled by feature flags
@@ -195,6 +199,29 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
         ...(featureFlags.showBilling ? [{ href: "/billing", label: "Billing" }] : []),
         { href: "/settings", label: "Settings" },
       ];
+
+  const handleResetDemoData = async () => {
+    if (!confirm("Reset demo data? This will update demo user accounts to their default state.")) {
+      return;
+    }
+
+    startReset(async () => {
+      try {
+        const result = await resetDemoData();
+
+        if (!result.success) {
+          alert(result.error || "Failed to reset demo data");
+          return;
+        }
+
+        alert(result.message || "Demo data reset successfully!");
+        router.refresh();
+      } catch (error) {
+        console.error("Error resetting demo data:", error);
+        alert("An unexpected error occurred. Please try again.");
+      }
+    });
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -245,18 +272,38 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
   };
 
   return (
-    <nav className="bg-slate-900 border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <button
-            onClick={() => {
-              router.push(isLoggedIn ? "/dashboard" : "/");
-            }}
-            className="flex items-center text-xl sm:text-2xl font-bold text-white tracking-tight hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900 rounded"
-          >
-            OMNEXORA
-          </button>
+    <>
+      {/* DEMO MODE Banner - Only shown when DEMO_MODE=true */}
+      {isDemoMode && (
+        <div className="bg-amber-600 border-b border-amber-700">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5">
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xs font-medium text-amber-900">DEMO MODE</span>
+              {isSuperAdmin && (
+                <button
+                  onClick={handleResetDemoData}
+                  disabled={isResetting}
+                  className="ml-2 px-2 py-0.5 text-xs font-medium text-amber-900 hover:text-amber-950 bg-amber-500 hover:bg-amber-400 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isResetting ? "Resetting..." : "Reset Demo Data"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <nav className="bg-slate-900 border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <button
+              onClick={() => {
+                router.push(isLoggedIn ? "/dashboard" : "/");
+              }}
+              className="flex items-center text-xl sm:text-2xl font-bold text-white tracking-tight hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900 rounded"
+            >
+              OMNEXORA
+            </button>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
@@ -417,6 +464,7 @@ export default function NavbarClient({ user: initialUser }: NavbarClientProps) {
         </div>
       )}
     </nav>
+    </>
   );
 }
 

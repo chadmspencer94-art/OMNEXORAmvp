@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Save, X, Check, Edit2 } from "lucide-react";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
+import OvisBadge from "@/app/components/OvisBadge";
 
 interface JobDocumentEditorProps {
   isOpen: boolean;
@@ -87,8 +88,9 @@ export default function JobDocumentEditor({
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-1">
               <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+              <OvisBadge variant="inline" size="sm" />
               {isConfirmed && !isEditing && (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
                   <Check className="w-3 h-3 mr-1" />
@@ -101,7 +103,7 @@ export default function JobDocumentEditor({
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-500">
               {isEditing ? "Edit the document content below, then confirm to use it" : "Review the document content"}
             </p>
           </div>

@@ -1,6 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import OvisBadge from "@/app/components/OvisBadge";
+import OvisModal from "@/app/components/OvisModal";
 
 export default function Home() {
+  const [isOvisModalOpen, setIsOvisModalOpen] = useState(false);
   // Placeholder for auth state - will be replaced with real auth later
   const isLoggedIn = false;
 
@@ -32,7 +38,7 @@ export default function Home() {
           </p>
 
           {/* Primary CTA */}
-          <div className="mb-12">
+          <div className="mb-6">
             {isLoggedIn ? (
               <Link
                 href="/dashboard"
@@ -85,6 +91,22 @@ export default function Home() {
               </>
             )}
           </div>
+
+          {/* OVIS Trust Strip */}
+          <div className="mb-12 flex flex-col items-center gap-2 text-center">
+            <div className="flex items-center justify-center gap-3">
+              <OvisBadge variant="inline" size="sm" />
+              <button
+                onClick={() => setIsOvisModalOpen(true)}
+                className="text-slate-600 hover:text-slate-900 underline underline-offset-2 transition-colors text-xs sm:text-sm"
+              >
+                What is OVIS?
+              </button>
+            </div>
+            <p className="hidden md:block text-xs text-slate-500">
+              AI-assisted drafts with human verification before issue.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -111,6 +133,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* OVIS Modal */}
+      <OvisModal isOpen={isOvisModalOpen} onClose={() => setIsOvisModalOpen(false)} />
     </main>
   );
 }

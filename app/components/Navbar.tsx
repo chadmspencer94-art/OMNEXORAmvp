@@ -32,6 +32,8 @@ export default async function Navbar() {
     }
   }
 
+  const isDemoMode = process.env.DEMO_MODE === "true";
+
   return (
     <NavbarClient
       user={user ? { 
@@ -41,6 +43,7 @@ export default async function Navbar() {
         verifiedAt: user.verifiedAt ?? null,
         isAdmin: user.isAdmin ?? false,
       } : null}
+      isDemoMode={isDemoMode}
     />
   );
 }

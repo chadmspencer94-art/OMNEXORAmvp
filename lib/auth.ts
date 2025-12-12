@@ -109,6 +109,7 @@ export const SESSION_COOKIE_OPTIONS = {
  */
 const ADMIN_EMAILS: string[] = [
   "chadmspencer94@gmail.com",
+  "chad.omnexora@outlook.com",
   "sarahkison5@gmail.com",
   // Add more admin emails as needed
 ];
@@ -123,6 +124,7 @@ const ADMIN_EMAILS: string[] = [
  */
 export const FOUNDER_EMAILS: string[] = [
   "chadmspencer94@gmail.com",
+  "chad.omnexora@outlook.com",
   // Add more founder emails here later
 ];
 
@@ -179,7 +181,7 @@ const TEST_VERIFIED_EMAILS: string[] = [
 /**
  * The primary admin email that is always verified and has admin access.
  */
-const PRIMARY_ADMIN_EMAIL = "chadmspencer94@gmail.com";
+const PRIMARY_ADMIN_EMAIL = "chad.omnexora@outlook.com";
 
 /**
  * Normalizes a user object loaded from KV storage to ensure all fields are present.

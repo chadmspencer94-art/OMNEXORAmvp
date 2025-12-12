@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Save, Loader2, Check, AlertTriangle } from "lucide-react";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
+import { updateClientDetails } from "./actions";
 
 interface ClientDetailsEntryProps {
   jobId: string;
   currentClientName?: string | null;
   currentClientEmail?: string | null;
-  onSave: (clientName: string, clientEmail: string) => Promise<void>;
   planTier?: string;
 }
 
@@ -16,15 +17,31 @@ export default function ClientDetailsEntry({
   jobId,
   currentClientName,
   currentClientEmail,
-  onSave,
   planTier = "FREE",
 }: ClientDetailsEntryProps) {
+  const router = useRouter();
   const [clientName, setClientName] = useState(currentClientName || "");
   const [clientEmail, setClientEmail] = useState(currentClientEmail || "");
-  const [isSaving, setIsSaving] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
+
+  // Sync state with props when they change (e.g., after page refresh)
+  // Only update if props are valid strings (not null/undefined/NaN)
+  useEffect(() => {
+    if (typeof currentClientName === "string") {
+      setClientName(currentClientName);
+    } else if (currentClientName === null || currentClientName === undefined) {
+      setClientName("");
+    }
+    
+    if (typeof currentClientEmail === "string") {
+      setClientEmail(currentClientEmail);
+    } else if (currentClientEmail === null || currentClientEmail === undefined) {
+      setClientEmail("");
+    }
+  }, [currentClientName, currentClientEmail]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -36,14 +53,7 @@ export default function ClientDetailsEntry({
     setError("");
     setSuccess(false);
 
-    // Plan check: free users cannot save client details
-    const hasPaidPlan = planTier !== "FREE";
-    if (!hasPaidPlan) {
-      setError("A paid membership is required to save client details and send job packs. Please upgrade your plan to continue.");
-      return;
-    }
-
-    // Validation
+    // Client-side validation
     if (!clientName.trim()) {
       setError("Client name is required");
       return;
@@ -64,17 +74,44 @@ export default function ClientDetailsEntry({
       return;
     }
 
-    setIsSaving(true);
-
-    try {
-      await onSave(clientName.trim(), clientEmail.trim().toLowerCase());
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save client details");
-    } finally {
-      setIsSaving(false);
+    // Validate inputs before calling Server Action
+    const trimmedName = clientName?.trim() || "";
+    const trimmedEmail = clientEmail?.trim().toLowerCase() || "";
+    
+    if (!trimmedName || !trimmedEmail) {
+      setError("Please fill in all required fields");
+      return;
     }
+
+    startTransition(async () => {
+      try {
+        const result = await updateClientDetails(
+          jobId,
+          trimmedName,
+          trimmedEmail
+        );
+
+        if (result && result.ok === true) {
+          setSuccess(true);
+          setError("");
+          setTimeout(() => setSuccess(false), 3000);
+          // Refresh the page to show updated details
+          router.refresh();
+        } else {
+          // Show the actual error message from the server
+          const errorMessage = result?.message || "Failed to save client details";
+          setError(errorMessage);
+          setSuccess(false);
+        }
+      } catch (err) {
+        console.error("[ClientDetailsEntry] Error calling updateClientDetails:", err);
+        const errorMessage = err instanceof Error 
+          ? err.message 
+          : "An unexpected error occurred. Please try again.";
+        setError(errorMessage);
+        setSuccess(false);
+      }
+    });
   };
 
   const hasChanges = 
@@ -94,7 +131,7 @@ export default function ClientDetailsEntry({
         </p>
       </div>
 
-      {/* Free Plan Warning Banner */}
+      {/* Free Plan Warning Banner - Only show for non-admins */}
       {!hasPaidPlan && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-start gap-3">
@@ -144,7 +181,7 @@ export default function ClientDetailsEntry({
               placeholder="e.g. John Smith"
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
               required
-              disabled={isSaving}
+              disabled={isPending}
             />
           </div>
 
@@ -160,7 +197,7 @@ export default function ClientDetailsEntry({
               placeholder="e.g. john@example.com"
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
               required
-              disabled={isSaving}
+              disabled={isPending}
             />
           </div>
         </div>
@@ -173,7 +210,7 @@ export default function ClientDetailsEntry({
               checked={reviewConfirmed}
               onChange={(e) => setReviewConfirmed(e.target.checked)}
               className="mt-0.5 w-4 h-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500 flex-shrink-0"
-              disabled={isSaving}
+              disabled={isPending}
             />
             <span className="text-sm text-amber-900">
               <span className="font-semibold">I confirm:</span> I have reviewed and verified all AI-generated content in this job pack and ensured its accuracy and compliance with all applicable Australian laws and regulations before saving client details.
@@ -182,12 +219,12 @@ export default function ClientDetailsEntry({
         </div>
 
         <div className="flex items-center justify-end gap-3">
-          <button
+            <button
             type="submit"
-            disabled={isSaving || !hasChanges || !reviewConfirmed}
+            disabled={isPending || !hasChanges || !reviewConfirmed}
             className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? (
+            {isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Saving...

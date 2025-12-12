@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import TemplateSelector from "./TemplateSelector";
+import OvisBadge from "@/app/components/OvisBadge";
 
 type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Other";
 type UserRole = "tradie" | "builder" | "client" | "supplier" | "admin";
@@ -575,6 +576,9 @@ export default function NewJobPage() {
 
               {/* Submit Section */}
               <div className="pt-6 border-t border-slate-200">
+                <div className="mb-4 flex items-center justify-center">
+                  <OvisBadge variant="card" size="sm" />
+                </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <p className="text-sm text-slate-500">
                     {isClient 

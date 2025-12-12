@@ -6,6 +6,7 @@ import { Loader2, FileText, Edit2, Download, Shield, AlertTriangle, Users } from
 import SafetyDocumentEditor from "./SafetyDocumentEditor";
 import SafetyDocumentPdfButton from "./SafetyDocumentPdfButton";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
+import OvisBadge from "@/app/components/OvisBadge";
 
 interface SafetySectionProps {
   jobId: string;
@@ -190,8 +191,11 @@ export default function SafetySection({
     <>
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-6 py-4 border-b border-slate-200">
-          <h2 className="text-lg font-semibold text-slate-900">Safety & SWMS</h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <h2 className="text-lg font-semibold text-slate-900">Safety & SWMS</h2>
+            <OvisBadge variant="inline" size="sm" />
+          </div>
+          <p className="text-xs text-slate-500">
             Generate and manage safety documents for this job
           </p>
         </div>

@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, updateUser } from "@/lib/auth";
 
-const PRIMARY_ADMIN_EMAIL = "chadmspencer94@gmail.com";
+const PRIMARY_ADMIN_EMAIL = "chad.omnexora@outlook.com";
+const SUPERADMIN_EMAILS = [
+  "chad.omnexora@outlook.com",
+  "chadmspencer94@gmail.com",
+];
 
 export async function POST() {
   // Block this route in production
@@ -20,7 +24,7 @@ export async function POST() {
     }
 
     const now = new Date().toISOString();
-    const isAdminEmail = user.email.toLowerCase() === PRIMARY_ADMIN_EMAIL;
+    const isAdminEmail = SUPERADMIN_EMAILS.includes(user.email.toLowerCase());
 
     // Update user to verified (and admin if applicable)
     const updatedUser = await updateUser(user.id, {

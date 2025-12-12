@@ -41,6 +41,7 @@ import VerifiedBadge from "@/app/components/VerifiedBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
+import OvisBadge from "@/app/components/OvisBadge";
 
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
@@ -1112,7 +1113,10 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 )}
                 <div className="px-6 py-4 border-b border-slate-200">
                   <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-                    <h2 className="text-lg font-semibold text-slate-900">Job Pack</h2>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-lg font-semibold text-slate-900">Job Pack</h2>
+                      <OvisBadge variant="inline" size="sm" />
+                    </div>
                     <div className="flex flex-wrap items-center gap-3">
                       {/* Duplicate Job Button - Always available for non-client users */}
                       <DuplicateJobButton jobId={job.id} />
@@ -1251,19 +1255,6 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       currentClientName={job.clientName}
                       currentClientEmail={job.clientEmail}
                       planTier={planTier}
-                      onSave={async (clientName, clientEmail) => {
-                        const response = await fetch(`/api/jobs/${job.id}/client-details`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ clientName, clientEmail }),
-                        });
-                        if (!response.ok) {
-                          const data = await response.json();
-                          throw new Error(data.error || "Failed to save client details");
-                        }
-                        // Refresh the page to show updated details
-                        window.location.reload();
-                      }}
                     />
                   </div>
                 )}
