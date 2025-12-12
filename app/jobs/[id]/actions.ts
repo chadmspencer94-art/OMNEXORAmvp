@@ -3,10 +3,11 @@
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
 import { revalidatePath } from "next/cache";
+import { isDemoUser } from "@/lib/demo";
 
 /**
  * Server Action to update client details for a job
- * Only accessible by non-client users who own the job, or superadmins
+ * Only accessible by non-client users who own the job, or superadmins, or demo users
  */
 export async function updateClientDetails(
   jobId: string,
@@ -53,9 +54,8 @@ export async function updateClientDetails(
     // Check if user is a superadmin
     const isSuperAdmin = isAdmin(currentUser);
     
-    // Demo/development mode bypass for superadmins
-    const isDemoMode = process.env.NODE_ENV === "development" || process.env.DEMO_MODE === "true";
-    const canBypassPlanCheck = isSuperAdmin && isDemoMode;
+    // Check if user is a demo user
+    const userIsDemoUser = isDemoUser(currentUser.email);
 
     // ========================================================================
     // Get and Verify Job
@@ -78,18 +78,18 @@ export async function updateClientDetails(
       return { ok: false, message: "Job not found" };
     }
 
-    // Verify ownership - admins can update any job
-    if (job.userId !== currentUser.id && !isSuperAdmin) {
-      return { ok: false, message: "You do not have permission to update this job" };
+    // Verify ownership - superadmins, demo users, or job owners can update
+    if (job.userId !== currentUser.id && !isSuperAdmin && !userIsDemoUser) {
+      return { ok: false, message: "You don't have permission to edit this job." };
     }
 
     // ========================================================================
-    // Plan Check (bypass for superadmins in demo mode)
+    // Plan Check (bypass for superadmins and demo users)
     // ========================================================================
-    if (!canBypassPlanCheck) {
+    if (!isSuperAdmin && !userIsDemoUser) {
       const { hasPaidPlan } = await import("@/lib/planChecks");
       
-      if (!hasPaidPlan(currentUser) && !isSuperAdmin) {
+      if (!hasPaidPlan(currentUser)) {
         // Get plan tier from Prisma
         let planTier = "FREE";
         try {
@@ -129,6 +129,7 @@ export async function updateClientDetails(
         clientEmail: trimmedEmail,
         userId: currentUser.id,
         isSuperAdmin,
+        isDemoUser: userIsDemoUser,
       });
     } catch (saveError: any) {
       console.error("[updateClientDetails] Error saving job to KV store:", {

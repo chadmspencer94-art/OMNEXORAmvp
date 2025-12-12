@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Check, Circle, X } from "lucide-react";
 import type { OnboardingStep } from "@/lib/onboarding-status";
+import Button from "@/app/components/ui/Button";
 
 interface OnboardingCardProps {
   steps: OnboardingStep[];
@@ -59,30 +59,38 @@ export default function OnboardingCard({ steps, allDone, onDismiss }: Onboarding
         </div>
       </div>
 
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
         {steps.map((step) => (
-          <div key={step.key} className="flex items-start gap-4">
-            <div className="flex-shrink-0 mt-0.5">
-              {step.done ? (
-                <Check className="w-5 h-5 text-green-600" />
-              ) : (
-                <Circle className="w-5 h-5 text-slate-300" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className={`font-medium ${step.done ? "text-slate-600" : "text-slate-900"}`}>
-                {step.label}
-              </h3>
-              <p className="text-sm text-slate-600 mt-0.5">{step.description}</p>
+          <div
+            key={step.key}
+            className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-3 sm:p-0 rounded-lg sm:rounded-none hover:bg-slate-50 sm:hover:bg-transparent transition-colors"
+          >
+            <div className="flex-shrink-0 flex items-start gap-3 sm:gap-4">
+              <div className="flex-shrink-0 mt-0.5">
+                {step.done ? (
+                  <Check className="w-5 h-5 text-green-600" aria-label="Completed" />
+                ) : (
+                  <Circle className="w-5 h-5 text-slate-300" aria-label="Not completed" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className={`font-medium ${step.done ? "text-slate-600" : "text-slate-900"}`}>
+                  {step.label}
+                </h3>
+                <p className="text-sm text-slate-600 mt-0.5">{step.description}</p>
+              </div>
             </div>
             {!step.done && (
-              <div className="flex-shrink-0">
-                <Link
+              <div className="flex-shrink-0 sm:ml-auto sm:mt-0.5">
+                <Button
+                  asLink
                   href={step.href}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                  variant="primary"
+                  size="sm"
+                  className="w-full sm:w-auto"
                 >
-                  Go
-                </Link>
+                  Open
+                </Button>
               </div>
             )}
           </div>

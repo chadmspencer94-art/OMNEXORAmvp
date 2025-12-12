@@ -74,16 +74,22 @@ export default function PriceListDetailClient({ initialList }: PriceListDetailCl
   };
 
   const handleUpdateItem = async () => {
-    if (!editingItem?.id || !itemForm.name.trim()) {
+    if (!itemForm.name.trim()) {
       setError("Item name is required");
       return;
     }
 
+    if (!editingItem?.id) {
+      setError("Cannot update item: missing item ID.");
+      return;
+    }
+
+    const itemId = editingItem.id;
     setError("");
     setSuccess("");
 
     startTransition(async () => {
-      const result = await updatePriceListItem(editingItem.id, itemForm);
+      const result = await updatePriceListItem(itemId, itemForm);
       if (result.success) {
         setSuccess("Item updated successfully");
         setShowAddModal(false);

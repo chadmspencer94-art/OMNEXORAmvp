@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
+import { isDemoUser } from "@/lib/demo";
 
 type RouteParams = {
   params: {
@@ -11,7 +12,7 @@ type RouteParams = {
 /**
  * PATCH /api/jobs/[id]/client-details
  * Updates client details for a job (manual entry after AI generation)
- * Only accessible by non-client users who own the job
+ * Only accessible by non-client users who own the job, or superadmins, or demo users
  */
 export async function PATCH(
   request: NextRequest,
@@ -48,41 +49,47 @@ export async function PATCH(
       );
     }
 
-    // Verify ownership - admins can update any job
-    if (job.userId !== currentUser.id && !isAdmin(currentUser)) {
+    // Check if user is a superadmin or demo user
+    const isSuperAdmin = isAdmin(currentUser);
+    const userIsDemoUser = isDemoUser(currentUser.email);
+
+    // Verify ownership - superadmins, demo users, or job owners can update
+    if (job.userId !== currentUser.id && !isSuperAdmin && !userIsDemoUser) {
       return NextResponse.json(
-        { error: "You do not have permission to update this job" },
+        { error: "You don't have permission to edit this job." },
         { status: 403 }
       );
     }
 
-    // Plan check: free users cannot save client details
-    const { hasPaidPlan } = await import("@/lib/planChecks");
-    
-    if (!hasPaidPlan(currentUser) && !isAdmin(currentUser)) {
-      // Get plan tier from Prisma
-      let planTier = "FREE";
-      try {
-        const { prisma } = await import("@/lib/prisma");
-        const prismaUser = await prisma.user.findUnique({
-          where: { email: currentUser.email },
-          select: { planTier: true },
-        });
-        if (prismaUser?.planTier) {
-          planTier = prismaUser.planTier;
-        }
-      } catch (error) {
-        console.warn("Failed to fetch plan tier:", error);
-      }
+    // Plan check: free users cannot save client details (bypass for superadmins and demo users)
+    if (!isSuperAdmin && !userIsDemoUser) {
+      const { hasPaidPlan } = await import("@/lib/planChecks");
       
-      if (planTier === "FREE") {
-        return NextResponse.json(
-          {
-            error: "A paid membership is required to save client details and send job packs. Please upgrade your plan to continue.",
-            code: "PAID_PLAN_REQUIRED"
-          },
-          { status: 403 }
-        );
+      if (!hasPaidPlan(currentUser)) {
+        // Get plan tier from Prisma
+        let planTier = "FREE";
+        try {
+          const { prisma } = await import("@/lib/prisma");
+          const prismaUser = await prisma.user.findUnique({
+            where: { email: currentUser.email },
+            select: { planTier: true },
+          });
+          if (prismaUser?.planTier) {
+            planTier = prismaUser.planTier;
+          }
+        } catch (error) {
+          console.warn("Failed to fetch plan tier:", error);
+        }
+        
+        if (planTier === "FREE") {
+          return NextResponse.json(
+            {
+              error: "A paid membership is required to save client details and send job packs. Please upgrade your plan to continue.",
+              code: "PAID_PLAN_REQUIRED"
+            },
+            { status: 403 }
+          );
+        }
       }
     }
 
