@@ -80,7 +80,7 @@ async function importUsers() {
     console.log("Importing users (upserting by id)...\n");
 
     let imported = 0;
-    let updated = 0;
+    const updated = 0;
     let errors = 0;
 
     for (const user of users) {

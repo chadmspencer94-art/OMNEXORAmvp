@@ -440,7 +440,7 @@ export default function MaterialsManagementSection({
         {/* Materials Table */}
         {jobMaterials.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
-            <p className="text-sm">No materials added yet. Click "Add Material" to get started.</p>
+            <p className="text-sm">No materials added yet. Click &quot;Add Material&quot; to get started.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

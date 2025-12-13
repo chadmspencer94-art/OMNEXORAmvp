@@ -2,12 +2,13 @@
  * Demo seed script - Creates/updates demo users for local development
  * 
  * This script is idempotent - safe to run multiple times.
- * Uses Prisma to UPSERT users in the database.
+ * Uses BOTH Prisma (for email verification) AND Vercel KV (for authentication).
  * 
  * Usage: npm run demo:seed
  */
 
 import { PrismaClient } from "@prisma/client";
+import { kv } from "@vercel/kv";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
@@ -59,7 +60,7 @@ async function seedDemoUsers() {
         where: { email: normalizedEmail },
       });
 
-      // Use upsert for idempotent operation
+      // Use upsert for idempotent operation in Prisma
       const user = await prisma.user.upsert({
         where: { email: normalizedEmail },
         update: {
@@ -85,7 +86,44 @@ async function seedDemoUsers() {
         },
       });
       
-      console.log(`   ✓ ${existingUser ? "Updated" : "Created"} user (ID: ${user.id})`);
+      console.log(`   ✓ Prisma: ${existingUser ? "Updated" : "Created"} user (ID: ${user.id})`);
+
+      // ALSO update Vercel KV for authentication
+      // The auth system uses KV storage, not Prisma
+      const kvUserKey = `user:email:${normalizedEmail}`;
+      const existingKvUser = await kv.get(kvUserKey);
+      
+      const kvUserData = {
+        id: user.id,
+        email: normalizedEmail,
+        passwordHash,
+        createdAt: existingKvUser?.createdAt || new Date().toISOString(),
+        role: userData.role,
+        verificationStatus: userData.verificationStatus,
+        verifiedAt: existingKvUser?.verifiedAt || new Date().toISOString(),
+        isAdmin: userData.role === "admin",
+        planTier: userData.planTier,
+        planStatus: userData.planStatus,
+        accountStatus: userData.accountStatus,
+        isBanned: false,
+        // Activity tracking
+        lastLoginAt: existingKvUser?.lastLoginAt || null,
+        lastActivityAt: existingKvUser?.lastActivityAt || null,
+        totalJobs: existingKvUser?.totalJobs || 0,
+        totalJobPacks: existingKvUser?.totalJobPacks || 0,
+      };
+
+      // Update both user:email and user:id keys
+      await kv.set(kvUserKey, kvUserData);
+      await kv.set(`user:id:${user.id}`, kvUserData);
+      
+      // Add to users:all index if not already present
+      const allUserIds = await kv.lrange("users:all", 0, -1) || [];
+      if (!allUserIds.includes(user.id)) {
+        await kv.lpush("users:all", user.id);
+      }
+      
+      console.log(`   ✓ KV: ${existingKvUser ? "Updated" : "Created"} user in Vercel KV`);
 
       console.log(`   Role: ${userData.role}`);
       console.log(`   Plan: ${userData.planTier} (${userData.planStatus})`);

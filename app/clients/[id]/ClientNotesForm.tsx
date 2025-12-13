@@ -85,7 +85,7 @@ export default function ClientNotesForm({ client }: ClientNotesFormProps) {
           disabled={isSaving}
         />
         <p className="mt-1 text-xs text-slate-500">
-          Add tags to categorize this client (e.g., "VIP", "slow payer", "referral")
+          Add tags to categorize this client (e.g., &quot;VIP&quot;, &quot;slow payer&quot;, &quot;referral&quot;)
         </p>
       </div>
 

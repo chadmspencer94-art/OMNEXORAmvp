@@ -16,6 +16,7 @@ function ResetPasswordForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional initial validation
   useEffect(() => {
     if (!token) {
       setError("Invalid or missing reset token. Please request a new password reset link.");

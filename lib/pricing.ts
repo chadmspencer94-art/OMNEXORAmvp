@@ -302,8 +302,8 @@ export function calculateEstimateRange(quoteJson: string | undefined | null): Es
     }
 
     // Calculate range: 5% below, 10% above
-    let low = baseTotal * 0.95;
-    let high = baseTotal * 1.10;
+    const low = baseTotal * 0.95;
+    const high = baseTotal * 1.10;
 
     // Round to nearest $10
     const lowRounded = Math.round(low / 10) * 10;

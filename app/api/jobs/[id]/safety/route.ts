@@ -121,7 +121,7 @@ export async function POST(
     let userPrimaryTrade: string | null = null;
     let userTradeTypes: string | null = null;
     let businessName: string | null = null;
-    let workTypes: string[] = [];
+    const workTypes: string[] = [];
 
     try {
       const prismaUser = await prisma.user.findUnique({

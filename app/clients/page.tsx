@@ -41,7 +41,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Clients</h1>
         <p className="mt-2 text-slate-600">
-          All clients you've created jobs for in OMNEXORA.
+          All clients you&apos;ve created jobs for in OMNEXORA.
         </p>
       </div>
 

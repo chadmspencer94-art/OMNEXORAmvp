@@ -116,7 +116,7 @@ export default function SwmsPdfButton({
         } else {
           // Regular text content
           // Remove markdown formatting
-          let cleanText = trimmedSection
+          const cleanText = trimmedSection
             .replace(/\*\*(.+?)\*\*/g, "$1") // Bold
             .replace(/\*(.+?)\*/g, "$1") // Italic
             .replace(/^[-*]\s+/gm, "• ") // Bullet points

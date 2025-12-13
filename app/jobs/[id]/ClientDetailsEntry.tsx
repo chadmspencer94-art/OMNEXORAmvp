@@ -29,6 +29,7 @@ export default function ClientDetailsEntry({
 
   // Sync state with props when they change (e.g., after page refresh)
   // Only update if props are valid strings (not null/undefined/NaN)
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional prop sync pattern
   useEffect(() => {
     if (typeof currentClientName === "string") {
       setClientName(currentClientName);

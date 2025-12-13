@@ -247,7 +247,7 @@ export default function VerificationPage() {
             </svg>
             <div>
               <p className="font-medium text-amber-900">Your verification is being reviewed.</p>
-              <p className="text-sm text-amber-700 mt-1">We'll notify you once the review is complete.</p>
+              <p className="text-sm text-amber-700 mt-1">We&apos;ll notify you once the review is complete.</p>
             </div>
           </div>
         </div>
