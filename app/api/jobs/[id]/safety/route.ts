@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { prisma, getSafeErrorMessage, isPrismaError } from "@/lib/prisma";
+
+// User-friendly error messages for safety document operations
+const SAFETY_ERROR_MESSAGES = {
+  load: "Safety documents aren't available right now. Please try again shortly.",
+  generate: "Unable to generate safety document right now. Please try again shortly.",
+  save: "Unable to save safety document right now. Please try again shortly.",
+};
 
 /**
  * GET /api/jobs/[id]/safety
@@ -48,16 +55,28 @@ export async function GET(
     }
 
     // Get all safety documents for this job
-    const documents = await prisma.jobSafetyDocument.findMany({
-      where: { jobId },
-      orderBy: { createdAt: "desc" },
-    });
+    let documents;
+    try {
+      documents = await prisma.jobSafetyDocument.findMany({
+        where: { jobId },
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (dbError) {
+      console.error("[safety] Database error fetching documents:", dbError);
+      return NextResponse.json(
+        { error: SAFETY_ERROR_MESSAGES.load },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json({ documents }, { status: 200 });
   } catch (error) {
     console.error("Error fetching safety documents:", error);
+    const safeMessage = isPrismaError(error) 
+      ? SAFETY_ERROR_MESSAGES.load 
+      : getSafeErrorMessage(error, SAFETY_ERROR_MESSAGES.load);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: safeMessage },
       { status: 500 }
     );
   }
@@ -353,51 +372,68 @@ Format the response as clear, structured text with section headings. Use bullet 
       ? "Risk Assessment"
       : "Toolbox Talk Outline";
 
-    // Check if document already exists for this job + type
-    const existing = await prisma.jobSafetyDocument.findFirst({
-      where: { jobId, type },
-    });
-
+    // Check if document already exists for this job + type and save to database
     let document;
-    if (existing) {
-      // Update existing document
-      document = await prisma.jobSafetyDocument.update({
-        where: { id: existing.id },
-        data: {
-          title,
-          content,
-          status: "generated",
-        },
+    try {
+      const existing = await prisma.jobSafetyDocument.findFirst({
+        where: { jobId, type },
       });
-    } else {
-      // Create new document
-      document = await prisma.jobSafetyDocument.create({
-        data: {
-          jobId,
-          type,
-          title,
-          content,
-          status: "generated",
-        },
-      });
+
+      if (existing) {
+        // Update existing document
+        document = await prisma.jobSafetyDocument.update({
+          where: { id: existing.id },
+          data: {
+            title,
+            content,
+            status: "generated",
+          },
+        });
+      } else {
+        // Create new document
+        document = await prisma.jobSafetyDocument.create({
+          data: {
+            jobId,
+            type,
+            title,
+            content,
+            status: "generated",
+          },
+        });
+      }
+    } catch (dbError) {
+      console.error("[safety] Database error saving document:", dbError);
+      return NextResponse.json(
+        { error: SAFETY_ERROR_MESSAGES.save },
+        { status: 503 }
+      );
     }
 
     console.log(`[jobs] successfully generated safety document ${document.id} for job ${jobId}`);
     return NextResponse.json({ document }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[jobs] error generating safety document:", error);
-    const errorMessage = error?.message || "Failed to generate safety document. Please try again.";
     
-    // Check if it's an OpenAI API key error
-    if (errorMessage.includes("API key") || errorMessage.includes("OpenAI")) {
+    // Check if it's a Prisma/database error - return friendly message
+    if (isPrismaError(error)) {
       return NextResponse.json(
-        { error: "OpenAI API key is not configured. Please contact support." },
-        { status: 500 }
+        { error: SAFETY_ERROR_MESSAGES.generate },
+        { status: 503 }
       );
     }
     
+    // Check if it's an OpenAI API key error
+    const errorMessage = error instanceof Error ? error.message : "";
+    if (errorMessage.includes("API key") || errorMessage.includes("OpenAI")) {
+      return NextResponse.json(
+        { error: "AI service is not available. Please contact support." },
+        { status: 503 }
+      );
+    }
+    
+    // Return a safe error message (filters out sensitive info)
     return NextResponse.json(
-      { error: errorMessage },
+      { error: getSafeErrorMessage(error, SAFETY_ERROR_MESSAGES.generate) },
       { status: 500 }
     );
   }

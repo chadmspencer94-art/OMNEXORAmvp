@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, FileText, Edit2, Download, Shield, AlertTriangle, Users } from "lucide-react";
+import { Loader2, FileText, Edit2, Download, Shield, AlertTriangle, Users, RefreshCw } from "lucide-react";
 import SafetyDocumentEditor from "./SafetyDocumentEditor";
 import SafetyDocumentPdfButton from "./SafetyDocumentPdfButton";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
 import OvisBadge from "@/app/components/OvisBadge";
+
+// User-friendly error message for safety document operations
+const FRIENDLY_ERROR_MESSAGE = "Safety documents aren't available right now. Please try again shortly.";
 
 interface SafetySectionProps {
   jobId: string;
@@ -78,15 +81,27 @@ export default function SafetySection({
   const fetchDocuments = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch(`/api/jobs/${jobId}/safety`);
       if (!response.ok) {
-        throw new Error("Failed to load safety documents");
+        // Try to get error from response, but don't expose raw errors
+        try {
+          const data = await response.json();
+          // Only use the error if it's a known friendly message
+          if (data.error && !data.error.includes("prisma") && !data.error.includes("DATABASE")) {
+            throw new Error(data.error);
+          }
+        } catch {
+          // Ignore JSON parse errors
+        }
+        throw new Error(FRIENDLY_ERROR_MESSAGE);
       }
       const data = await response.json();
       setDocuments(data.documents || []);
     } catch (err) {
       console.error("Error fetching safety documents:", err);
-      setError("Failed to load safety documents");
+      // Always show friendly message to user
+      setError(FRIENDLY_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -106,8 +121,22 @@ export default function SafetySection({
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || `Failed to generate ${type}`);
+        let errorMessage = FRIENDLY_ERROR_MESSAGE;
+        try {
+          const data = await response.json();
+          // Only use API error if it looks safe (no internal details)
+          if (data.error && 
+              !data.error.toLowerCase().includes("prisma") && 
+              !data.error.toLowerCase().includes("database") &&
+              !data.error.toLowerCase().includes("schema") &&
+              !data.error.includes("at ") &&
+              !data.error.includes(".ts:")) {
+            errorMessage = data.error;
+          }
+        } catch {
+          // Ignore JSON parse errors
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -118,8 +147,17 @@ export default function SafetySection({
         setEditingDoc(data.document);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : `Failed to generate ${type}`;
-      setError(errorMessage);
+      // Always use friendly message, log real error to console
+      console.error("Error generating safety document:", err);
+      const errorMessage = err instanceof Error ? err.message : FRIENDLY_ERROR_MESSAGE;
+      // Double-check the message doesn't contain sensitive info
+      if (errorMessage.toLowerCase().includes("prisma") || 
+          errorMessage.toLowerCase().includes("database") ||
+          errorMessage.includes("Environment variable")) {
+        setError(FRIENDLY_ERROR_MESSAGE);
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setGenerating(null);
     }
@@ -130,6 +168,8 @@ export default function SafetySection({
   };
 
   const handleSave = async (docId: string, updates: { title?: string; content: string; status?: string }) => {
+    const SAVE_ERROR = "Unable to save changes right now. Please try again shortly.";
+    
     try {
       const response = await fetch(`/api/jobs/${jobId}/safety/${docId}`, {
         method: "POST",
@@ -140,15 +180,35 @@ export default function SafetySection({
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to save document");
+        let errorMessage = SAVE_ERROR;
+        try {
+          const data = await response.json();
+          // Only use API error if it looks safe
+          if (data.error && 
+              !data.error.toLowerCase().includes("prisma") && 
+              !data.error.toLowerCase().includes("database") &&
+              !data.error.includes("Environment variable")) {
+            errorMessage = data.error;
+          }
+        } catch {
+          // Ignore JSON parse errors
+        }
+        throw new Error(errorMessage);
       }
 
       await fetchDocuments(); // Refresh list
       setEditingDoc(null);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to save document";
-      setError(errorMessage);
+      console.error("Error saving safety document:", err);
+      const errorMessage = err instanceof Error ? err.message : SAVE_ERROR;
+      // Double-check the message doesn't contain sensitive info
+      if (errorMessage.toLowerCase().includes("prisma") || 
+          errorMessage.toLowerCase().includes("database") ||
+          errorMessage.includes("Environment variable")) {
+        setError(SAVE_ERROR);
+      } else {
+        setError(errorMessage);
+      }
     }
   };
 
@@ -201,8 +261,23 @@ export default function SafetySection({
         </div>
         <div className="p-6">
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-800">{error}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    fetchDocuments();
+                  }}
+                  className="inline-flex items-center px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded transition-colors"
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Retry
+                </button>
+              </div>
             </div>
           )}
 

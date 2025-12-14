@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { prisma, getSafeErrorMessage, isPrismaError } from "@/lib/prisma";
+
+// User-friendly error message for safety document operations
+const SAFETY_DOC_ERROR = "Unable to save safety document right now. Please try again shortly.";
 
 /**
  * POST /api/jobs/[id]/safety/[docId]
@@ -48,9 +51,18 @@ export async function POST(
     }
 
     // Check if document exists and belongs to this job
-    const document = await prisma.jobSafetyDocument.findFirst({
-      where: { id: docId, jobId },
-    });
+    let document;
+    try {
+      document = await prisma.jobSafetyDocument.findFirst({
+        where: { id: docId, jobId },
+      });
+    } catch (dbError) {
+      console.error("[safety] Database error finding document:", dbError);
+      return NextResponse.json(
+        { error: SAFETY_DOC_ERROR },
+        { status: 503 }
+      );
+    }
 
     if (!document) {
       return NextResponse.json(
@@ -71,20 +83,35 @@ export async function POST(
     }
 
     // Update document
-    const updated = await prisma.jobSafetyDocument.update({
-      where: { id: docId },
-      data: {
-        ...(title !== undefined && { title }),
-        content,
-        ...(status !== undefined && { status }),
-      },
-    });
+    let updated;
+    try {
+      updated = await prisma.jobSafetyDocument.update({
+        where: { id: docId },
+        data: {
+          ...(title !== undefined && { title }),
+          content,
+          ...(status !== undefined && { status }),
+        },
+      });
+    } catch (dbError) {
+      console.error("[safety] Database error updating document:", dbError);
+      return NextResponse.json(
+        { error: SAFETY_DOC_ERROR },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json({ document: updated }, { status: 200 });
   } catch (error) {
     console.error("Error updating safety document:", error);
+    
+    // Return safe error message, filtering out Prisma internals
+    const safeMessage = isPrismaError(error) 
+      ? SAFETY_DOC_ERROR 
+      : getSafeErrorMessage(error, SAFETY_DOC_ERROR);
+    
     return NextResponse.json(
-      { error: "Failed to update safety document. Please try again." },
+      { error: safeMessage },
       { status: 500 }
     );
   }
