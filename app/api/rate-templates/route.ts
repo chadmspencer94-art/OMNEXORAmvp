@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/rate-templates
@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const prisma = getPrisma();
     const templates = await (prisma as any).rateTemplate.findMany({
       where: {
         userId: user.id,
@@ -137,6 +138,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const prisma = getPrisma();
     // If setting as default, clear other defaults
     if (isDefault === true) {
       await (prisma as any).rateTemplate.updateMany({

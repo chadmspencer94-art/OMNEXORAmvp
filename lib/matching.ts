@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { getJobById, type Job } from "@/lib/jobs";
 
 // ============================================================================
@@ -155,6 +155,7 @@ export async function findMatchingTradiesForJob(jobId: string): Promise<MatchedT
   const location = extractLocationFromJob(job);
 
   // 3. Load all active tradie/business users
+  const prisma = getPrisma();
   const tradies = await prisma.user.findMany({
     where: {
       role: {
@@ -298,6 +299,7 @@ export async function doesJobMatchUser(args: {
   const { user, job } = args;
 
   // Load user from Prisma to get business profile fields
+  const prisma = getPrisma();
   const prismaUser = await prisma.user.findUnique({
     where: { id: user.id },
     select: {

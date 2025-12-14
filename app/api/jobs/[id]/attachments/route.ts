@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_MIME_TYPES = [
@@ -92,6 +92,7 @@ export async function POST(
     }
 
     // Create attachment
+    const prisma = getPrisma();
     const attachment = await prisma.jobAttachment.create({
       data: {
         jobId: job.id,
@@ -162,6 +163,7 @@ export async function GET(
     }
 
     // Fetch attachments (exclude dataBase64 for list view)
+    const prisma = getPrisma();
     const attachments = await prisma.jobAttachment.findMany({
       where: { jobId },
       orderBy: { createdAt: "desc" },

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireClientUser } from "@/lib/auth";
 import { getJobById, saveJob, type ClientStatus } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * POST /api/client/jobs/[id]/accept
@@ -112,6 +112,7 @@ export async function POST(
     // If there's a signature data URL, store it in Prisma Signature model
     if (body.signatureDataUrl && typeof body.signatureDataUrl === "string") {
       try {
+        const prisma = getPrisma();
         const signature = await prisma.signature.create({
           data: {
             userId: user.id,

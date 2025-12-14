@@ -1,4 +1,4 @@
-import { prisma } from "./prisma";
+import { getPrisma } from "./prisma";
 import type { UserVerification } from "@prisma/client";
 
 export type VerificationStatus = "unverified" | "pending" | "verified" | "rejected";
@@ -31,6 +31,7 @@ export interface UserVerificationData {
  * Gets the verification record for a user, or returns a default object if none exists
  */
 export async function getUserVerification(userId: string): Promise<UserVerification | null> {
+  const prisma = getPrisma();
   return prisma.userVerification.findUnique({
     where: { userId },
   });
@@ -57,6 +58,7 @@ export async function upsertUserVerification(
       : data.insuranceExpiry
     : null;
 
+  const prisma = getPrisma();
   return prisma.userVerification.upsert({
     where: { userId },
     create: {
@@ -132,6 +134,7 @@ export async function updateVerificationStatus(
     updateData.rejectionReason = null;
   }
 
+  const prisma = getPrisma();
   // Also update the User's verificationStatus field for backwards compatibility
   await prisma.user.update({
     where: { id: userId },
@@ -153,6 +156,7 @@ export async function updateVerificationStatus(
 export async function getVerificationsByStatus(
   status: VerificationStatus
 ): Promise<UserVerification[]> {
+  const prisma = getPrisma();
   return prisma.userVerification.findMany({
     where: { status },
     orderBy: { createdAt: "desc" },
@@ -174,6 +178,7 @@ export async function getVerificationsByStatus(
  */
 export async function getAllVerifications(): Promise<UserVerification[]> {
   try {
+    const prisma = getPrisma();
     const verifications = await prisma.userVerification.findMany({
       orderBy: [
         { status: "asc" }, // pending comes before verified/rejected

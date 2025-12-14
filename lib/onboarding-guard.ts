@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "./auth";
-import { prisma } from "./prisma";
+import { getPrisma } from "./prisma";
 import { needsOnboarding, isBusinessProfileComplete } from "./onboarding";
 
 /**
@@ -29,6 +29,7 @@ export async function requireCompleteProfile(currentPath?: string): Promise<{
     console.log("[onboarding] requireCompleteProfile: checking profile for user", user.id);
 
     // Clients don't need onboarding
+    const prisma = getPrisma();
     if (user.role === "client") {
       // Return a minimal user object for clients
       try {

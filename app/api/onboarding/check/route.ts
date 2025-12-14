@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { needsOnboarding } from "@/lib/onboarding";
 
 /**
@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Find user in Prisma (need all fields for needsOnboarding check)
     // Wrap in try-catch to handle database connection issues gracefully
+    const prisma = getPrisma();
     let prismaUser;
     try {
       prismaUser = await prisma.user.findUnique({

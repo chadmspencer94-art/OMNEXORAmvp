@@ -625,7 +625,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   // Get plan info from Prisma
   let planTier = "FREE";
   try {
-    const { prisma } = await import("@/lib/prisma");
+    const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: { planTier: true },

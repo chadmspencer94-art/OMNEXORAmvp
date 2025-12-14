@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * PATCH /api/materials/[id]
@@ -31,6 +31,7 @@ export async function PATCH(
     const body = await request.json();
 
     // Check ownership (unless admin)
+    const prisma = getPrisma();
     const existing = await (prisma as any).materialItem.findUnique({
       where: { id },
     });
@@ -113,6 +114,7 @@ export async function DELETE(
     const { id } = await context.params;
 
     // Check ownership (unless admin)
+    const prisma = getPrisma();
     const existing = await (prisma as any).materialItem.findUnique({
       where: { id },
     });

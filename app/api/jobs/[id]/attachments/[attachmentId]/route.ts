@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/jobs/[id]/attachments/[attachmentId]
@@ -41,6 +41,7 @@ export async function GET(
     }
 
     // Load attachment (including dataBase64)
+    const prisma = getPrisma();
     const attachment = await prisma.jobAttachment.findFirst({
       where: {
         id: attachmentId,
@@ -116,6 +117,7 @@ export async function PATCH(
     const { caption } = body;
 
     // Load attachment to ensure it exists and belongs to this job
+    const prisma = getPrisma();
     const attachment = await prisma.jobAttachment.findFirst({
       where: {
         id: attachmentId,
@@ -194,6 +196,7 @@ export async function DELETE(
     }
 
     // Load attachment to ensure it exists and belongs to this job
+    const prisma = getPrisma();
     const attachment = await prisma.jobAttachment.findFirst({
       where: {
         id: attachmentId,

@@ -6,7 +6,7 @@
  * For production, use the /admin/users UI or API.
  */
 
-import { prisma } from "../lib/prisma";
+import { getPrisma } from "../lib/prisma";
 import { updateUser } from "../lib/auth";
 import { kv } from "../lib/kv";
 
@@ -14,6 +14,7 @@ async function makeAdmin(email: string) {
   const normalizedEmail = email.toLowerCase().trim();
   
   console.log(`Making ${normalizedEmail} an admin...`);
+  const prisma = getPrisma();
   
   try {
     // First, try to find user in KV store (primary source)

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma, getSafeErrorMessage, isPrismaError } from "@/lib/prisma";
+import { getPrisma, getSafeErrorMessage, isPrismaError } from "@/lib/prisma";
 
 // User-friendly error messages for safety document operations
 const SAFETY_ERROR_MESSAGES = {
@@ -55,6 +55,7 @@ export async function GET(
     }
 
     // Get all safety documents for this job
+    const prisma = getPrisma();
     let documents;
     try {
       documents = await prisma.jobSafetyDocument.findMany({
@@ -142,6 +143,7 @@ export async function POST(
     let businessName: string | null = null;
     const workTypes: string[] = [];
 
+    const prisma = getPrisma();
     try {
       const prismaUser = await prisma.user.findUnique({
         where: { email: user.email },

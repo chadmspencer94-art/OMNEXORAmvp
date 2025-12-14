@@ -5,7 +5,7 @@
  * Tokens are hashed with SHA-256 (not bcrypt) for fast lookup.
  */
 
-import { prisma } from "./prisma";
+import { getPrisma } from "./prisma";
 import crypto from "crypto";
 
 export interface EmailVerificationToken {
@@ -37,6 +37,7 @@ export async function createEmailVerificationToken(userId: string): Promise<stri
   const expiresAt = new Date();
   expiresAt.setHours(expiresAt.getHours() + 24);
 
+  const prisma = getPrisma();
   // Delete any existing tokens for this user first
   await prisma.emailVerificationToken.deleteMany({
     where: { userId },
@@ -65,6 +66,7 @@ export async function verifyEmailVerificationToken(
   const tokenHash = hashToken(rawToken);
   const now = new Date();
 
+  const prisma = getPrisma();
   const token = await prisma.emailVerificationToken.findFirst({
     where: {
       tokenHash,
@@ -91,6 +93,7 @@ export async function consumeEmailVerificationToken(
     return null;
   }
 
+  const prisma = getPrisma();
   // Delete this token (and optionally any others for this user) so it's single-use
   await prisma.emailVerificationToken.deleteMany({
     where: { userId: token.userId },

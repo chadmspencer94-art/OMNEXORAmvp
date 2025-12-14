@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * POST /api/jobs/[id]/accept
@@ -89,6 +89,7 @@ export async function POST(
       : null;
 
     // Create signature record in Prisma
+    const prisma = getPrisma();
     const signature = await prisma.signature.create({
       data: {
         userId: user.id,

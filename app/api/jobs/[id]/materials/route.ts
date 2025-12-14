@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { recalcJobMaterialsTotals } from "@/lib/materials";
 
 /**
@@ -47,6 +47,7 @@ export async function GET(
       );
     }
 
+    const prisma = getPrisma();
     const jobMaterials = await prisma.jobMaterial.findMany({
       where: {
         jobId,
@@ -150,6 +151,7 @@ export async function POST(
     }
 
     // If materialItemId is provided, optionally fetch defaults
+    const prisma = getPrisma();
     let finalUnitCost = unitCost != null ? unitCost : null;
     if (materialItemId && finalUnitCost == null) {
       const materialItem = await (prisma as any).materialItem.findUnique({

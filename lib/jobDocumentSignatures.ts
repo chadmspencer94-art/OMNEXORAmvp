@@ -4,7 +4,7 @@
  * Manages client signatures for job documents (QUOTE, VARIATION, EOT, HANDOVER)
  */
 
-import { prisma } from "./prisma";
+import { getPrisma } from "./prisma";
 
 export type JobDocumentType = "QUOTE" | "VARIATION" | "EOT" | "HANDOVER";
 
@@ -54,6 +54,7 @@ export async function createJobDocumentSignature(
     userAgent,
   } = options;
 
+  const prisma = getPrisma();
   // Delete any existing signature for this document (last signature wins)
   await prisma.jobDocumentSignature.deleteMany({
     where: {
@@ -89,6 +90,7 @@ export async function getJobDocumentSignature(
   docType: JobDocumentType,
   docKey?: string | null
 ): Promise<JobDocumentSignature | null> {
+  const prisma = getPrisma();
   const signature = await prisma.jobDocumentSignature.findFirst({
     where: {
       jobId,
@@ -109,6 +111,7 @@ export async function getJobDocumentSignature(
 export async function getJobDocumentSignatures(
   jobId: string
 ): Promise<JobDocumentSignature[]> {
+  const prisma = getPrisma();
   const signatures = await prisma.jobDocumentSignature.findMany({
     where: {
       jobId,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/settings/business-profile
@@ -18,6 +18,7 @@ export async function GET() {
     }
 
     // Find user in Prisma by email (since KV and Prisma may use different IDs)
+    const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: {
@@ -174,6 +175,7 @@ export async function POST(request: NextRequest) {
     if (ratePerLmTrim !== undefined) updateData.ratePerLmTrim = parsedRatePerLmTrim;
 
     // Check if user exists in Prisma
+    const prisma = getPrisma();
     const existingUser = await prisma.user.findUnique({
       where: { email: user.email },
     });

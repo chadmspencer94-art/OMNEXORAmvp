@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { Resend } from "resend";
 import { createPasswordResetToken } from "@/lib/password-reset";
 
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Find user by email
+    const prisma = getPrisma();
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
     });

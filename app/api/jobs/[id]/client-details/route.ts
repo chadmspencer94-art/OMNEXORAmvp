@@ -69,7 +69,7 @@ export async function PATCH(
         // Get plan tier from Prisma
         let planTier = "FREE";
         try {
-          const { prisma } = await import("@/lib/prisma");
+          const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
           const prismaUser = await prisma.user.findUnique({
             where: { email: currentUser.email },
             select: { planTier: true },

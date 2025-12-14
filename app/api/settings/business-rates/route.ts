@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/settings/business-rates
@@ -17,6 +17,7 @@ export async function GET() {
       );
     }
 
+    const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: {
@@ -169,6 +170,7 @@ export async function POST(request: NextRequest) {
     if (calloutFee !== undefined) updateData.calloutFee = parsedCalloutFee;
 
     // Check if user exists in Prisma
+    const prisma = getPrisma();
     const existingUser = await prisma.user.findUnique({
       where: { email: user.email },
     });

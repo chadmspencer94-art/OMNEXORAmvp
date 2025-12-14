@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/settings/signature
@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: {
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update signature
+    const prisma = getPrisma();
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {

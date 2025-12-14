@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -11,44 +11,29 @@ declare global {
  * This function creates/returns a singleton Prisma client only when called,
  * avoiding build-time errors when database env vars are not available.
  *
- * Uses POSTGRES_PRISMA_URL (Neon pooled) first, falls back to POSTGRES_URL,
- * then DATABASE_URL for local SQLite development.
+ * Uses POSTGRES_PRISMA_URL (Neon pooled) first, falls back to POSTGRES_URL.
+ * MUST be called inside request handlers only - never at module top level.
  */
 export function getPrisma(): PrismaClient {
   const datasourceUrl =
-    process.env.POSTGRES_PRISMA_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.DATABASE_URL;
+    process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL;
 
   if (!datasourceUrl) {
     throw new Error(
-      "Database configuration error: missing POSTGRES_PRISMA_URL, POSTGRES_URL, or DATABASE_URL"
+      "Database configuration error: missing POSTGRES_URL/POSTGRES_PRISMA_URL"
     );
   }
 
   if (process.env.NODE_ENV === "production") {
-    return new PrismaClient({ datasourceUrl, log: ["error"] });
+    return new PrismaClient({ datasourceUrl });
   }
 
   if (!global.__prisma) {
-    global.__prisma = new PrismaClient({
-      datasourceUrl,
-      log: ["query", "error", "warn"],
-    });
+    global.__prisma = new PrismaClient({ datasourceUrl });
   }
 
   return global.__prisma;
 }
-
-/**
- * Backward-compatible export using a Proxy.
- * The actual client is only created when a property is accessed (lazy).
- */
-export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
-  get(_target, prop) {
-    return (getPrisma() as unknown as Record<string | symbol, unknown>)[prop];
-  },
-});
 
 export async function safeDbQuery<T>(
   queryFn: () => Promise<T>,

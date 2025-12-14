@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/materials
@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    const prisma = getPrisma();
     const materials = await (prisma as any).materialItem.findMany({
       where,
       orderBy: [
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const prisma = getPrisma();
     const material = await (prisma as any).materialItem.create({
       data: {
         userId: user.id,

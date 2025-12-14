@@ -3,7 +3,7 @@
  */
 
 import { getJobById, saveJob } from "./jobs";
-import { prisma } from "./prisma";
+import { getPrisma } from "./prisma";
 
 /**
  * Ensures a job has a quote number, generating one if needed.
@@ -43,6 +43,7 @@ export async function ensureQuoteNumber(jobId: string): Promise<string> {
  */
 export async function getNextQuoteVersion(jobId: string): Promise<number> {
   try {
+    const prisma = getPrisma();
     const existingVersions = await (prisma as any).jobQuoteVersion.findMany({
       where: { jobId },
       select: { version: true },

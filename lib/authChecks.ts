@@ -93,7 +93,7 @@ export async function requireVerifiedEmail(user: SafeUser): Promise<void> {
 
   // Otherwise, check Prisma database
   try {
-    const { prisma } = await import("./prisma");
+    const { getPrisma } = await import("./prisma"); const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: { emailVerifiedAt: true },

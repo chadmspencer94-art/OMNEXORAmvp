@@ -47,7 +47,7 @@ export async function PATCH(
     if (!client) {
       // Admin can update any client
       if (isAdmin(user)) {
-        const { prisma } = await import("@/lib/prisma");
+        const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
         const adminClient = await prisma.client.findUnique({
           where: { id: clientId },
         });

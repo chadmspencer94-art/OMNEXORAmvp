@@ -21,7 +21,7 @@ export async function GET() {
     
     // Check if user has configured service area or trade preferences
     // Load from Prisma to check business profile
-    const { prisma } = await import("@/lib/prisma");
+    const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: {

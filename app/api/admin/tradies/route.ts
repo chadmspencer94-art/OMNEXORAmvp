@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/admin/tradies
@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all active tradie/business users
+    const prisma = getPrisma();
     const tradies = await prisma.user.findMany({
       where: {
         role: {

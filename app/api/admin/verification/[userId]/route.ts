@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getUserVerification } from "@/lib/verification";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/admin/verification/[userId]
@@ -40,6 +40,7 @@ export async function GET(
     }
 
     // Get user details
+    const prisma = getPrisma();
     const userRecord = await prisma.user.findUnique({
       where: { id: userId },
       select: {

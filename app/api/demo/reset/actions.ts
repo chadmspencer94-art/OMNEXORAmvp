@@ -1,7 +1,7 @@
 "use server";
 
 import { getCurrentUser, isAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { createRequire } from "module";
 
@@ -61,6 +61,7 @@ export async function resetDemoData(): Promise<{ success: boolean; message?: str
     }
 
     // Re-run demo seed logic (idempotent)
+    const prisma = getPrisma();
     for (const userData of DEMO_USERS) {
       const normalizedEmail = userData.email.toLowerCase().trim();
       

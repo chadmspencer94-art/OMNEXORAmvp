@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/job-templates
@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find user in Prisma by email
+    const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
     });
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user in Prisma by email
+    const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
     });

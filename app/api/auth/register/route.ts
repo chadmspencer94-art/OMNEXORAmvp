@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createUser, createSession, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS, type UserRole, FOUNDER_EMAILS } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { createEmailVerificationToken } from "@/lib/email-verification";
 import { Resend } from "resend";
 import { getSignupMode, isValidInviteCode } from "@/lib/signup-config";
@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
     // Send verification email (non-blocking - don't fail registration if email fails)
     try {
       // Ensure user exists in Prisma (for email verification token)
+      const prisma = getPrisma();
       let prismaUser = await prisma.user.findUnique({
         where: { email: user.email },
       });

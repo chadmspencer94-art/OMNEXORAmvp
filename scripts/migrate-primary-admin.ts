@@ -13,12 +13,13 @@
 
 import { kv } from "../lib/kv";
 import { updateUser } from "../lib/auth";
-import { prisma } from "../lib/prisma";
+import { getPrisma } from "../lib/prisma";
 
 const OLD_PRIMARY_ADMIN = "chadmspencer94@gmail.com";
 const NEW_PRIMARY_ADMIN = "chad.omnexora@outlook.com";
 
 async function migratePrimaryAdmin() {
+  const prisma = getPrisma();
   console.log("Starting primary admin migration...");
   console.log(`Old primary admin: ${OLD_PRIMARY_ADMIN}`);
   console.log(`New primary admin: ${NEW_PRIMARY_ADMIN}`);

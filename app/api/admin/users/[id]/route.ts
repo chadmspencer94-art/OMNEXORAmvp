@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, updateUser, getUserById } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 type RouteParams = {
   params: {
@@ -49,6 +49,7 @@ export async function PATCH(
       
       // Fallback: Try to find user by checking if this is a Prisma ID
       // and then look up the corresponding KV user by email
+      const prisma = getPrisma();
       try {
         const prismaUser = await prisma.user.findUnique({
           where: { id: userId },
@@ -177,6 +178,7 @@ export async function PATCH(
 
     // Also update Prisma if user exists there (for role and admin status)
     if (updates.role || updates.isAdmin !== undefined) {
+      const prisma = getPrisma();
       try {
         // Find user by email (since KV and Prisma may use different IDs)
         const prismaUser = await prisma.user.findUnique({

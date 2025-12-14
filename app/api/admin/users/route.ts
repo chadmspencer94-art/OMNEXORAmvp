@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { buildPagination, buildPaginatedResult, type PaginatedResult } from "@/lib/pagination";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 interface UserListItem {
   id: string;
@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
     // Build pagination
     const { page, pageSize, skip, take } = buildPagination(pageParam, 20);
 
+    const prisma = getPrisma();
     // Build Prisma where clause
     const where: any = {};
 

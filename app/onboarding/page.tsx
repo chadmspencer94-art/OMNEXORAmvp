@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/authChecks";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { needsOnboarding, isBusinessProfileComplete } from "@/lib/onboarding";
 import OnboardingWizard from "./OnboardingWizard";
 
@@ -20,6 +20,7 @@ export default async function OnboardingPage() {
   }
 
   // Fetch full user from Prisma with error handling
+  const prisma = getPrisma();
   let prismaUser;
   try {
     prismaUser = await prisma.user.findUnique({

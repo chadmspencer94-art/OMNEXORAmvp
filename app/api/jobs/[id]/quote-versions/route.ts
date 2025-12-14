@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/jobs/[id]/quote-versions
@@ -48,6 +48,7 @@ export async function GET(
     }
 
     // Fetch quote versions
+    const prisma = getPrisma();
     const versions = await (prisma as any).jobQuoteVersion.findMany({
       where: { jobId: id },
       orderBy: { version: "desc" },

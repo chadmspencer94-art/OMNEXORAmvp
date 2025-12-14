@@ -51,7 +51,7 @@ export async function POST(
     // Load business profile data if available
     let businessName = "";
     try {
-      const { prisma } = await import("@/lib/prisma");
+      const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
       const prismaUser = await prisma.user.findUnique({
         where: { id: user.id },
         select: {

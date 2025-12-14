@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { getJobById, saveJob } from "./jobs";
 
 /**
@@ -10,6 +10,7 @@ export async function recalcJobMaterialsTotals(jobId: string, userId: string): P
   materialsMarkupTotal: number;
   materialsTotal: number;
 }> {
+  const prisma = getPrisma();
   // Load all JobMaterial rows for this job/user
   const jobMaterials = await (prisma as any).jobMaterial.findMany({
     where: {

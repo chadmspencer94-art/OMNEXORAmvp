@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 function toCents(value: number | string | undefined | null) {
@@ -37,6 +37,7 @@ export interface PriceList {
  */
 export async function getPriceLists(): Promise<PriceList[]> {
   try {
+    const prisma = getPrisma();
     const lists = await (prisma as any).priceList.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -75,6 +76,7 @@ export async function getPriceLists(): Promise<PriceList[]> {
  */
 export async function getPriceListById(listId: string): Promise<PriceList | null> {
   try {
+    const prisma = getPrisma();
     const list = await (prisma as any).priceList.findUnique({
       where: { id: listId },
       include: {
@@ -129,6 +131,7 @@ export async function createPriceList(
     // In production, this should come from the authenticated user's organization
     const orgId = process.env.NODE_ENV === "development" ? "admin-demo" : "admin";
 
+    const prisma = getPrisma();
     const list = await (prisma as any).priceList.create({
       data: {
         orgId,
@@ -160,6 +163,7 @@ export async function updatePriceList(
       return { success: false, error: "Name is required" };
     }
 
+    const prisma = getPrisma();
     await (prisma as any).priceList.update({
       where: { id: listId },
       data: {
@@ -183,6 +187,7 @@ export async function updatePriceList(
  */
 export async function deletePriceList(listId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const prisma = getPrisma();
     await (prisma as any).priceList.delete({
       where: { id: listId },
     });
@@ -207,6 +212,7 @@ export async function addPriceListItem(
       return { success: false, error: "Item name is required" };
     }
 
+    const prisma = getPrisma();
     const createdItem = await (prisma as any).priceListItem.create({
       data: {
         priceListId: listId,
@@ -238,6 +244,7 @@ export async function updatePriceListItem(
       return { success: false, error: "Item name is required" };
     }
 
+    const prisma = getPrisma();
     const existingItem = await (prisma as any).priceListItem.findUnique({
       where: { id: itemId },
       select: { priceListId: true },
@@ -271,6 +278,7 @@ export async function updatePriceListItem(
  */
 export async function deletePriceListItem(itemId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const prisma = getPrisma();
     const existingItem = await (prisma as any).priceListItem.findUnique({
       where: { id: itemId },
       select: { priceListId: true },
@@ -327,6 +335,7 @@ export async function importPriceListItemsFromCSV(
     const errors: string[] = [];
     let imported = 0;
 
+    const prisma = getPrisma();
     // Process data rows
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(",").map((v) => v.trim());

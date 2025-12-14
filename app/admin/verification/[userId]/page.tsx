@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { requireActiveUser, isAdmin } from "@/lib/auth";
 import { getUserVerification } from "@/lib/verification";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import VerificationDetailView from "./VerificationDetailView";
 
 // Admin route uses cookies() via requireActiveUser and Prisma - must be dynamic
@@ -27,6 +27,7 @@ export default async function AdminVerificationDetailPage({ params }: AdminVerif
   }
 
   // Get user details
+  const prisma = getPrisma();
   const userRecord = await prisma.user.findUnique({
     where: { id: userId },
     select: {

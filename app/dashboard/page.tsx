@@ -56,7 +56,7 @@ export default async function DashboardPage() {
   // Wrap in try-catch to handle database connection issues gracefully
   let prismaUser = null;
   try {
-    const { prisma } = await import("@/lib/prisma");
+    const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
     prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma, getSafeErrorMessage, isPrismaError } from "@/lib/prisma";
+import { getPrisma, getSafeErrorMessage, isPrismaError } from "@/lib/prisma";
 
 // User-friendly error message for safety document operations
 const SAFETY_DOC_ERROR = "Unable to save safety document right now. Please try again shortly.";
@@ -51,6 +51,7 @@ export async function POST(
     }
 
     // Check if document exists and belongs to this job
+    const prisma = getPrisma();
     let document;
     try {
       document = await prisma.jobSafetyDocument.findFirst({

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { consumePasswordResetToken } from "@/lib/password-reset";
 import bcrypt from "bcryptjs";
 
@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the user
+    const prisma = getPrisma();
     const user = await prisma.user.findUnique({
       where: { id: resetToken.userId },
     });

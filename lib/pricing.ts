@@ -5,7 +5,7 @@
 
 import type { SafeUser } from "./auth";
 import type { Job } from "./jobs";
-import { prisma } from "./prisma";
+import { getPrisma } from "./prisma";
 
 // ============================================================================
 // Types
@@ -68,6 +68,7 @@ export async function getEffectiveRates(args: {
   
   try {
     // Load business profile and Business & Rates settings
+    const prisma = getPrisma();
     prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: {

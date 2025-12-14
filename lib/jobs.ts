@@ -607,7 +607,7 @@ export async function generateJobPack(job: Job, user?: SafeUser): Promise<Job> {
     if (user) {
       let planTier = "FREE";
       try {
-        const { prisma } = await import("./prisma");
+        const { getPrisma } = await import("./prisma"); const prisma = getPrisma();
         
         // Fetch plan tier from Prisma
         try {
@@ -820,7 +820,7 @@ Speak in clear, practical language that Aussie tradies understand. No fluff - ju
     // Load job materials if they exist
     let materialsContext = "";
     if (job.materialsTotal != null && job.materialsTotal > 0) {
-      const { prisma } = await import("./prisma");
+      const { getPrisma } = await import("./prisma"); const prisma = getPrisma();
       const jobMaterials = await (prisma as any).jobMaterial.findMany({
         where: {
           jobId: job.id,
@@ -840,7 +840,7 @@ Speak in clear, practical language that Aussie tradies understand. No fluff - ju
     // Load attachments with captions for additional context
     let attachmentsContext = "";
     try {
-      const { prisma } = await import("./prisma");
+      const { getPrisma } = await import("./prisma"); const prisma = getPrisma();
       const attachments = await (prisma as any).jobAttachment.findMany({
         where: {
           jobId: job.id,
@@ -1036,7 +1036,7 @@ export async function generateSWMS(job: Job, user?: SafeUser): Promise<Job> {
     
     if (user) {
       try {
-        const { prisma } = await import("./prisma");
+        const { getPrisma } = await import("./prisma"); const prisma = getPrisma();
         const prismaUser = await prisma.user.findUnique({
           where: { id: user.id },
         });

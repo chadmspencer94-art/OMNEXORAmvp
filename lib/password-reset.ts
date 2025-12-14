@@ -5,7 +5,7 @@
  * Tokens are hashed with SHA-256 (not bcrypt) for fast lookup.
  */
 
-import { prisma } from "./prisma";
+import { getPrisma } from "./prisma";
 import crypto from "crypto";
 
 export interface PasswordResetToken {
@@ -37,6 +37,7 @@ export async function createPasswordResetToken(userId: string): Promise<string> 
   const expiresAt = new Date();
   expiresAt.setMinutes(expiresAt.getMinutes() + 60);
 
+  const prisma = getPrisma();
   // Delete any existing tokens for this user first
   await prisma.passwordResetToken.deleteMany({
     where: { userId },
@@ -65,6 +66,7 @@ export async function verifyPasswordResetToken(
   const tokenHash = hashToken(rawToken);
   const now = new Date();
 
+  const prisma = getPrisma();
   const token = await prisma.passwordResetToken.findFirst({
     where: {
       tokenHash,
@@ -91,6 +93,7 @@ export async function consumePasswordResetToken(
     return null;
   }
 
+  const prisma = getPrisma();
   // Delete this token (and optionally any others for this user) so it's single-use
   await prisma.passwordResetToken.deleteMany({
     where: { userId: token.userId },

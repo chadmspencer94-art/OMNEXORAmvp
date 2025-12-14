@@ -71,7 +71,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
   if (!client) {
     // If not found, check if admin can see it
     if (isAdmin(user)) {
-      const { prisma } = await import("@/lib/prisma");
+      const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
       const adminClient = await prisma.client.findUnique({
         where: { id: clientId },
       });

@@ -53,7 +53,7 @@ export async function POST(
     let abn = "";
     let businessAddress = "";
     try {
-      const { prisma } = await import("@/lib/prisma");
+      const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
       const prismaUser = await prisma.user.findUnique({
         where: { id: user.id },
         select: {

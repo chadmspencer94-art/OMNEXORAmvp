@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { sendJobPackEmail } from "@/lib/email";
 
 /**
@@ -61,6 +61,7 @@ export async function POST(
     }
 
     // Load the tradie user
+    const prisma = getPrisma();
     const tradie = await prisma.user.findUnique({
       where: { id: tradieUserId },
       select: {

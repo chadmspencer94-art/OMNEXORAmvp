@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { recalcJobMaterialsTotals } from "@/lib/materials";
 
 /**
@@ -49,6 +49,7 @@ export async function PATCH(
     }
 
     // Check material ownership
+    const prisma = getPrisma();
     const existing = await (prisma as any).jobMaterial.findUnique({
       where: { id: materialId },
     });
@@ -155,6 +156,7 @@ export async function DELETE(
     }
 
     // Check material ownership
+    const prisma = getPrisma();
     const existing = await (prisma as any).jobMaterial.findUnique({
       where: { id: materialId },
     });

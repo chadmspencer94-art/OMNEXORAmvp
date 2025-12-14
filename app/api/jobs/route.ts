@@ -3,7 +3,7 @@ import { getCurrentUser, incrementUserJobCount, getRealUserFromSession, isImpers
 import { cookies } from "next/headers";
 import { createAuditLog } from "@/lib/audit";
 import { createEmptyJob, generateJobPack, saveJob, type CreateJobData, type TradeType } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   let jobId: string | null = null;
@@ -55,6 +55,7 @@ export async function POST(request: Request) {
     const userIsClient = isClient(user);
 
     // Gate client job posting - require email verification
+    const prisma = getPrisma();
     if (userIsClient) {
       const prismaUser = await prisma.user.findUnique({
         where: { email: user.email },

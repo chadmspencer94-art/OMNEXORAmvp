@@ -4,7 +4,7 @@
  * Provides server-side data aggregation for the admin dashboard overview.
  */
 
-import { prisma } from "./prisma";
+import { getPrisma } from "./prisma";
 import { kv } from "./kv";
 import { getAllFeedback } from "./feedback";
 import type { Job } from "./jobs";
@@ -52,6 +52,7 @@ export type AdminDashboardData = {
  * Fetches all admin dashboard data
  */
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
+  const prisma = getPrisma();
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);

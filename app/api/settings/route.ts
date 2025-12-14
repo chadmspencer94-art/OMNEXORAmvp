@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, updateUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
@@ -14,6 +14,7 @@ export async function GET() {
     }
 
     // Get email verification status from Prisma
+    const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: { emailVerifiedAt: true },

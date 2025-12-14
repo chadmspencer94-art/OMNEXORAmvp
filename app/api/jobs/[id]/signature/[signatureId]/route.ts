@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 /**
  * GET /api/jobs/[id]/signature/[signatureId]
@@ -40,6 +40,7 @@ export async function GET(
     }
 
     // Fetch signature from Prisma
+    const prisma = getPrisma();
     const signature = await prisma.signature.findUnique({
       where: { id: signatureId },
     });

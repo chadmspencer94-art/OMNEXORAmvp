@@ -5,7 +5,7 @@
  * This ensures onboarding progress reflects real completion, not just flags.
  */
 
-import { prisma } from "./prisma";
+import { getPrisma } from "./prisma";
 import { User } from "@prisma/client";
 import { getJobsForUser } from "./jobs";
 
@@ -139,6 +139,7 @@ export async function getOnboardingStatus(user: OnboardingUserInput): Promise<On
  * This can be called after steps are completed to persist progress
  */
 export async function updateOnboardingSnapshot(userId: string): Promise<void> {
+  const prisma = getPrisma();
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return;
 

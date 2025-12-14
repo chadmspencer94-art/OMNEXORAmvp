@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     const normalizedKey = clientKey.toLowerCase().trim();
 
     // Upsert the note (only one note per user/clientKey)
+    const prisma = getPrisma();
     await prisma.clientNote.upsert({
       where: {
         userId_clientKey: {

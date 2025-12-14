@@ -14,7 +14,7 @@ export default async function UsagePage() {
   let planTier = "FREE";
   let planStatus = "TRIAL";
   try {
-    const { prisma } = await import("@/lib/prisma");
+    const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: { planTier: true, planStatus: true },

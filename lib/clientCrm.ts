@@ -3,7 +3,7 @@
  * Handles finding or creating Client records for job linking
  */
 
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export interface FindOrCreateClientArgs {
   ownerUserId: string;
@@ -24,6 +24,7 @@ export interface FindOrCreateClientArgs {
 export async function findOrCreateClientForJob(
   args: FindOrCreateClientArgs
 ): Promise<{ clientId: string }> {
+  const prisma = getPrisma();
   const { ownerUserId, name, email, phone, company, suburb, state, postcode } = args;
 
   // Normalize email for matching (lowercase, trim)
@@ -126,6 +127,7 @@ export async function getClientsForUser(
   const skip = (page - 1) * pageSize;
   const take = pageSize;
 
+  const prisma = getPrisma();
   const [clients, total] = await Promise.all([
     prisma.client.findMany({
       where,
@@ -155,6 +157,7 @@ export async function getClientById(
   clientId: string,
   ownerUserId: string
 ) {
+  const prisma = getPrisma();
   return await prisma.client.findFirst({
     where: {
       id: clientId,
@@ -184,6 +187,7 @@ export async function updateClient(
   // Normalize email if provided
   const normalizedEmail = data.email?.trim().toLowerCase() || null;
 
+  const prisma = getPrisma();
   return await prisma.client.update({
     where: {
       id: clientId,

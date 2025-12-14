@@ -3,7 +3,7 @@ import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
 import { sendJobPackEmail, buildJobPackEmailHtml, buildJobPackEmailText } from "@/lib/email";
 import { ensureQuoteNumber, getNextQuoteVersion } from "@/lib/quotes";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 interface SendToClientRequestBody {
   clientEmail: string;
@@ -196,6 +196,7 @@ export async function POST(
     }
 
     // Create quote version snapshot before updating job
+    const prisma = getPrisma();
     try {
       await (prisma as any).jobQuoteVersion.create({
         data: {
