@@ -9,19 +9,32 @@ declare global {
  * Get the Prisma client instance (lazy initialization).
  *
  * This function creates/returns a singleton Prisma client only when called,
- * avoiding build-time errors when DATABASE_URL is not available.
+ * avoiding build-time errors when database env vars are not available.
+ *
+ * Uses POSTGRES_PRISMA_URL (Neon pooled) first, falls back to POSTGRES_URL,
+ * then DATABASE_URL for local SQLite development.
  */
 export function getPrisma(): PrismaClient {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("Database configuration error: DATABASE_URL is not set");
+  const datasourceUrl =
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.DATABASE_URL;
+
+  if (!datasourceUrl) {
+    throw new Error(
+      "Database configuration error: missing POSTGRES_PRISMA_URL, POSTGRES_URL, or DATABASE_URL"
+    );
   }
 
   if (process.env.NODE_ENV === "production") {
-    return new PrismaClient({ log: ["error"] });
+    return new PrismaClient({ datasourceUrl, log: ["error"] });
   }
 
   if (!global.__prisma) {
-    global.__prisma = new PrismaClient({ log: ["query", "error", "warn"] });
+    global.__prisma = new PrismaClient({
+      datasourceUrl,
+      log: ["query", "error", "warn"],
+    });
   }
 
   return global.__prisma;
@@ -81,6 +94,7 @@ export function getSafeErrorMessage(
       !msg.includes("prisma") &&
       !msg.includes("schema.prisma") &&
       !msg.includes("DATABASE_URL") &&
+      !msg.includes("POSTGRES") &&
       !msg.includes("at ") &&
       !msg.includes(".ts:") &&
       !msg.includes(".js:")
