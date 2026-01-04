@@ -233,7 +233,7 @@ export default function VerificationPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <p className="font-medium text-green-900">Your account is verified.</p>
+              <p className="font-medium text-green-900">Your account is structured.</p>
             </div>
           </div>
         </div>
@@ -277,8 +277,8 @@ export default function VerificationPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <p className="font-medium text-slate-900">You&apos;re not verified yet.</p>
-              <p className="text-sm text-slate-700 mt-1">Verified profiles help clients trust you.</p>
+              <p className="font-medium text-slate-900">You&apos;re not structured yet.</p>
+              <p className="text-sm text-slate-700 mt-1">Structured profiles help clients trust you.</p>
             </div>
           </div>
         </div>

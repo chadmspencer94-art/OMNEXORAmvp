@@ -18,7 +18,7 @@ export async function POST(
     // Block clients from regenerating AI job packs
     if (isClient(user)) {
       return NextResponse.json(
-        { error: "Clients can only post jobs. AI job pack generation is available to verified trades and businesses." },
+        { error: "Clients can only post jobs. AI job pack generation is available to structured trades and businesses." },
         { status: 403 }
       );
     }

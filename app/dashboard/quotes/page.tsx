@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/authChecks";
 import { getJobsForUser, type Job } from "@/lib/jobs";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
-import VerifiedBadge from "@/app/components/VerifiedBadge";
+import StructuredBadge from "@/app/components/StructuredBadge";
 import { ArrowLeft } from "lucide-react";
 
 export default async function QuotesPage() {
@@ -51,7 +51,7 @@ export default async function QuotesPage() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               Quotes
-              {isVerified && <VerifiedBadge />}
+              {isVerified && <StructuredBadge />}
             </h1>
             <p className="mt-2 text-slate-600">
               Track all your quotes and client responses

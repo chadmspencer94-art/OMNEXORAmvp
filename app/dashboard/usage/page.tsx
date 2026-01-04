@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/authChecks";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
-import VerifiedBadge from "@/app/components/VerifiedBadge";
+import StructuredBadge from "@/app/components/StructuredBadge";
 import { ArrowLeft } from "lucide-react";
 
 export default async function UsagePage() {
@@ -46,7 +46,7 @@ export default async function UsagePage() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               Usage
-              {isVerified && <VerifiedBadge />}
+              {isVerified && <StructuredBadge />}
             </h1>
             <p className="mt-2 text-slate-600">
               Credits, activity, and subscription details

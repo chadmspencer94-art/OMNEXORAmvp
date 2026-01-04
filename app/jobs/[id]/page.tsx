@@ -37,7 +37,7 @@ import SuggestedTradiesPanel from "./SuggestedTradiesPanel";
 import JobAssignmentPanel from "./JobAssignmentPanel";
 import MaterialsManagementSection from "./MaterialsManagementSection";
 import AttachmentsSection from "./AttachmentsSection";
-import VerifiedBadge from "@/app/components/VerifiedBadge";
+import StructuredBadge from "@/app/components/StructuredBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
@@ -376,7 +376,7 @@ function PricingSection({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>
-              <strong>Important:</strong> All pricing shown is an estimate only. Labour hours and material costs are approximate and must be verified against actual site conditions and current supplier pricing before sending to clients.
+              <strong>Important:</strong> All pricing shown is an estimate only. Labour hours and material costs are approximate and must be confirmed against actual site conditions and current supplier pricing before sending to clients.
             </span>
           </p>
         </div>
@@ -663,7 +663,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       {/* Brand Header */}
       <OmnexoraHeader verificationStatus={verificationStatus} />
 
-      {/* Verification Banner for unverified tradies */}
+      {/* Structuring Banner for unstructured tradies */}
       {userRole === "tradie" && verificationStatus !== "verified" && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
           <div className="flex items-start gap-3">
@@ -679,7 +679,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
               <p className="text-sm text-amber-700 mt-1">
                 {(verificationStatus === "pending" || (verificationStatus as string) === "pending_review")
                   ? "Your verification is being reviewed. You'll be able to email job packs once approved."
-                  : "Verify your business to display your \"Verified Trade\" badge and email job packs directly to clients."}
+                  : "Complete your business profile to display your \"Structured Trade\" badge and email job packs directly to clients."}
               </p>
               {verificationStatus !== "pending" && (verificationStatus as string) !== "pending_review" && (
                 <a
@@ -835,14 +835,14 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 <StatusBadge status={job.status} />
               </div>
 
-              {/* Verified Account Badge (for tradie view) */}
+              {/* Structured Account Badge (for tradie view) */}
               {isVerified && userRole !== "client" && (
                 <div className="pt-4 border-t border-slate-200">
                   <div className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 border border-emerald-300">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span>Verified account</span>
+                    <span>Structured account</span>
                   </div>
                 </div>
               )}
@@ -917,7 +917,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 <div className="pt-4 border-t border-slate-200">
                   <p className="text-sm text-slate-500 mb-2">Business Status</p>
                   {verificationStatus === "verified" ? (
-                    <VerifiedBadge />
+                    <StructuredBadge />
                   ) : (verificationStatus === "pending" || (verificationStatus as string) === "pending_review") ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full border border-amber-300">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -934,7 +934,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 text-xs font-medium rounded-full border border-slate-200">
-                      Not verified
+                      Not structured
                     </span>
                   )}
                 </div>
@@ -1212,7 +1212,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       jobId={job.id}
                       hasScopeOfWork={!!job.aiScopeOfWork}
                     />
-                      <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded-full border border-amber-300" title="AI-generated content must be reviewed and verified for compliance with Australian laws and regulations">
+                      <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded-full border border-amber-300" title="AI-generated content must be reviewed for compliance with Australian laws and regulations">
                         ⚠️ AI-Generated - Review Required
                       </span>
                     </div>

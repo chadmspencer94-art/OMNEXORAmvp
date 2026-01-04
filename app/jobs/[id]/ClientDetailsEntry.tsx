@@ -71,7 +71,7 @@ export default function ClientDetailsEntry({
     }
 
     if (!reviewConfirmed) {
-      setError("Please confirm that you have reviewed and verified the AI-generated content");
+      setError("Please confirm that you have reviewed the AI-generated content");
       return;
     }
 
@@ -214,7 +214,7 @@ export default function ClientDetailsEntry({
               disabled={isPending}
             />
             <span className="text-sm text-amber-900">
-              <span className="font-semibold">I confirm:</span> I have reviewed and verified all AI-generated content in this job pack and ensured its accuracy and compliance with all applicable Australian laws and regulations before saving client details.
+              <span className="font-semibold">I confirm:</span> I have reviewed all AI-generated content in this job pack and ensured its accuracy and compliance with all applicable Australian laws and regulations before saving client details.
             </span>
           </label>
         </div>

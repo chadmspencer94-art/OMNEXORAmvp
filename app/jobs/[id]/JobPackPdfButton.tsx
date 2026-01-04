@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { jsPDF } from "jspdf";
 import { Download, Loader2 } from "lucide-react";
+import { PdfDocument, formatCurrency, formatDate, formatDateTime } from "@/lib/pdfGenerator";
 import { calculateEstimateRange } from "@/lib/pricing";
 
 interface LabourQuote {
@@ -93,14 +93,6 @@ export default function JobPackPdfButton({
 }: JobPackPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-AU", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
-
   const handleDownloadPdf = async () => {
     setIsGenerating(true);
 
@@ -126,7 +118,7 @@ export default function JobPackPdfButton({
       console.warn("Failed to fetch job materials for PDF:", err);
     }
 
-    // Fetch client signature if exists (for job owners/trades)
+    // Fetch client signature if exists
     let clientSignature: {
       signedName: string;
       signedEmail: string;
@@ -150,7 +142,6 @@ export default function JobPackPdfButton({
         }
       } catch (sigError) {
         console.warn("Failed to load signature for PDF:", sigError);
-        // Continue without signature image, but still show acceptance info
         if (clientSignedName && clientAcceptedAt) {
           clientSignature = {
             signedName: clientSignedName,
@@ -163,197 +154,83 @@ export default function JobPackPdfButton({
     }
 
     try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 20;
-      const maxWidth = pageWidth - margin * 2;
-      let y = margin;
-
-      // Helper to check and add new page if needed
-      const checkNewPage = (requiredSpace: number = 20) => {
-        if (y + requiredSpace > pageHeight - margin) {
-          doc.addPage();
-          y = margin;
-        }
-      };
-
-      // Helper to add wrapped text
-      const addWrappedText = (text: string, fontSize: number = 11, isBold: boolean = false) => {
-        doc.setFontSize(fontSize);
-        doc.setFont("helvetica", isBold ? "bold" : "normal");
-        const lines = doc.splitTextToSize(text, maxWidth);
-        for (const line of lines) {
-          checkNewPage();
-          doc.text(line, margin, y);
-          y += fontSize * 0.4;
-        }
-        y += 4; // Extra spacing after paragraph
-      };
-
-      // Helper to add section heading
-      const addSectionHeading = (title: string) => {
-        checkNewPage(20);
-        y += 4;
-        doc.setFontSize(13);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(30, 41, 59); // slate-800
-        doc.text(title.toUpperCase(), margin, y);
-        y += 8;
-        // Add a line under the heading
-        doc.setDrawColor(226, 232, 240); // slate-200
-        doc.setLineWidth(0.5);
-        doc.line(margin, y - 3, pageWidth - margin, y - 3);
-        doc.setTextColor(0, 0, 0);
-      };
+      const pdf = new PdfDocument();
 
       // =========================================
       // HEADER
       // =========================================
-      doc.setFillColor(245, 158, 11); // amber-500
-      doc.rect(0, 0, pageWidth, 35, "F");
-
-      doc.setFontSize(22);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(255, 255, 255);
-      doc.text("OMNEXORA", margin, 18);
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text("Job Pack", margin, 26);
-
-      y = 50;
-      doc.setTextColor(0, 0, 0);
+      pdf.addBrandedHeader("Job Pack");
 
       // =========================================
       // JOB TITLE
       // =========================================
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 23, 42); // slate-900
-      const titleLines = doc.splitTextToSize(jobTitle, maxWidth);
-      for (const line of titleLines) {
-        doc.text(line, margin, y);
-        y += 8;
-      }
-      y += 4;
+      pdf.addTitle(jobTitle);
 
       // =========================================
-      // JOB META
+      // JOB METADATA
       // =========================================
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 116, 139); // slate-500
-
-      const metaItems: string[] = [];
-      if (tradeType) metaItems.push(`Trade: ${tradeType}`);
-      if (propertyType) metaItems.push(`Property: ${propertyType}`);
-      if (address) metaItems.push(`Address: ${address}`);
-      if (clientName) metaItems.push(`Client: ${clientName}`);
-      metaItems.push(`Created: ${formatDate(jobCreatedAt)}`);
-
-      for (const item of metaItems) {
-        doc.text(item, margin, y);
-        y += 5;
-      }
-      y += 6;
+      const metaItems: Array<{ label: string; value: string }> = [];
+      if (tradeType) metaItems.push({ label: "Trade", value: tradeType });
+      if (propertyType) metaItems.push({ label: "Property", value: propertyType });
+      if (address) metaItems.push({ label: "Address", value: address });
+      if (clientName) metaItems.push({ label: "Client", value: clientName });
+      metaItems.push({ label: "Created", value: formatDate(jobCreatedAt) });
+      pdf.addMetadata(metaItems);
 
       // =========================================
-      // AI GENERATED CONTENT WARNING
+      // AI WARNING
       // =========================================
-      checkNewPage(30);
-      doc.setFillColor(254, 243, 199); // amber-50
-      doc.rect(margin, y - 2, maxWidth, 28, "F");
-      doc.setDrawColor(251, 191, 36); // amber-400 border
-      doc.setLineWidth(0.5);
-      doc.rect(margin, y - 2, maxWidth, 28);
-      
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(146, 64, 14); // amber-900
-      doc.text("⚠️ AI-GENERATED CONTENT WARNING", margin + 4, y + 4);
-      
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(120, 53, 15); // amber-800
-      const warningText = "This document contains AI-generated content that must be reviewed and verified by you before use. You are responsible for ensuring compliance with all applicable Australian laws and regulations, including building codes, safety standards, workplace health and safety requirements, and consumer protection laws.";
-      const warningLines = doc.splitTextToSize(warningText, maxWidth - 8);
-      for (const line of warningLines) {
-        doc.text(line, margin + 4, y + 10);
-        y += 4;
-      }
-      y += 8;
-
-      doc.setTextColor(0, 0, 0);
+      pdf.addAiWarning();
 
       // =========================================
       // SUMMARY
       // =========================================
       if (aiSummary) {
-        addSectionHeading("Summary");
-        addWrappedText(aiSummary, 11);
+        pdf.addSectionHeading("Summary");
+        pdf.addParagraph(aiSummary);
       }
 
       // =========================================
-      // QUOTE / PRICING
+      // PRICING
       // =========================================
       if (aiQuote) {
         try {
           const quote: ParsedQuote = JSON.parse(aiQuote);
-          addSectionHeading("Pricing");
-
-          doc.setFontSize(11);
-          doc.setFont("helvetica", "normal");
+          pdf.addSectionHeading("Pricing");
 
           if (quote.labour) {
-            checkNewPage(25);
-            doc.setFont("helvetica", "bold");
-            doc.text("Labour", margin, y);
-            y += 5;
-            doc.setFont("helvetica", "normal");
+            pdf.addSubheading("Labour");
             if (quote.labour.description) {
-              addWrappedText(quote.labour.description, 10);
+              pdf.addParagraph(quote.labour.description);
             }
             const labourDetails: string[] = [];
             if (quote.labour.hours) labourDetails.push(`Hours: ${quote.labour.hours}`);
             if (quote.labour.ratePerHour) labourDetails.push(`Rate: ${quote.labour.ratePerHour}`);
             if (quote.labour.total) labourDetails.push(`Total: ${quote.labour.total}`);
             if (labourDetails.length > 0) {
-              doc.text(labourDetails.join("  |  "), margin, y);
-              y += 8;
+              pdf.addParagraph(labourDetails.join("  |  "));
             }
           }
 
           if (quote.materials) {
-            checkNewPage(15);
-            doc.setFont("helvetica", "bold");
-            doc.text("Materials", margin, y);
-            y += 5;
-            doc.setFont("helvetica", "normal");
+            pdf.addSubheading("Materials");
             if (quote.materials.description) {
-              addWrappedText(quote.materials.description, 10);
+              pdf.addParagraph(quote.materials.description);
             }
             if (quote.materials.totalMaterialsCost) {
-              doc.text(`Total: ${quote.materials.totalMaterialsCost}`, margin, y);
-              y += 8;
+              pdf.addParagraph(`Total: ${quote.materials.totalMaterialsCost}`);
             }
           }
 
           if (quote.totalEstimate) {
-            checkNewPage(15);
-            doc.setFillColor(254, 243, 199); // amber-100
-            doc.rect(margin, y - 2, maxWidth, 20, "F");
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
-            doc.text("Total Estimate", margin + 4, y + 6);
-            // Use calculated range instead of original totalJobEstimate
             const estimateRange = calculateEstimateRange(aiQuote);
-            doc.setFontSize(14);
-            doc.text(estimateRange.formattedRange, margin + 4, y + 14);
-            y += 26;
+            pdf.addHighlightBox({
+              label: "Total Estimate",
+              value: estimateRange.formattedRange,
+            });
           }
         } catch {
-          // If JSON parsing fails, skip pricing
+          // Skip pricing if JSON parsing fails
         }
       }
 
@@ -361,71 +238,27 @@ export default function JobPackPdfButton({
       // SCOPE OF WORK
       // =========================================
       if (aiScopeOfWork) {
-        addSectionHeading("Scope of Work");
+        pdf.addSectionHeading("Scope of Work");
         const scopeItems = aiScopeOfWork.split("\n").filter((line) => line.trim());
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
-        for (let i = 0; i < scopeItems.length; i++) {
-          checkNewPage();
-          const numText = `${i + 1}.`;
-          doc.setFont("helvetica", "bold");
-          doc.text(numText, margin, y);
-          doc.setFont("helvetica", "normal");
-          const itemLines = doc.splitTextToSize(scopeItems[i], maxWidth - 12);
-          for (let j = 0; j < itemLines.length; j++) {
-            if (j > 0) checkNewPage();
-            doc.text(itemLines[j], margin + 10, y);
-            y += 5;
-          }
-          y += 2;
-        }
-        y += 4;
+        pdf.addNumberedList(scopeItems);
       }
 
       // =========================================
       // INCLUSIONS
       // =========================================
       if (aiInclusions) {
-        addSectionHeading("What's Included");
+        pdf.addSectionHeading("What's Included");
         const inclusionItems = aiInclusions.split("\n").filter((line) => line.trim());
-        doc.setFontSize(11);
-        for (const item of inclusionItems) {
-          checkNewPage();
-          doc.setTextColor(22, 163, 74); // green-600
-          doc.text("✓", margin, y);
-          doc.setTextColor(0, 0, 0);
-          const itemLines = doc.splitTextToSize(item, maxWidth - 10);
-          for (let j = 0; j < itemLines.length; j++) {
-            if (j > 0) checkNewPage();
-            doc.text(itemLines[j], margin + 8, y);
-            y += 5;
-          }
-          y += 1;
-        }
-        y += 4;
+        pdf.addInclusionsList(inclusionItems);
       }
 
       // =========================================
       // EXCLUSIONS
       // =========================================
       if (aiExclusions) {
-        addSectionHeading("Not Included");
+        pdf.addSectionHeading("Not Included");
         const exclusionItems = aiExclusions.split("\n").filter((line) => line.trim());
-        doc.setFontSize(11);
-        for (const item of exclusionItems) {
-          checkNewPage();
-          doc.setTextColor(220, 38, 38); // red-600
-          doc.text("✗", margin, y);
-          doc.setTextColor(0, 0, 0);
-          const itemLines = doc.splitTextToSize(item, maxWidth - 10);
-          for (let j = 0; j < itemLines.length; j++) {
-            if (j > 0) checkNewPage();
-            doc.text(itemLines[j], margin + 8, y);
-            y += 5;
-          }
-          y += 1;
-        }
-        y += 4;
+        pdf.addExclusionsList(exclusionItems);
       }
 
       // =========================================
@@ -435,252 +268,122 @@ export default function JobPackPdfButton({
       const showMaterialsDisclaimer = materialsAreRoughEstimate || !hasOverride;
       const hasJobMaterials = jobMaterials && jobMaterials.length > 0;
 
-      // Prefer JobMaterial line items if they exist, otherwise fall back to AI/override
       if (hasJobMaterials) {
-        addSectionHeading("Materials");
+        pdf.addSectionHeading("Materials");
+        
+        // Build table data
+        const headers = ["Material", "Qty", "Unit", "Total"];
+        const rows = jobMaterials.map((m) => [
+          m.name,
+          m.quantity.toString(),
+          m.unitLabel,
+          formatCurrency(m.lineTotal || 0),
+        ]);
+        
+        pdf.addTable(headers, rows, { colWidths: [80, 25, 30, 35] });
 
-        // Table header
-        checkNewPage(20);
-        doc.setFillColor(241, 245, 249); // slate-100
-        doc.rect(margin, y - 2, maxWidth, 8, "F");
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-        doc.text("Material", margin + 2, y + 3);
-        doc.text("Qty", margin + 110, y + 3);
-        doc.text("Unit", margin + 130, y + 3);
-        doc.text("Total", margin + 160, y + 3);
-        y += 10;
-
-        // Table rows
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        let materialsTableTotal = 0;
-        for (const material of jobMaterials) {
-          checkNewPage(8);
-          const itemLines = doc.splitTextToSize(material.name || "", 100);
-          doc.text(itemLines[0] || "", margin + 2, y);
-          doc.text(material.quantity.toString(), margin + 110, y);
-          doc.text(material.unitLabel, margin + 130, y);
-          const lineTotal = material.lineTotal || 0;
-          materialsTableTotal += lineTotal;
-          doc.text(`$${lineTotal.toFixed(2)}`, margin + 160, y);
-          y += 6;
-          // Handle multi-line item names
-          for (let j = 1; j < itemLines.length; j++) {
-            checkNewPage();
-            doc.text(itemLines[j], margin + 2, y);
-            y += 5;
-          }
-        }
-
-        // Materials total row
-        checkNewPage(10);
-        y += 2;
-        doc.setDrawColor(200, 200, 200);
-        doc.line(margin, y, margin + maxWidth, y);
-        y += 6;
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(11);
-        doc.text("Materials Total:", margin + 2, y);
+        // Total row
+        const materialsTableTotal = jobMaterials.reduce((sum, m) => sum + (m.lineTotal || 0), 0);
         const finalTotal = materialsTotal != null ? materialsTotal : materialsTableTotal;
-        doc.text(`$${finalTotal.toFixed(2)}`, margin + 160, y);
-        doc.setFont("helvetica", "normal");
-        y += 8;
+        pdf.addHighlightBox({
+          label: "Materials Total",
+          value: formatCurrency(finalTotal),
+        });
       } else if (hasOverride) {
-        // Show override text instead of AI materials
-        addSectionHeading("Materials");
-        
-        // Add "Final materials notes" label
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(59, 130, 246); // blue-500
-        doc.text("Final materials notes (overrides AI suggestion)", margin, y);
-        y += 6;
-        doc.setTextColor(0, 0, 0);
-        doc.setFont("helvetica", "normal");
-        
-        addWrappedText(materialsOverrideText, 11);
+        pdf.addSectionHeading("Materials");
+        pdf.addText("Final materials notes (overrides AI suggestion)", {
+          fontSize: 9,
+          fontWeight: "normal",
+          color: [59, 130, 246],
+        });
+        pdf.addSpace(4);
+        pdf.addParagraph(materialsOverrideText);
       } else if (aiMaterials) {
         try {
           const materials: MaterialItem[] = JSON.parse(aiMaterials);
           if (Array.isArray(materials) && materials.length > 0) {
-            addSectionHeading("Materials");
-
-            // Table header
-            checkNewPage(15);
-            doc.setFillColor(241, 245, 249); // slate-100
-            doc.rect(margin, y - 2, maxWidth, 8, "F");
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.text("Item", margin + 2, y + 3);
-            doc.text("Qty", margin + 100, y + 3);
-            doc.text("Est. Cost", margin + 130, y + 3);
-            y += 10;
-
-            // Table rows
-            doc.setFont("helvetica", "normal");
-            for (const material of materials) {
-              checkNewPage(8);
-              const itemLines = doc.splitTextToSize(material.item || "", 90);
-              doc.text(itemLines[0] || "", margin + 2, y);
-              doc.text(material.quantity || "-", margin + 100, y);
-              doc.text(material.estimatedCost || "-", margin + 130, y);
-              y += 6;
-              // Handle multi-line item names
-              for (let j = 1; j < itemLines.length; j++) {
-                checkNewPage();
-                doc.text(itemLines[j], margin + 2, y);
-                y += 5;
-              }
-            }
-            y += 6;
+            pdf.addSectionHeading("Materials");
+            
+            const headers = ["Item", "Qty", "Est. Cost"];
+            const rows = materials.map((m) => [
+              m.item || "",
+              m.quantity || "-",
+              m.estimatedCost || "-",
+            ]);
+            
+            pdf.addTable(headers, rows, { colWidths: [90, 35, 45] });
           }
         } catch {
-          // If JSON parsing fails, skip materials
+          // Skip if JSON parsing fails
         }
       }
 
-      // Add materials disclaimer if needed
-      if ((hasOverride || aiMaterials) && showMaterialsDisclaimer) {
-        checkNewPage(12);
-        doc.setFillColor(254, 243, 199); // amber-100
-        doc.rect(margin, y - 2, maxWidth, 10, "F");
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(180, 83, 9); // amber-700
-        doc.text("Note: Material prices are an estimate only and must be checked against current supplier pricing.", margin + 4, y + 4);
-        doc.setTextColor(0, 0, 0);
-        doc.setFont("helvetica", "normal");
-        y += 14;
+      // Materials disclaimer
+      if ((hasOverride || aiMaterials || hasJobMaterials) && showMaterialsDisclaimer) {
+        pdf.addText(
+          "Note: Material prices are an estimate only and must be checked against current supplier pricing.",
+          { fontSize: 9, color: [180, 83, 9] }
+        );
+        pdf.addSpace(6);
       }
 
       // =========================================
       // CLIENT NOTES
       // =========================================
       if (aiClientNotes) {
-        addSectionHeading("Notes for Client");
-        addWrappedText(aiClientNotes, 11);
+        pdf.addSectionHeading("Notes for Client");
+        pdf.addParagraph(aiClientNotes);
       }
 
       // =========================================
-      // JOB NOTES (original tradie notes)
+      // JOB DETAILS
       // =========================================
       if (notes) {
-        addSectionHeading("Job Details");
-        addWrappedText(notes, 10);
+        pdf.addSectionHeading("Job Details");
+        pdf.addParagraph(notes);
       }
 
       // =========================================
-      // CLIENT ACCEPTANCE & SIGNATURE
+      // CLIENT ACCEPTANCE
       // =========================================
       if (clientAcceptedAt && (clientAcceptedByName || clientSignedName)) {
-        checkNewPage(80);
-        y += 10;
-        addSectionHeading("Client Acceptance");
-        
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
-        
-        // Add signature image first if available
+        pdf.addSectionHeading("Client Acceptance");
+
+        // Add signature image if available
         if (clientSignature?.signatureImage) {
-          try {
-            checkNewPage(50);
-            y += 5;
-            // Add signature image (scale to reasonable size)
-            const imgWidth = 80;
-            const imgHeight = 30;
-            doc.addImage(
-              clientSignature.signatureImage,
-              "PNG",
-              margin,
-              y,
-              imgWidth,
-              imgHeight
-            );
-            y += imgHeight + 8;
-          } catch (imgError) {
-            console.warn("Failed to add signature image to PDF:", imgError);
-            // Continue without image
-          }
+          pdf.addImage(clientSignature.signatureImage, { width: 80, height: 30 });
         }
-        
-        // Accepted by (prefer clientAcceptedByName, fallback to clientSignedName)
+
         const acceptedByName = clientAcceptedByName || clientSignedName || "Unknown";
-        addWrappedText(`Accepted by: ${acceptedByName}`, 11);
+        pdf.addParagraph(`Accepted by: ${acceptedByName}`);
         
         if (clientSignedEmail) {
-          addWrappedText(`Email: ${clientSignedEmail}`, 11);
+          pdf.addParagraph(`Email: ${clientSignedEmail}`);
         }
         
-        addWrappedText(
-          `Accepted on: ${new Date(clientAcceptedAt).toLocaleString("en-AU", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}`,
-          11
-        );
+        pdf.addParagraph(`Accepted on: ${formatDateTime(clientAcceptedAt)}`);
         
-        // Quote version info
         if (quoteNumber && clientAcceptedQuoteVer) {
-          addWrappedText(`Quote: ${quoteNumber} v${clientAcceptedQuoteVer}`, 11);
+          pdf.addParagraph(`Quote: ${quoteNumber} v${clientAcceptedQuoteVer}`);
         }
         
-        // Client note if present
         if (clientAcceptanceNote && clientAcceptanceNote.trim()) {
-          y += 5;
-          doc.setFont("helvetica", "bold");
-          addWrappedText("Client note:", 11);
-          doc.setFont("helvetica", "normal");
-          addWrappedText(clientAcceptanceNote, 10);
+          pdf.addSubheading("Client note:");
+          pdf.addParagraph(clientAcceptanceNote);
         }
-        
-        y += 5;
       }
 
       // =========================================
       // FOOTER
       // =========================================
-      const totalPages = doc.getNumberOfPages();
-      const timestamp = new Date().toLocaleString("en-AU", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      const jobIdShort = jobId.slice(0, 8);
-      
-      for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(148, 163, 184); // slate-400
-        
-        // OVIS footer line
-        doc.text(
-          `OVIS Verified Output — OMNEXORA Verified Intelligence Systems`,
-          pageWidth / 2,
-          pageHeight - 20,
-          { align: "center" }
-        );
-        
-        // Standard footer with timestamp and job ID
-        doc.text(
-          `Generated by OMNEXORA  •  ${timestamp}  •  Job ${jobIdShort}  •  Page ${i} of ${totalPages}`,
-          pageWidth / 2,
-          pageHeight - 10,
-          { align: "center" }
-        );
-      }
+      pdf.addStandardFooters({ jobId });
 
       // Save the PDF
       const filename = `job-pack-${jobId.slice(0, 8)}.pdf`;
-      doc.save(filename);
+      pdf.save(filename);
     } catch (error) {
       console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -707,4 +410,3 @@ export default function JobPackPdfButton({
     </button>
   );
 }
-

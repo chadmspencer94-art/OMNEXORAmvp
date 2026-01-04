@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Footer from "@/app/components/Footer";
 
 function LoginForm() {
   const router = useRouter();
@@ -168,18 +169,37 @@ export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
-      <div className="w-full max-w-md">
-        <Suspense fallback={
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-            <div className="text-center">
-              <p className="text-slate-600">Loading...</p>
-            </div>
-          </div>
-        }>
-          <LoginForm />
-        </Suspense>
+    <div className="relative min-h-screen bg-slate-900 overflow-hidden">
+      {/* Hero Background Image */}
+      <div className="absolute inset-0 w-full h-full">
+        <img
+          src="/auth-hero-bg.png"
+          alt="OMNEXORA - Sign in to your account"
+          className="w-full h-full object-cover"
+          style={{ 
+            objectFit: 'cover',
+            objectPosition: 'center',
+            minWidth: '100%',
+            minHeight: '100%'
+          }}
+        />
       </div>
+      
+      {/* Content Overlay */}
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
+        <div className="w-full max-w-md">
+          <Suspense fallback={
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+              <div className="text-center">
+                <p className="text-slate-600">Loading...</p>
+              </div>
+            </div>
+          }>
+            <LoginForm />
+          </Suspense>
+        </div>
+      </div>
+      <Footer />
     </div>
   );
 }

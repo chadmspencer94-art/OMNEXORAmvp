@@ -418,7 +418,7 @@ export default function AdminUsersPageContent() {
             className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           >
             <option value="all">All Verification Status</option>
-            <option value="verified">Verified</option>
+            <option value="verified">Structured</option>
             <option value="pending">Pending</option>
             <option value="unverified">Unverified</option>
           </select>
@@ -565,7 +565,7 @@ export default function AdminUsersPageContent() {
                       </td>
                       <td className="px-4 py-4">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getStatusBadgeColor(user.verificationStatus)}`}>
-                          {user.verificationStatus === "pending" ? "Pending review" : user.verificationStatus === "verified" ? "Verified" : "Not submitted"}
+                          {user.verificationStatus === "pending" ? "Pending review" : user.verificationStatus === "verified" ? "Structured" : "Not submitted"}
                         </span>
                       </td>
                       <td className="px-4 py-4">
@@ -642,7 +642,7 @@ export default function AdminUsersPageContent() {
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Verification Status</label>
                   <p className="mt-1">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadgeColor(selectedUser.verificationStatus)}`}>
-                      {selectedUser.verificationStatus === "pending" ? "Pending" : selectedUser.verificationStatus === "verified" ? "Verified" : "Unverified"}
+                      {selectedUser.verificationStatus === "pending" ? "Pending" : selectedUser.verificationStatus === "verified" ? "Structured" : "Unstructured"}
                     </span>
                   </p>
                 </div>
@@ -681,9 +681,9 @@ export default function AdminUsersPageContent() {
                   </p>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Business Verified At</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Business Structured At</label>
                   <p className="mt-1 text-sm text-slate-900">
-                    {selectedUser.verifiedAt ? new Date(selectedUser.verifiedAt).toLocaleString() : "Not verified"}
+                    {selectedUser.verifiedAt ? new Date(selectedUser.verifiedAt).toLocaleString() : "Not structured"}
                   </p>
                 </div>
               </div>
@@ -701,7 +701,7 @@ export default function AdminUsersPageContent() {
                     </div>
                   ) : (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
-                      Not verified
+                      Not structured
                     </span>
                   )}
                 </p>

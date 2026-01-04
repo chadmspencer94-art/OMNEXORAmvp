@@ -156,7 +156,7 @@ export default function SettingsPage() {
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
-                      Not verified
+                      Not structured
                     </span>
                     <button
                       onClick={async () => {

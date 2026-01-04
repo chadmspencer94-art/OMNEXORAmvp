@@ -9,7 +9,7 @@ import EmailVerificationBanner from "@/app/components/EmailVerificationBanner";
 import DevVerifyButton from "./DevVerifyButton";
 import OnboardingCard from "@/app/components/OnboardingCard";
 import GettingStartedCard from "./GettingStartedCard";
-import VerifiedBadge from "@/app/components/VerifiedBadge";
+import StructuredBadge from "@/app/components/StructuredBadge";
 import FeedbackButton from "@/app/components/FeedbackButton";
 import AnalyticsSection from "./AnalyticsSection";
 import MatchingJobsSection from "./MatchingJobsSection";
@@ -255,7 +255,7 @@ export default async function DashboardPage() {
             <div>
               <p className="font-medium">Prototype mode</p>
               <p className="mt-1 text-amber-700">
-                Your account is not fully verified yet. Before public launch, OMNEXORA will confirm your business details (ABN, insurance, ID) so clients know they&apos;re dealing with legitimate trades.
+                Your account is not fully structured yet. Before public launch, OMNEXORA will confirm your business details (ABN, insurance, ID) so clients know they&apos;re dealing with legitimate trades.
                 {(verificationStatus === "pending" || (verificationStatus as string) === "pending_review") ? (
                   <span className="ml-1 font-medium">Your verification is currently being reviewed.</span>
                 ) : (
@@ -302,7 +302,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3 flex-wrap">
             <span>G&apos;day, {displayName}! 👋</span>
-            {isVerified && <VerifiedBadge />}
+            {isVerified && <StructuredBadge />}
           </h1>
           <p className="mt-2 text-slate-600">
             {totalJobs === 0

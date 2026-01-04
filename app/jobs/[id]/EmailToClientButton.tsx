@@ -54,13 +54,13 @@ export default function EmailToClientButton({
       return;
     }
     
-    // VERIFICATION GUARD: Only verified businesses can email job packs to clients.
+    // STRUCTURING GUARD: Only structured businesses can email job packs to clients.
     // This is a soft guard for the prototype phase. For public launch, this guard
-    // can be toggled or extended once full verification flows are implemented.
-    // Note: Copy-to-clipboard and internal use of job packs still work for unverified users.
+    // can be toggled or extended once full structuring flows are implemented.
+    // Note: Copy-to-clipboard and internal use of job packs still work for unstructured users.
     const isVerified = verificationStatus === "verified";
     if (!isVerified) {
-      setAlertMessage("Only verified businesses can email job packs to clients. (Prototype rule)");
+      setAlertMessage("Only structured businesses can email job packs to clients. (Prototype rule)");
       setShowAlert(true);
       setTimeout(() => setShowAlert(false), 5000);
       return;
@@ -159,7 +159,7 @@ export default function EmailToClientButton({
     window.location.href = mailtoUrl;
   };
 
-  // Show a subtle visual difference for unverified or free plan users (but still clickable to show the message)
+  // Show a subtle visual difference for unstructured or free plan users (but still clickable to show the message)
   const hasPaidPlan = planTier !== "FREE";
   const canEmail = verificationStatus === "verified" && hasPaidPlan;
 

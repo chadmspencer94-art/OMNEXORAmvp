@@ -1,4 +1,4 @@
-import VerifiedBadge from "./VerifiedBadge";
+import StructuredBadge from "./StructuredBadge";
 
 interface OmnexoraHeaderProps {
   verificationStatus?: "unverified" | "pending" | "verified" | "pending_review" | "rejected";
@@ -22,7 +22,7 @@ export default function OmnexoraHeader({
         </div>
       </div>
       <div className="flex items-center gap-3">
-        {verificationStatus === "verified" && <VerifiedBadge />}
+        {verificationStatus === "verified" && <StructuredBadge />}
         {showEarlyAccess && (
           <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">
             Early access

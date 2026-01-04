@@ -44,18 +44,15 @@ export default function OvisModal({ isOpen, onClose }: OvisModalProps) {
           <div className="space-y-4">
             <div>
               <h4 className="text-base font-semibold text-slate-900 mb-2">
-                OVIS Verified Intelligence
+                OVIS – Output Variance & Integrity Signals
               </h4>
-              <p className="hidden md:block text-sm text-slate-600 leading-relaxed mb-3">
-                AI-assisted drafts with human verification before issue.
-              </p>
               <p className="text-sm text-slate-600 leading-relaxed">
-                OVIS (OMNEXORA Verified Intelligence Systems) indicates AI-assisted drafts validated by OMNEXORA rules and user verification before use.
+                OVIS (Output Variance & Integrity Signals) highlights areas where your draft may have inconsistencies or missing information. It is not a form of verification, but a tool to guide your review.
               </p>
             </div>
             <div className="pt-2 border-t border-slate-200">
               <p className="text-xs text-slate-500">
-                All OVIS-verified documents are reviewed and confirmed by you before being sent to clients or used in your business.
+                You are responsible for reviewing and confirming the final output before use.
               </p>
             </div>
           </div>
@@ -74,4 +71,3 @@ export default function OvisModal({ isOpen, onClose }: OvisModalProps) {
     </div>
   );
 }
-

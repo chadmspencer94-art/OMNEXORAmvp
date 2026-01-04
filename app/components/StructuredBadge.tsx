@@ -1,10 +1,10 @@
 /**
- * VerifiedBadge - A reusable badge component for verified users
+ * StructuredBadge - A reusable badge component for structured users
  * 
  * Only render this when user.verificationStatus === "verified"
  * This component renders a green pill with a checkmark icon.
  */
-export default function VerifiedBadge() {
+export default function StructuredBadge() {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 border border-emerald-300">
       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -14,8 +14,11 @@ export default function VerifiedBadge() {
           clipRule="evenodd"
         />
       </svg>
-      <span>Verified</span>
+      <span>Structured</span>
     </span>
   );
 }
+
+
+
 

@@ -48,7 +48,7 @@ export default function SendToClientButton({
     }
     
     if (!isVerified) {
-      setError("Only verified businesses can send job packs to clients.");
+      setError("Only structured businesses can send job packs to clients.");
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -80,7 +80,7 @@ export default function SendToClientButton({
 
     // Require AI content confirmation
     if (!aiContentConfirmed) {
-      setError("Please confirm that you have reviewed and verified the AI-generated content before sending.");
+      setError("Please confirm that you have reviewed the AI-generated content before sending.");
       return;
     }
 
@@ -288,7 +288,7 @@ export default function SendToClientButton({
                         disabled={isSending}
                       />
                       <span className="text-sm text-amber-900">
-                        <span className="font-semibold">I confirm:</span> I have reviewed and verified all AI-generated content in this job pack and ensured its compliance with all applicable Australian laws and regulations before sending to the client.
+                        <span className="font-semibold">I confirm:</span> I have reviewed all AI-generated content in this job pack and ensured its compliance with all applicable Australian laws and regulations before sending to the client.
                       </span>
                     </label>
                   </div>

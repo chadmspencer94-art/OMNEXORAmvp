@@ -75,7 +75,7 @@ export default function AdminVerificationPageContent() {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
             <CheckCircle className="w-3 h-3" />
-            Verified
+            Structured
           </span>
         );
       case "pending":
@@ -174,7 +174,7 @@ export default function AdminVerificationPageContent() {
         </div>
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-green-900">{verifiedVerifications.length}</div>
-          <div className="text-sm text-green-700">Verified</div>
+          <div className="text-sm text-green-700">Structured</div>
         </div>
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-red-900">{rejectedVerifications.length}</div>

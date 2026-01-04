@@ -10,13 +10,13 @@ interface OvisBadgeProps {
 }
 
 /**
- * OVIS Badge - Trust mark for OMNEXORA Verified Intelligence Systems
+ * OVIS Badge - Output Variance & Integrity Signals
  * 
- * Displays a subtle badge indicating that outputs are AI-assisted drafts
- * validated by OMNEXORA rules and user verification.
+ * Highlights areas where drafts may have inconsistencies or missing information.
+ * Not a form of verification - a tool to guide user review.
  * 
  * Responsive: Shows subtext "AI-assisted • human-checked" on md+ screens only.
- * Mobile: Shows only "OVIS Verified"
+ * Mobile: Shows only "OVIS Checked"
  */
 export default function OvisBadge({ 
   variant = "inline", 
@@ -25,7 +25,7 @@ export default function OvisBadge({
 }: OvisBadgeProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const tooltipText = "OVIS (OMNEXORA Verified Intelligence Systems) indicates AI-assisted drafts validated by OMNEXORA rules and user verification before use.";
+  const tooltipText = "OVIS (Output Variance & Integrity Signals) highlights areas where your draft may have inconsistencies or missing information. You are responsible for reviewing and confirming the final output before use.";
   
   const isSmall = size === "sm";
   const iconSize = isSmall ? "w-3 h-3" : "w-3.5 h-3.5";
@@ -44,7 +44,7 @@ export default function OvisBadge({
               clipRule="evenodd"
             />
           </svg>
-          <span>OVIS Verified</span>
+          <span>OVIS Checked</span>
         </span>
         <span className="hidden md:inline text-xs text-slate-500">AI-assisted • human-checked</span>
         <div className="relative">
@@ -81,7 +81,7 @@ export default function OvisBadge({
             clipRule="evenodd"
           />
         </svg>
-        <span>OVIS Verified</span>
+        <span>OVIS Checked</span>
       </span>
       <span className="hidden md:inline text-xs text-slate-500">AI-assisted • human-checked</span>
       <div className="relative">
@@ -106,4 +106,3 @@ export default function OvisBadge({
     </div>
   );
 }
-

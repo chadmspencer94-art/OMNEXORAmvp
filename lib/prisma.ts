@@ -11,16 +11,20 @@ declare global {
  * This function creates/returns a singleton Prisma client only when called,
  * avoiding build-time errors when database env vars are not available.
  *
- * Uses POSTGRES_PRISMA_URL (Neon pooled) first, falls back to POSTGRES_URL.
+ * Supports both SQLite (DATABASE_URL) for local development and Postgres
+ * (POSTGRES_PRISMA_URL or POSTGRES_URL) for production.
  * MUST be called inside request handlers only - never at module top level.
  */
 export function getPrisma(): PrismaClient {
+  // Check for SQLite first (local development), then Postgres (production)
   const datasourceUrl =
-    process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL;
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL;
 
   if (!datasourceUrl) {
     throw new Error(
-      "Database configuration error: missing POSTGRES_URL/POSTGRES_PRISMA_URL"
+      "Database configuration error: missing DATABASE_URL (SQLite) or POSTGRES_URL/POSTGRES_PRISMA_URL (Postgres). Please set DATABASE_URL in .env.local for local development (e.g., file:./prisma/dev.db)"
     );
   }
 

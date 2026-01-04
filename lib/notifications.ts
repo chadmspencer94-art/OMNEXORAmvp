@@ -49,17 +49,17 @@ The OMNEXORA Team`,
 
 function getVerificationApprovedTemplate(payload: NotificationPayload): EmailTemplate {
   return {
-    subject: "🎉 Your OMNEXORA trade account is now verified!",
+    subject: "🎉 Your OMNEXORA trade account is now structured!",
     body: `Hi,
 
-Great news! Your OMNEXORA trade account has been verified.
+Great news! Your OMNEXORA trade account has been structured.
 
 You now have access to:
 ✓ Display your "Verified Trade" badge to clients
 ✓ Email AI-generated job packs directly to clients
 ✓ Full access to all platform features
 
-Your verified business:
+Your structured business:
 - Business Name: ${payload.businessDetails?.businessName || "Not provided"}
 - ABN: ${payload.businessDetails?.abn || "Not provided"}
 

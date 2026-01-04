@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Footer from "@/app/components/Footer";
 
 type UserRole = "tradie" | "client";
 
@@ -63,9 +64,26 @@ export default function RegisterPageClient({ requireInviteCode }: RegisterPageCl
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-8">
+    <div className="relative min-h-screen bg-slate-900 overflow-hidden">
+      {/* Hero Background Image */}
+      <div className="absolute inset-0 w-full h-full">
+        <img
+          src="/auth-hero-bg.png"
+          alt="OMNEXORA - Create your account"
+          className="w-full h-full object-cover"
+          style={{ 
+            objectFit: 'cover',
+            objectPosition: 'center',
+            minWidth: '100%',
+            minHeight: '100%'
+          }}
+        />
+      </div>
+      
+      {/* Content Overlay */}
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-8">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-slate-900 mb-2">Create Account</h1>
             <p className="text-sm text-slate-600">Start creating job packs and quotes today</p>
@@ -200,8 +218,10 @@ export default function RegisterPageClient({ requireInviteCode }: RegisterPageCl
               </Link>
             </p>
           </div>
+          </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

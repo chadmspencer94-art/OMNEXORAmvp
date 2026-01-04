@@ -112,7 +112,7 @@ export async function getOnboardingStatus(user: OnboardingUserInput): Promise<On
     {
       key: "verification",
       label: "Submit verification details",
-      description: "Add ABN/licence details so you can show as a verified business.",
+      description: "Add ABN/licence details so you can show as a structured business.",
       href: "/settings/verification",
       done: isVerified,
     },

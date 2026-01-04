@@ -159,7 +159,7 @@ export async function POST(
     // Block clients from generating SWMS
     if (isClient(user)) {
       return NextResponse.json(
-        { error: "Clients can only post jobs. SWMS generation is available to verified trades and businesses." },
+        { error: "Clients can only post jobs. SWMS generation is available to structured trades and businesses." },
         { status: 403 }
       );
     }
