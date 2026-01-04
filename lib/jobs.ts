@@ -282,7 +282,7 @@ export async function saveJob(job: Job): Promise<void> {
  * Gets a job by ID
  */
 export async function getJobById(id: string): Promise<Job | null> {
-  return await kv.get<Job>(`job:${id}`);
+  return (await kv.get(`job:${id}`)) as Job | null;
 }
 
 /**
@@ -303,7 +303,7 @@ export async function getJobsForUserPaginated(
 ): Promise<{ items: Job[]; page: number; pageSize: number; totalItems: number; totalPages: number }> {
   const userJobsKey = `user:${userId}:jobs`;
   // Get all job IDs from the Redis list
-  const allJobIds = await kv.lrange<string>(userJobsKey, 0, -1) || [];
+  const allJobIds = ((await kv.lrange(userJobsKey, 0, -1)) as string[] | null) || [];
 
   if (allJobIds.length === 0) {
     return { items: [], page, pageSize, totalItems: 0, totalPages: 0 };
@@ -311,7 +311,7 @@ export async function getJobsForUserPaginated(
 
   // Load all jobs in parallel (we need all to filter and sort)
   const allJobs = await Promise.all(
-    allJobIds.map((id) => kv.get<Job>(`job:${id}`))
+    allJobIds.map((id) => kv.get(`job:${id}`) as Promise<Job | null>)
   );
 
   // Filter out nulls and deleted jobs, then sort
@@ -356,7 +356,7 @@ export async function getJobsForClient(clientEmail: string, includeDeleted: bool
   const allJobIds = new Set<string>();
   for (const user of allUsers) {
     const userJobsKey = `user:${user.id}:jobs`;
-    const jobIds = await kv.lrange<string>(userJobsKey, 0, -1);
+    const jobIds = (await kv.lrange(userJobsKey, 0, -1)) as string[] | null;
     if (jobIds) {
       jobIds.forEach(id => allJobIds.add(id));
     }
@@ -364,7 +364,7 @@ export async function getJobsForClient(clientEmail: string, includeDeleted: bool
   
   // Load all jobs in parallel
   const allJobs = await Promise.all(
-    Array.from(allJobIds).map((id) => kv.get<Job>(`job:${id}`))
+    Array.from(allJobIds).map((id) => kv.get(`job:${id}`) as Promise<Job | null>)
   );
   
   // Filter jobs where clientEmail matches (case-insensitive)
@@ -552,7 +552,7 @@ export async function getAllActiveJobs(limit: number = 50): Promise<Job[]> {
   const allJobIds: string[] = [];
   for (const user of users) {
     const userJobsKey = `user:${user.id}:jobs`;
-    const jobIds = await kv.lrange<string>(userJobsKey, 0, -1);
+    const jobIds = (await kv.lrange(userJobsKey, 0, -1)) as string[] | null;
     if (jobIds && jobIds.length > 0) {
       allJobIds.push(...jobIds);
     }
@@ -564,7 +564,7 @@ export async function getAllActiveJobs(limit: number = 50): Promise<Job[]> {
   
   // Load all jobs in parallel
   const jobs = await Promise.all(
-    allJobIds.map((id) => kv.get<Job>(`job:${id}`))
+    allJobIds.map((id) => kv.get(`job:${id}`) as Promise<Job | null>)
   );
   
   // Filter out:

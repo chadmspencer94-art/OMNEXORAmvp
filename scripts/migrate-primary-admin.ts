@@ -31,7 +31,7 @@ async function migratePrimaryAdmin() {
   console.log(`[1] Ensuring ${NEW_PRIMARY_ADMIN} is a superadmin...`);
   
   try {
-    const newAdminKV = await kv.get<any>(`user:email:${NEW_PRIMARY_ADMIN.toLowerCase()}`);
+    const newAdminKV = (await kv.get(`user:email:${NEW_PRIMARY_ADMIN.toLowerCase()}`)) as any;
     
     if (newAdminKV && newAdminKV.id) {
       // Update existing user to be superadmin
@@ -80,7 +80,7 @@ async function migratePrimaryAdmin() {
   console.log(`[2] Ensuring ${OLD_PRIMARY_ADMIN} remains as admin...`);
   
   try {
-    const oldAdminKV = await kv.get<any>(`user:email:${OLD_PRIMARY_ADMIN.toLowerCase()}`);
+    const oldAdminKV = (await kv.get(`user:email:${OLD_PRIMARY_ADMIN.toLowerCase()}`)) as any;
     
     if (oldAdminKV && oldAdminKV.id) {
       // Keep as admin but not primary admin

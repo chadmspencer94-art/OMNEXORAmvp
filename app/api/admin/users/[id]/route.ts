@@ -59,7 +59,7 @@ export async function PATCH(
           console.log(`[Admin API] Found user in Prisma: ${prismaUser.email}, looking up in KV...`);
           // Try to find in KV by email
           const { kv } = await import("@/lib/kv");
-          const kvUser = await kv.get<any>(`user:email:${prismaUser.email.toLowerCase()}`);
+          const kvUser = (await kv.get(`user:email:${prismaUser.email.toLowerCase()}`)) as any;
           if (kvUser && kvUser.id) {
             console.log(`[Admin API] Found KV user with ID: ${kvUser.id}`);
             targetUser = await getUserById(kvUser.id);

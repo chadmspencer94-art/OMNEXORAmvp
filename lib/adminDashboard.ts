@@ -140,10 +140,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     const allJobs: Job[] = [];
     for (const user of allUserIds) {
       const userJobsKey = `user:${user.id}:jobs`;
-      const jobIds = await kv.lrange<string>(userJobsKey, 0, -1);
+      const jobIds = (await kv.lrange(userJobsKey, 0, -1)) as string[] | null;
       if (jobIds && jobIds.length > 0) {
         const jobs = await Promise.all(
-          jobIds.map((id) => kv.get<Job>(`job:${id}`))
+          jobIds.map((id) => kv.get(`job:${id}`) as Promise<Job | null>)
         );
         allJobs.push(...jobs.filter((job): job is Job => job !== null && !job.isDeleted));
       }

@@ -449,15 +449,26 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    router.push("/login");
-                  }}
-                  className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg transition-colors text-sm font-semibold text-center"
-                >
-                  Login
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      router.push("/register");
+                    }}
+                    className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg transition-colors text-sm font-semibold text-center"
+                  >
+                    Sign Up
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      router.push("/login");
+                    }}
+                    className="w-full px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm font-medium text-center border border-slate-600"
+                  >
+                    Login
+                  </button>
+                </div>
               )}
             </div>
           </div>

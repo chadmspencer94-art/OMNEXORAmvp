@@ -358,7 +358,7 @@ export async function verifyUser(
   const normalizedEmail = email.toLowerCase().trim();
 
   // Load user by email (may be an older record missing newer fields)
-  const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:email:${normalizedEmail}`);
+  const rawUser = (await kv.get(`user:email:${normalizedEmail}`)) as Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string } | null;
   if (!rawUser) {
     return null;
   }
@@ -383,7 +383,7 @@ export async function verifyUser(
  * @returns The full user object or null
  */
 export async function getUserById(userId: string): Promise<User | null> {
-  const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${userId}`);
+  const rawUser = (await kv.get(`user:id:${userId}`)) as Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string } | null;
   if (!rawUser) return null;
   
   // Normalize to ensure all fields are present (handles older records)
@@ -396,7 +396,7 @@ export async function getUserById(userId: string): Promise<User | null> {
  * @returns The safe user object or null
  */
 export async function getSafeUserById(userId: string): Promise<SafeUser | null> {
-  const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${userId}`);
+  const rawUser = (await kv.get(`user:id:${userId}`)) as Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string } | null;
   if (!rawUser) return null;
   
   // Normalize to ensure all fields are present (handles older records)
@@ -415,7 +415,7 @@ export async function updateUser(
   userId: string,
   updates: Partial<Omit<User, "id" | "email" | "passwordHash" | "createdAt">>
 ): Promise<SafeUser | null> {
-  const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${userId}`);
+  const rawUser = (await kv.get(`user:id:${userId}`)) as Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string } | null;
   if (!rawUser) return null;
 
   // Normalize to ensure all fields are present (handles older records)
@@ -478,12 +478,12 @@ export async function getUsersByVerificationStatus(
   // This is a simplified implementation
   // In a real app, you'd maintain an index or use a proper database
   // For now, we'll store a list of user IDs that need review
-  const userIds = await kv.lrange<string>(`admin:verification:${status}`, 0, -1) || [];
+  const userIds = ((await kv.lrange(`admin:verification:${status}`, 0, -1)) as string[]) || [];
   
   // Also check legacy "pending_review" status if looking for "pending"
   let legacyUserIds: string[] = [];
   if (status === "pending") {
-    legacyUserIds = await kv.lrange<string>(`admin:verification:pending_review`, 0, -1) || [];
+    legacyUserIds = ((await kv.lrange(`admin:verification:pending_review`, 0, -1)) as string[]) || [];
   }
   
   // Combine and deduplicate
@@ -540,7 +540,7 @@ export async function removeUserFromVerificationIndex(
 export async function getAllUsers(): Promise<SafeUser[]> {
   // Get all user IDs from the index
   // This index is maintained automatically when users are created via createUser()
-  const userIds = await kv.lrange<string>("users:all", 0, -1) || [];
+  const userIds = ((await kv.lrange("users:all", 0, -1)) as string[]) || [];
   
   if (userIds.length === 0) {
     // Index might be empty - could mean no users, or index not initialized
@@ -550,7 +550,7 @@ export async function getAllUsers(): Promise<SafeUser[]> {
   
   // Load all users in parallel
   const users = await Promise.all(
-    userIds.map((id) => getSafeUserById(id))
+    userIds.map((id: string) => getSafeUserById(id))
   );
   
   // Filter out nulls (users that were deleted or don't exist anymore)
@@ -596,7 +596,7 @@ export async function getUserFromSession(
 ): Promise<SafeUser | null> {
   try {
     // Look up session
-    const session = await kv.get<Session>(`session:${sessionId}`);
+    const session = (await kv.get(`session:${sessionId}`)) as Session | null;
     if (!session) {
       return null;
     }
@@ -605,7 +605,7 @@ export async function getUserFromSession(
     const targetUserId = session.actingAsUserId || session.userId;
 
     // Load user by id (may be an older record missing newer fields)
-    const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${targetUserId}`);
+    const rawUser = (await kv.get(`user:id:${targetUserId}`)) as Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string } | null;
     if (!rawUser) {
       console.error("[auth] getUserFromSession: user not found for session", sessionId, "targetUserId:", targetUserId);
       return null;
@@ -633,13 +633,13 @@ export async function getUserFromSession(
 export async function getRealUserFromSession(
   sessionId: string
 ): Promise<SafeUser | null> {
-  const session = await kv.get<Session>(`session:${sessionId}`);
+  const session = (await kv.get(`session:${sessionId}`)) as Session | null;
   if (!session) {
     return null;
   }
 
   // Always return the real user (not the impersonated one)
-  const rawUser = await kv.get<Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string }>(`user:id:${session.userId}`);
+  const rawUser = (await kv.get(`user:id:${session.userId}`)) as Partial<User> & { id: string; email: string; passwordHash: string; createdAt: string } | null;
   if (!rawUser) {
     return null;
   }
@@ -716,7 +716,7 @@ export async function isImpersonating(): Promise<boolean> {
     return false;
   }
 
-  const session = await kv.get<Session>(`session:${sessionId}`);
+  const session = (await kv.get(`session:${sessionId}`)) as Session | null;
   return !!(session?.actingAsUserId);
 }
 
@@ -849,7 +849,7 @@ export async function startImpersonation(
   sessionId: string,
   targetUserId: string
 ): Promise<Session | null> {
-  const session = await kv.get<Session>(`session:${sessionId}`);
+  const session = (await kv.get(`session:${sessionId}`)) as Session | null;
   if (!session) {
     return null;
   }
@@ -878,7 +878,7 @@ export async function startImpersonation(
  * @returns Updated session or null if failed
  */
 export async function stopImpersonation(sessionId: string): Promise<Session | null> {
-  const session = await kv.get<Session>(`session:${sessionId}`);
+  const session = (await kv.get(`session:${sessionId}`)) as Session | null;
   if (!session) {
     return null;
   }

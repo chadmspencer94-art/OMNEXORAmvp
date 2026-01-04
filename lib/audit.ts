@@ -90,7 +90,7 @@ export async function getAuditLogsForAdmin(
   limit: number = 100
 ): Promise<AuditLog[]> {
   // Get all audit log IDs from index
-  const ids = await kv.lrange<string>(AUDIT_INDEX_KEY, 0, limit - 1);
+  const ids = (await kv.lrange(AUDIT_INDEX_KEY, 0, limit - 1)) as string[] | null;
 
   if (!ids || ids.length === 0) {
     return [];
@@ -98,7 +98,7 @@ export async function getAuditLogsForAdmin(
 
   // Fetch all audit logs in parallel
   const logs = await Promise.all(
-    ids.map((id) => kv.get<AuditLog>(`${AUDIT_PREFIX}${id}`))
+    ids.map((id) => kv.get(`${AUDIT_PREFIX}${id}`) as Promise<AuditLog | null>)
   );
 
   // Filter by admin, filter out nulls, and sort by createdAt descending
@@ -114,14 +114,14 @@ export async function getAuditLogsForUser(
   userId: string,
   limit: number = 100
 ): Promise<AuditLog[]> {
-  const ids = await kv.lrange<string>(AUDIT_INDEX_KEY, 0, limit - 1);
+  const ids = (await kv.lrange(AUDIT_INDEX_KEY, 0, limit - 1)) as string[] | null;
 
   if (!ids || ids.length === 0) {
     return [];
   }
 
   const logs = await Promise.all(
-    ids.map((id) => kv.get<AuditLog>(`${AUDIT_PREFIX}${id}`))
+    ids.map((id) => kv.get(`${AUDIT_PREFIX}${id}`) as Promise<AuditLog | null>)
   );
 
   // Filter by actingAsUserId

@@ -113,7 +113,7 @@ export async function createFeedback(data: {
  * Gets a feedback entry by ID
  */
 export async function getFeedbackById(id: string): Promise<Feedback | null> {
-  return await kv.get<Feedback>(`${FEEDBACK_PREFIX}${id}`);
+  return (await kv.get(`${FEEDBACK_PREFIX}${id}`)) as Feedback | null;
 }
 
 /**
@@ -121,7 +121,7 @@ export async function getFeedbackById(id: string): Promise<Feedback | null> {
  */
 export async function getAllFeedback(): Promise<Feedback[]> {
   // Get all feedback IDs from index
-  const ids = await kv.lrange<string>(FEEDBACK_INDEX_KEY, 0, -1);
+  const ids = (await kv.lrange(FEEDBACK_INDEX_KEY, 0, -1)) as string[] | null;
 
   if (!ids || ids.length === 0) {
     return [];
@@ -130,7 +130,7 @@ export async function getAllFeedback(): Promise<Feedback[]> {
   // Fetch all feedback entries
   const feedbackEntries: Feedback[] = [];
   for (const id of ids) {
-    const entry = await kv.get<Feedback>(`${FEEDBACK_PREFIX}${id}`);
+    const entry = (await kv.get(`${FEEDBACK_PREFIX}${id}`)) as Feedback | null;
     if (entry) {
       feedbackEntries.push(entry);
     }
@@ -263,7 +263,7 @@ export async function createFeedbackMessage(data: {
  * Gets all messages for a feedback ticket
  */
 export async function getFeedbackMessages(feedbackId: string): Promise<FeedbackMessage[]> {
-  const ids = await kv.lrange<string>(`${FEEDBACK_MESSAGES_INDEX_PREFIX}${feedbackId}`, 0, -1);
+  const ids = (await kv.lrange(`${FEEDBACK_MESSAGES_INDEX_PREFIX}${feedbackId}`, 0, -1)) as string[] | null;
 
   if (!ids || ids.length === 0) {
     return [];
@@ -271,7 +271,7 @@ export async function getFeedbackMessages(feedbackId: string): Promise<FeedbackM
 
   // Fetch all messages in parallel
   const messages = await Promise.all(
-    ids.map((id) => kv.get<FeedbackMessage>(`${FEEDBACK_MESSAGE_PREFIX}${id}`))
+    ids.map((id) => kv.get(`${FEEDBACK_MESSAGE_PREFIX}${id}`) as Promise<FeedbackMessage | null>)
   );
 
   // Filter out nulls and sort by createdAt ascending (oldest first)

@@ -19,24 +19,24 @@ export default function Home() {
         ref={heroRef}
         className="relative bg-slate-900"
       >
-        {/* Background Image - Full, Uncropped, 80% opacity */}
+        {/* Background Image - Full, Uncropped, 85% opacity */}
         <img
           src="/hero-bg.png"
           alt="OMNEXORA - Your clients get better. Your team gets faster. Your head gets quieter."
-          className="w-full h-auto block opacity-80"
+          className="w-full h-[105%] object-cover object-top block opacity-85"
         />
 
         {/* CTA Buttons Overlay - positioned near top of hero */}
-        <div className="absolute top-[10%] sm:top-[12%] md:top-[14%] left-0 right-0 z-10 flex flex-col items-center px-4 sm:px-6 md:px-8">
-          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-4 sm:mb-5 w-full sm:w-auto">
+        <div className="absolute top-[3%] sm:top-[5%] md:top-[7%] left-0 right-0 z-10 flex flex-col items-center px-4 sm:px-6 md:px-8">
+          <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3 mb-2 sm:mb-2.5 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto sm:mx-0">
             {isLoggedIn ? (
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center px-6 sm:px-8 md:px-10 py-3 sm:py-3.5 text-sm sm:text-base md:text-lg font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
+                className="inline-flex items-center justify-center px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 text-xs sm:text-sm md:text-base font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
               >
                 Go to Dashboard
                 <svg
-                  className="w-4 h-4 sm:w-5 sm:h-5 ml-2"
+                  className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 ml-1.5 sm:ml-2"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -54,11 +54,11 @@ export default function Home() {
               <>
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center px-6 sm:px-8 md:px-10 py-3 sm:py-3.5 text-sm sm:text-base md:text-lg font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
+                  className="inline-flex items-center justify-center px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 text-xs sm:text-sm md:text-base font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors w-full sm:w-auto"
                 >
                   Get started
                   <svg
-                    className="w-4 h-4 sm:w-5 sm:h-5 ml-2"
+                    className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 ml-1.5 sm:ml-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -74,7 +74,7 @@ export default function Home() {
                 </Link>
                 <Link
                   href="/login"
-                  className="inline-flex items-center justify-center px-6 sm:px-8 md:px-10 py-3 sm:py-3.5 text-sm sm:text-base md:text-lg font-medium text-white border border-white/50 hover:bg-white/10 rounded-lg transition-colors"
+                  className="inline-flex items-center justify-center px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 text-xs sm:text-sm md:text-base font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors w-full sm:w-auto"
                 >
                   Log in
                 </Link>
@@ -83,54 +83,35 @@ export default function Home() {
           </div>
           
           {/* OVIS Trust Strip */}
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 bg-white/10 backdrop-blur-sm px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 rounded-full border border-white/20">
-            <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white">
-              <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-center justify-center gap-1.5 bg-slate-900/40 backdrop-blur-sm px-2 sm:px-2.5 py-1 sm:py-1 rounded-full border border-white/30">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-white drop-shadow-lg">
+              <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 drop-shadow-md" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                   clipRule="evenodd"
                 />
               </svg>
-              <span>OVIS Checked</span>
+              <span className="drop-shadow-md">OVIS Checked</span>
             </span>
-            <span className="hidden sm:inline text-xs sm:text-sm text-white/70">AI-assisted • human-checked</span>
             <button
               onClick={() => setIsOvisModalOpen(true)}
-              className="text-amber-400 hover:text-amber-300 transition-colors text-xs sm:text-sm font-medium"
+              className="p-0.5 text-amber-400 hover:text-amber-300 hover:bg-white/10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-slate-900/40"
+              aria-label="What is OVIS?"
             >
-              What is OVIS?
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
             </button>
           </div>
         </div>
 
 
-        {/* Small CTA Buttons - bottom right - hidden on mobile */}
-        <div className="absolute bottom-[4%] sm:bottom-[6%] right-4 sm:right-8 z-10 hidden sm:flex items-center gap-2 md:gap-3">
-          {isLoggedIn ? (
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
-            >
-              Dashboard
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/register"
-                className="inline-flex items-center px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
-              >
-                Get started
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex items-center px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white border border-white/50 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                Login
-              </Link>
-            </>
-          )}
-        </div>
       </section>
 
       {/* Features Section */}
@@ -161,7 +142,7 @@ export default function Home() {
                 </Link>
                 <Link
                   href="/login"
-                  className="inline-flex items-center px-6 sm:px-7 md:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
+                  className="inline-flex items-center px-6 sm:px-7 md:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors"
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />

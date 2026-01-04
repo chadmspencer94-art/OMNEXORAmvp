@@ -18,7 +18,7 @@ async function makeAdmin(email: string) {
   
   try {
     // First, try to find user in KV store (primary source)
-    const kvUser = await kv.get<any>(`user:email:${normalizedEmail}`);
+    const kvUser = (await kv.get(`user:email:${normalizedEmail}`)) as any;
     
     if (kvUser && kvUser.id) {
       // Update in KV store (primary)

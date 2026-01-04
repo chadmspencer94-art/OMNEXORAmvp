@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     // Also update KV store if user exists there
     try {
       const { kv } = await import("@/lib/kv");
-      const kvUser = await kv.get<any>(`user:email:${user.email.toLowerCase()}`);
+      const kvUser = (await kv.get(`user:email:${user.email.toLowerCase()}`)) as any;
       if (kvUser) {
         kvUser.emailVerifiedAt = new Date().toISOString();
         await kv.set(`user:id:${kvUser.id}`, kvUser);
