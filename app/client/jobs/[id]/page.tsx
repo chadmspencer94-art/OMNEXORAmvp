@@ -71,6 +71,56 @@ export default async function ClientJobDetailPage({ params }: ClientJobDetailPag
   const isAccepted = clientStatus === "accepted";
   const isDeclined = clientStatus === "declined";
 
+  // Fetch the tradie's business profile for PDF exports
+  let businessProfile: {
+    legalName?: string;
+    tradingName?: string;
+    abn?: string;
+    email?: string;
+    phone?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    suburb?: string;
+    state?: string;
+    postcode?: string;
+  } | null = null;
+  
+  try {
+    const { getPrisma } = await import("@/lib/prisma");
+    const prisma = getPrisma();
+    const tradieUser = await prisma.user.findFirst({
+      where: { id: job.userId },
+      select: {
+        businessName: true,
+        tradingName: true,
+        abn: true,
+        email: true,
+        businessPhone: true,
+        businessAddressLine1: true,
+        businessAddressLine2: true,
+        businessSuburb: true,
+        businessState: true,
+        businessPostcode: true,
+      },
+    });
+    if (tradieUser?.businessName) {
+      businessProfile = {
+        legalName: tradieUser.businessName || undefined,
+        tradingName: tradieUser.tradingName || undefined,
+        abn: tradieUser.abn || undefined,
+        email: tradieUser.email || undefined,
+        phone: tradieUser.businessPhone || undefined,
+        addressLine1: tradieUser.businessAddressLine1 || undefined,
+        addressLine2: tradieUser.businessAddressLine2 || undefined,
+        suburb: tradieUser.businessSuburb || undefined,
+        state: tradieUser.businessState || undefined,
+        postcode: tradieUser.businessPostcode || undefined,
+      };
+    }
+  } catch (error) {
+    console.warn("Failed to fetch tradie business profile:", error);
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Back Link */}
@@ -226,7 +276,7 @@ export default async function ClientJobDetailPage({ params }: ClientJobDetailPag
       {hasJobPack ? (
         <>
           {/* Full Job Pack View */}
-          <ClientJobPackView job={job} />
+          <ClientJobPackView job={job} businessProfile={businessProfile} />
 
           {/* Acceptance Form */}
           <ClientAcceptanceForm

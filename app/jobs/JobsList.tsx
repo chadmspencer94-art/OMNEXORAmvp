@@ -36,6 +36,7 @@ function StatusBadge({ status }: { status: JobStatus }) {
 function JobWorkflowStatusBadge({ status }: { status: JobWorkflowStatus }) {
   const styles: Record<JobWorkflowStatus, string> = {
     pending: "bg-amber-100 text-amber-700",
+    pending_confirmation: "bg-purple-100 text-purple-700",
     booked: "bg-green-100 text-green-700",
     completed: "bg-blue-100 text-blue-700",
     cancelled: "bg-slate-100 text-slate-500",
@@ -43,6 +44,7 @@ function JobWorkflowStatusBadge({ status }: { status: JobWorkflowStatus }) {
 
   const labels: Record<JobWorkflowStatus, string> = {
     pending: "Pending",
+    pending_confirmation: "Awaiting Confirmation",
     booked: "Booked",
     completed: "Completed",
     cancelled: "Cancelled",

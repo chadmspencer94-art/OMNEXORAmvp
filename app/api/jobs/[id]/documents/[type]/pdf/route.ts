@@ -58,21 +58,61 @@ export async function POST(
       );
     }
 
-    // Get plan info for access control
+    // Get plan info and business profile for access control and PDF header
     let planTier = "FREE";
     let planStatus = "TRIAL";
+    let businessProfile: {
+      legalName?: string;
+      tradingName?: string;
+      abn?: string;
+      email?: string;
+      phone?: string;
+      addressLine1?: string;
+      addressLine2?: string;
+      suburb?: string;
+      state?: string;
+      postcode?: string;
+    } | null = null;
+    
     try {
       const { getPrisma } = await import("@/lib/prisma");
       const prisma = getPrisma();
       const prismaUser = await prisma.user.findUnique({
         where: { email: user.email },
-        select: { planTier: true, planStatus: true },
+        select: { 
+          planTier: true, 
+          planStatus: true,
+          businessName: true,
+          tradingName: true,
+          abn: true,
+          email: true,
+          businessPhone: true,
+          businessAddressLine1: true,
+          businessAddressLine2: true,
+          businessSuburb: true,
+          businessState: true,
+          businessPostcode: true,
+        },
       });
       if (prismaUser?.planTier) {
         planTier = prismaUser.planTier;
       }
       if (prismaUser?.planStatus) {
         planStatus = prismaUser.planStatus;
+      }
+      if (prismaUser?.businessName) {
+        businessProfile = {
+          legalName: prismaUser.businessName || undefined,
+          tradingName: prismaUser.tradingName || undefined,
+          abn: prismaUser.abn || undefined,
+          email: prismaUser.email || undefined,
+          phone: prismaUser.businessPhone || undefined,
+          addressLine1: prismaUser.businessAddressLine1 || undefined,
+          addressLine2: prismaUser.businessAddressLine2 || undefined,
+          suburb: prismaUser.businessSuburb || undefined,
+          state: prismaUser.businessState || undefined,
+          postcode: prismaUser.businessPostcode || undefined,
+        };
       }
     } catch (error) {
       console.warn("Failed to fetch plan info:", error);
@@ -101,7 +141,12 @@ export async function POST(
     const pdf = new PdfDocument();
     const docLabel = docType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
-    // Header
+    // Business Header
+    if (businessProfile?.legalName) {
+      pdf.addBusinessHeader(businessProfile);
+    }
+
+    // Document Title
     pdf.addTitle(docLabel);
     pdf.addSeparator();
 
@@ -113,8 +158,10 @@ export async function POST(
       { label: "Date", value: new Date().toLocaleDateString("en-AU") },
     ]);
 
-    // AI Warning
-    pdf.addAiWarning();
+    // AI Warning (only for internal/no business profile)
+    if (!businessProfile?.legalName) {
+      pdf.addAiWarning();
+    }
 
     // Document content
     const sections = content.split("\n\n");
@@ -130,7 +177,11 @@ export async function POST(
     }
 
     // Footer
-    pdf.addStandardFooters();
+    if (businessProfile?.legalName) {
+      pdf.addIssuedFooter(businessProfile.legalName, `${docType}-${id.slice(0, 8).toUpperCase()}`);
+    } else {
+      pdf.addStandardFooters();
+    }
 
     // Return PDF
     const blob = pdf.getBlob();

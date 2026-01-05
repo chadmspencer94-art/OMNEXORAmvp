@@ -43,7 +43,7 @@ export async function PATCH(
 
     // Update job workflow status if provided
     if (jobStatus) {
-      const validStatuses: JobWorkflowStatus[] = ["pending", "booked", "completed", "cancelled"];
+      const validStatuses: JobWorkflowStatus[] = ["pending", "pending_confirmation", "booked", "completed", "cancelled"];
       if (!validStatuses.includes(jobStatus)) {
         return NextResponse.json(
           { error: "Invalid job status" },

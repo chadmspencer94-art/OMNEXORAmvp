@@ -4,11 +4,25 @@ import { calculateEstimateRange } from "@/lib/pricing";
 import JobPackPdfButton from "@/app/jobs/[id]/JobPackPdfButton";
 import type { Job } from "@/lib/jobs";
 
-interface ClientJobPackViewProps {
-  job: Job;
+interface BusinessProfile {
+  legalName?: string;
+  tradingName?: string;
+  abn?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
 }
 
-export default function ClientJobPackView({ job }: ClientJobPackViewProps) {
+interface ClientJobPackViewProps {
+  job: Job;
+  businessProfile?: BusinessProfile | null;
+}
+
+export default function ClientJobPackView({ job, businessProfile }: ClientJobPackViewProps) {
   const estimateRange = calculateEstimateRange(job.aiQuote);
 
   // Helper to format text content (preserve line breaks)
@@ -131,6 +145,7 @@ export default function ClientJobPackView({ job }: ClientJobPackViewProps) {
           clientSignedName={job.clientSignedName}
           clientSignedEmail={job.clientSignedEmail}
           clientAcceptedAt={job.clientAcceptedAt}
+          businessProfile={businessProfile}
         />
       </div>
     </div>

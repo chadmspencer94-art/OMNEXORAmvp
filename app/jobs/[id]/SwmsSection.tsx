@@ -5,12 +5,26 @@ import { useRouter } from "next/navigation";
 import { Loader2, AlertCircle, Copy, Check, Download, Save, Edit2 } from "lucide-react";
 import { PdfDocument, parseStructuredContent } from "@/lib/pdfGenerator";
 
+interface BusinessProfile {
+  legalName?: string;
+  tradingName?: string;
+  abn?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+}
+
 interface SwmsSectionProps {
   jobId: string;
   swmsText?: string | null;
   jobTitle?: string;
   tradeType?: string;
   address?: string;
+  businessProfile?: BusinessProfile | null;
 }
 
 /**
@@ -30,6 +44,7 @@ export default function SwmsSection({
   jobTitle = "Job",
   tradeType = "Trade",
   address = "Location not specified",
+  businessProfile,
 }: SwmsSectionProps) {
   const router = useRouter();
   const [swmsText, setSwmsText] = useState<string | null>(initialSwmsText || null);
@@ -159,9 +174,13 @@ export default function SwmsSection({
       const pdf = new PdfDocument();
 
       // =========================================
-      // HEADER
+      // BUSINESS HEADER
       // =========================================
-      pdf.addBrandedHeader("Safe Work Method Statement (SWMS)");
+      if (businessProfile?.legalName) {
+        pdf.addBusinessHeader(businessProfile);
+      } else {
+        pdf.addBrandedHeader("Safe Work Method Statement (SWMS)");
+      }
 
       // =========================================
       // JOB DETAILS
@@ -174,9 +193,11 @@ export default function SwmsSection({
       ]);
 
       // =========================================
-      // AI WARNING
+      // AI WARNING (only for internal/no business profile)
       // =========================================
-      pdf.addAiWarning();
+      if (!businessProfile?.legalName) {
+        pdf.addAiWarning();
+      }
 
       // =========================================
       // SWMS CONTENT
@@ -203,7 +224,11 @@ export default function SwmsSection({
       // =========================================
       // FOOTER
       // =========================================
-      pdf.addStandardFooters({ jobId });
+      if (businessProfile?.legalName) {
+        pdf.addIssuedFooter(businessProfile.legalName, `SWMS-${jobId.slice(0, 8).toUpperCase()}`);
+      } else {
+        pdf.addStandardFooters({ jobId });
+      }
 
       // Save the PDF
       const filename = `swms-${jobId.slice(0, 8)}.pdf`;

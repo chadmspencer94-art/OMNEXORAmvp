@@ -107,7 +107,8 @@ export async function POST(
     job.clientSignatureId = signature.id;
     job.clientSignedName = name.trim();
     job.clientSignedEmail = email.trim().toLowerCase();
-    job.jobStatus = "booked";
+    // Set to pending_confirmation - tradie must manually confirm to move to "booked"
+    job.jobStatus = "pending_confirmation";
     
     // Mark AI pack as confirmed if not already
     if (job.aiReviewStatus !== "confirmed") {

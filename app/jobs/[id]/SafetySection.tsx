@@ -12,12 +12,26 @@ import OvisBadge from "@/app/components/OvisBadge";
 // User-friendly error message for safety document operations
 const FRIENDLY_ERROR_MESSAGE = "Safety documents aren't available right now. Please try again shortly.";
 
+interface BusinessProfile {
+  legalName?: string;
+  tradingName?: string;
+  abn?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+}
+
 interface SafetySectionProps {
   jobId: string;
   jobTitle: string;
   tradeType: string;
   address?: string;
   businessName?: string;
+  businessProfile?: BusinessProfile | null;
 }
 
 type SafetyDocumentType = "SWMS" | "RISK_ASSESSMENT" | "TOOLBOX_TALK";
@@ -67,6 +81,7 @@ export default function SafetySection({
   tradeType,
   address,
   businessName,
+  businessProfile,
 }: SafetySectionProps) {
   const router = useRouter();
   const [documents, setDocuments] = useState<SafetyDocument[]>([]);
@@ -360,6 +375,7 @@ export default function SafetySection({
                             tradeType={tradeType}
                             address={address}
                             businessName={businessName}
+                            businessProfile={businessProfile}
                           />
                         </>
                       ) : (

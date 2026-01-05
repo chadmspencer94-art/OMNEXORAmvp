@@ -6,6 +6,19 @@ import { PdfDocument, parseStructuredContent } from "@/lib/pdfGenerator";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
 import OvisBadge from "@/app/components/OvisBadge";
 
+interface BusinessProfile {
+  legalName?: string;
+  tradingName?: string;
+  abn?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+}
+
 interface JobDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,6 +31,7 @@ interface JobDocumentModalProps {
   clientName?: string;
   documentType: "SWMS" | "VARIATION" | "EOT" | "PROGRESS_CLAIM" | "HANDOVER" | "MAINTENANCE";
   showWarning?: boolean;
+  businessProfile?: BusinessProfile | null;
 }
 
 const DOCUMENT_LABELS: Record<JobDocumentModalProps["documentType"], string> = {
@@ -41,6 +55,7 @@ export default function JobDocumentModal({
   clientName,
   documentType,
   showWarning = false,
+  businessProfile,
 }: JobDocumentModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -64,9 +79,13 @@ export default function JobDocumentModal({
       const pdf = new PdfDocument();
 
       // =========================================
-      // HEADER
+      // BUSINESS HEADER
       // =========================================
-      pdf.addBrandedHeader(DOCUMENT_LABELS[documentType]);
+      if (businessProfile?.legalName) {
+        pdf.addBusinessHeader(businessProfile);
+      } else {
+        pdf.addBrandedHeader(DOCUMENT_LABELS[documentType]);
+      }
 
       // =========================================
       // JOB DETAILS
@@ -80,9 +99,11 @@ export default function JobDocumentModal({
       ]);
 
       // =========================================
-      // AI WARNING
+      // AI WARNING (only for internal/no business profile)
       // =========================================
-      pdf.addAiWarning();
+      if (!businessProfile?.legalName) {
+        pdf.addAiWarning();
+      }
 
       // =========================================
       // DOCUMENT CONTENT
@@ -109,7 +130,11 @@ export default function JobDocumentModal({
       // =========================================
       // FOOTER
       // =========================================
-      pdf.addStandardFooters({ jobId });
+      if (businessProfile?.legalName) {
+        pdf.addIssuedFooter(businessProfile.legalName, `${documentType}-${jobId.slice(0, 8).toUpperCase()}`);
+      } else {
+        pdf.addStandardFooters({ jobId });
+      }
 
       // Save the PDF
       const filename = `${documentType.toLowerCase()}-${jobId.slice(0, 8)}.pdf`;

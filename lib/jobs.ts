@@ -17,7 +17,8 @@ export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | 
 export type AIGenerationStatus = "draft" | "ai_pending" | "ai_complete" | "ai_failed" | "pending_regeneration" | "generating";
 
 // Job workflow status
-export type JobWorkflowStatus = "pending" | "booked" | "completed" | "cancelled";
+// pending_confirmation: Client has responded (accepted/declined), tradie must confirm
+export type JobWorkflowStatus = "pending" | "pending_confirmation" | "booked" | "completed" | "cancelled";
 
 // AI pack review status
 export type AIReviewStatus = "pending" | "confirmed";

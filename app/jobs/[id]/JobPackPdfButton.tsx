@@ -34,6 +34,19 @@ interface MaterialItem {
   estimatedCost?: string;
 }
 
+interface BusinessProfile {
+  legalName?: string;
+  tradingName?: string;
+  abn?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+}
+
 interface JobPackPdfButtonProps {
   jobId: string;
   jobTitle: string;
@@ -61,6 +74,8 @@ interface JobPackPdfButtonProps {
   clientAcceptanceNote?: string | null;
   clientAcceptedQuoteVer?: number | null;
   quoteNumber?: string | null;
+  // Business profile for header
+  businessProfile?: BusinessProfile | null;
 }
 
 export default function JobPackPdfButton({
@@ -90,6 +105,7 @@ export default function JobPackPdfButton({
   clientAcceptanceNote,
   clientAcceptedQuoteVer,
   quoteNumber,
+  businessProfile,
 }: JobPackPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -157,14 +173,20 @@ export default function JobPackPdfButton({
       const pdf = new PdfDocument();
 
       // =========================================
-      // HEADER
+      // BUSINESS HEADER
       // =========================================
-      pdf.addBrandedHeader("Job Pack");
+      if (businessProfile?.legalName) {
+        pdf.addBusinessHeader(businessProfile);
+      } else {
+        pdf.addBrandedHeader("Job Pack");
+      }
 
       // =========================================
       // JOB TITLE
       // =========================================
       pdf.addTitle(jobTitle);
+      pdf.addText("Job Pack / Quote", { fontSize: 10, color: [100, 116, 139] });
+      pdf.addSpace(4);
 
       // =========================================
       // JOB METADATA
@@ -174,13 +196,15 @@ export default function JobPackPdfButton({
       if (propertyType) metaItems.push({ label: "Property", value: propertyType });
       if (address) metaItems.push({ label: "Address", value: address });
       if (clientName) metaItems.push({ label: "Client", value: clientName });
-      metaItems.push({ label: "Created", value: formatDate(jobCreatedAt) });
+      metaItems.push({ label: "Date", value: formatDate(jobCreatedAt) });
       pdf.addMetadata(metaItems);
 
       // =========================================
-      // AI WARNING
+      // AI WARNING (only if no business profile - internal draft)
       // =========================================
-      pdf.addAiWarning();
+      if (!businessProfile?.legalName) {
+        pdf.addAiWarning();
+      }
 
       // =========================================
       // SUMMARY
@@ -376,7 +400,13 @@ export default function JobPackPdfButton({
       // =========================================
       // FOOTER
       // =========================================
-      pdf.addStandardFooters({ jobId });
+      if (businessProfile?.legalName) {
+        // Professional footer for client-facing export
+        pdf.addIssuedFooter(businessProfile.legalName, `JP-${jobId.slice(0, 8).toUpperCase()}`);
+      } else {
+        // Standard footer with AI warnings for internal use
+        pdf.addStandardFooters({ jobId });
+      }
 
       // Save the PDF
       const filename = `job-pack-${jobId.slice(0, 8)}.pdf`;

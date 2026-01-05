@@ -11,6 +11,7 @@ interface JobStatusControlProps {
 
 const STATUS_OPTIONS: { value: JobWorkflowStatus; label: string }[] = [
   { value: "pending", label: "Pending" },
+  { value: "pending_confirmation", label: "Awaiting Confirmation" },
   { value: "booked", label: "Booked" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },

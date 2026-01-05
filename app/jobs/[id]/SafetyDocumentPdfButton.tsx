@@ -4,6 +4,19 @@ import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { PdfDocument, parseStructuredContent, formatDate } from "@/lib/pdfGenerator";
 
+interface BusinessProfile {
+  legalName?: string;
+  tradingName?: string;
+  abn?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+}
+
 interface SafetyDocumentPdfButtonProps {
   document: {
     id: string;
@@ -15,6 +28,7 @@ interface SafetyDocumentPdfButtonProps {
   tradeType: string;
   address?: string;
   businessName?: string;
+  businessProfile?: BusinessProfile | null;
 }
 
 export default function SafetyDocumentPdfButton({
@@ -23,6 +37,7 @@ export default function SafetyDocumentPdfButton({
   tradeType,
   address,
   businessName,
+  businessProfile,
 }: SafetyDocumentPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -33,7 +48,14 @@ export default function SafetyDocumentPdfButton({
       const pdf = new PdfDocument();
 
       // =========================================
-      // HEADER
+      // BUSINESS HEADER
+      // =========================================
+      if (businessProfile?.legalName) {
+        pdf.addBusinessHeader(businessProfile);
+      }
+
+      // =========================================
+      // DOCUMENT TITLE
       // =========================================
       pdf.addTitle(document.title);
       pdf.addSeparator();
@@ -50,9 +72,11 @@ export default function SafetyDocumentPdfButton({
       ]);
 
       // =========================================
-      // AI WARNING
+      // AI WARNING (only for internal/no business profile)
       // =========================================
-      pdf.addAiWarning();
+      if (!businessProfile?.legalName) {
+        pdf.addAiWarning();
+      }
 
       // =========================================
       // DOCUMENT CONTENT
@@ -78,7 +102,11 @@ export default function SafetyDocumentPdfButton({
       // =========================================
       // FOOTER
       // =========================================
-      pdf.addStandardFooters();
+      if (businessProfile?.legalName) {
+        pdf.addIssuedFooter(businessProfile.legalName, `${document.type.toUpperCase()}-${document.id.slice(0, 8).toUpperCase()}`);
+      } else {
+        pdf.addStandardFooters();
+      }
 
       // Save PDF
       const fileName = `${document.type.toLowerCase()}_${jobTitle.replace(/[^a-z0-9]/gi, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;

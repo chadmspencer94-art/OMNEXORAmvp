@@ -115,6 +115,7 @@ function StatusBadge({ status }: { status: JobStatus }) {
 function JobWorkflowStatusBadge({ status }: { status: JobWorkflowStatus }) {
   const styles: Record<JobWorkflowStatus, string> = {
     pending: "bg-amber-100 text-amber-700",
+    pending_confirmation: "bg-purple-100 text-purple-700",
     booked: "bg-green-100 text-green-700",
     completed: "bg-blue-100 text-blue-700",
     cancelled: "bg-slate-100 text-slate-500",
@@ -122,6 +123,7 @@ function JobWorkflowStatusBadge({ status }: { status: JobWorkflowStatus }) {
 
   const labels: Record<JobWorkflowStatus, string> = {
     pending: "Pending",
+    pending_confirmation: "Awaiting Confirmation",
     booked: "Booked",
     completed: "Completed",
     cancelled: "Cancelled",
@@ -624,20 +626,62 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const userRole: UserRole = (user.role || "tradie") as UserRole;
   const isVerified = verificationStatus === "verified";
   
-  // Get plan info from Prisma
+  // Get plan info and business profile from Prisma
   let planTier = "FREE";
   let planStatus = "TRIAL";
+  let businessProfile: {
+    legalName?: string;
+    tradingName?: string;
+    abn?: string;
+    email?: string;
+    phone?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    suburb?: string;
+    state?: string;
+    postcode?: string;
+  } | null = null;
+  
   try {
     const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
-      select: { planTier: true, planStatus: true },
+      select: { 
+        planTier: true, 
+        planStatus: true,
+        // Business profile fields for PDF headers
+        businessName: true,
+        tradingName: true,
+        abn: true,
+        email: true,
+        businessPhone: true,
+        businessAddressLine1: true,
+        businessAddressLine2: true,
+        businessSuburb: true,
+        businessState: true,
+        businessPostcode: true,
+      },
     });
     if (prismaUser?.planTier) {
       planTier = prismaUser.planTier;
     }
     if (prismaUser?.planStatus) {
       planStatus = prismaUser.planStatus;
+    }
+    // Build business profile for PDF exports
+    if (prismaUser?.businessName) {
+      businessProfile = {
+        legalName: prismaUser.businessName || undefined,
+        tradingName: prismaUser.tradingName || undefined,
+        abn: prismaUser.abn || undefined,
+        email: prismaUser.email || undefined,
+        phone: prismaUser.businessPhone || undefined,
+        addressLine1: prismaUser.businessAddressLine1 || undefined,
+        addressLine2: prismaUser.businessAddressLine2 || undefined,
+        suburb: prismaUser.businessSuburb || undefined,
+        state: prismaUser.businessState || undefined,
+        postcode: prismaUser.businessPostcode || undefined,
+      };
     }
   } catch (error) {
     console.warn("Failed to fetch plan tier:", error);
@@ -767,6 +811,27 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   <JobStatusControl jobId={job.id} currentStatus={job.jobStatus || "pending"} />
                 </div>
               </div>
+
+              {/* Pending Confirmation Banner */}
+              {job.jobStatus === "pending_confirmation" && (
+                <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="font-semibold text-purple-900 mb-1">
+                        {job.clientStatus === "accepted" ? "Client Accepted" : "Client Declined"} - Your Confirmation Required
+                      </p>
+                      <p className="text-sm text-purple-700">
+                        {job.clientStatus === "accepted" 
+                          ? "The client has accepted this quote. Use \"Change status\" above to mark the job as Booked when ready."
+                          : "The client has declined this quote. Use \"Change status\" above to mark as Cancelled when ready."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* AI Pack Review Status */}
               <div>
@@ -1212,6 +1277,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                         clientAcceptanceNote={job.clientAcceptanceNote}
                         clientAcceptedQuoteVer={job.clientAcceptedQuoteVer}
                         quoteNumber={job.quoteNumber}
+                        businessProfile={businessProfile}
                       />
                       <SpecDocButton 
                         jobId={job.id}
@@ -1433,6 +1499,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     tradeType={job.tradeType}
                     address={job.address}
                     businessName={user.businessDetails?.businessName || user.businessDetails?.tradingName}
+                    businessProfile={businessProfile}
                   />
                 </div>
               )}
@@ -1482,6 +1549,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   tradeType={job.tradeType}
                   address={job.address}
                   businessName={user.businessDetails?.businessName || user.businessDetails?.tradingName}
+                  businessProfile={businessProfile}
                 />
               </div>
             </div>

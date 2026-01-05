@@ -418,6 +418,163 @@ export class PdfDocument {
   }
 
   /**
+   * Add business identity header for professional documents
+   * Shows business name, trading name, ABN, contact details
+   */
+  addBusinessHeader(issuer: {
+    legalName?: string;
+    tradingName?: string;
+    abn?: string;
+    email?: string;
+    phone?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    suburb?: string;
+    state?: string;
+    postcode?: string;
+  }): void {
+    // Header background (subtle)
+    this.doc.setFillColor(248, 250, 252); // slate-50
+    this.doc.rect(0, 0, this.config.pageWidth, 45, "F");
+    
+    // Bottom border
+    this.doc.setDrawColor(226, 232, 240); // slate-200
+    this.doc.setLineWidth(0.5);
+    this.doc.line(0, 45, this.config.pageWidth, 45);
+
+    let yPos = 12;
+
+    // Business legal name (large)
+    if (issuer.legalName) {
+      this.doc.setFontSize(16);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(15, 23, 42); // slate-900
+      this.doc.text(issuer.legalName, this.config.marginLeft, yPos);
+      yPos += 6;
+    }
+
+    // Trading name (if different)
+    if (issuer.tradingName && issuer.tradingName !== issuer.legalName) {
+      this.doc.setFontSize(10);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(71, 85, 105); // slate-600
+      this.doc.text(`Trading as: ${issuer.tradingName}`, this.config.marginLeft, yPos);
+      yPos += 4;
+    }
+
+    // ABN (formatted)
+    if (issuer.abn) {
+      this.doc.setFontSize(9);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(100, 116, 139); // slate-500
+      // Format ABN: XX XXX XXX XXX
+      const abnClean = issuer.abn.replace(/\s/g, "");
+      const abnFormatted = abnClean.length === 11 
+        ? `${abnClean.slice(0, 2)} ${abnClean.slice(2, 5)} ${abnClean.slice(5, 8)} ${abnClean.slice(8, 11)}`
+        : issuer.abn;
+      this.doc.text(`ABN: ${abnFormatted}`, this.config.marginLeft, yPos);
+      yPos += 4;
+    }
+
+    // Contact info on right side
+    let rightY = 12;
+    const rightX = this.config.pageWidth - this.config.marginRight;
+
+    // Phone
+    if (issuer.phone) {
+      this.doc.setFontSize(9);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(71, 85, 105); // slate-600
+      this.doc.text(issuer.phone, rightX, rightY, { align: "right" });
+      rightY += 4;
+    }
+
+    // Email
+    if (issuer.email) {
+      this.doc.setFontSize(9);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(71, 85, 105); // slate-600
+      this.doc.text(issuer.email, rightX, rightY, { align: "right" });
+      rightY += 4;
+    }
+
+    // Address
+    const addressParts: string[] = [];
+    if (issuer.addressLine1) addressParts.push(issuer.addressLine1);
+    if (issuer.addressLine2) addressParts.push(issuer.addressLine2);
+    const locality: string[] = [];
+    if (issuer.suburb) locality.push(issuer.suburb);
+    if (issuer.state) locality.push(issuer.state);
+    if (issuer.postcode) locality.push(issuer.postcode);
+    if (locality.length > 0) addressParts.push(locality.join(" "));
+    
+    if (addressParts.length > 0) {
+      const fullAddress = addressParts.join(", ");
+      this.doc.setFontSize(8);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(100, 116, 139); // slate-500
+      const addressLines = this.doc.splitTextToSize(fullAddress, this.maxWidth / 2);
+      addressLines.forEach((line: string) => {
+        this.doc.text(line, rightX, rightY, { align: "right" });
+        rightY += 3.5;
+      });
+    }
+
+    // Set Y position after header
+    this.y = 55;
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
+   * Add professional footer for issued documents (no AI warnings)
+   */
+  addIssuedFooter(issuerName: string, documentId?: string): void {
+    const totalPages = this.doc.getNumberOfPages();
+    const timestamp = new Date().toLocaleString("en-AU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    
+    for (let i = 1; i <= totalPages; i++) {
+      this.doc.setPage(i);
+      
+      // Footer line
+      this.doc.setDrawColor(226, 232, 240); // slate-200
+      this.doc.setLineWidth(0.3);
+      this.doc.line(this.config.marginLeft, this.config.pageHeight - 18, this.config.pageWidth - this.config.marginRight, this.config.pageHeight - 18);
+
+      this.doc.setFontSize(7);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(100, 116, 139); // slate-500
+      
+      // Issued by line
+      this.doc.text(
+        `Issued by ${issuerName}`,
+        this.config.pageWidth / 2,
+        this.config.pageHeight - 13,
+        { align: "center" }
+      );
+      
+      // Document ID and page number
+      let footerText = timestamp;
+      if (documentId) {
+        footerText = `Document: ${documentId} | ${timestamp}`;
+      }
+      footerText += ` | Page ${i} of ${totalPages}`;
+      
+      this.doc.text(
+        footerText,
+        this.config.pageWidth / 2,
+        this.config.pageHeight - 9,
+        { align: "center" }
+      );
+    }
+  }
+
+  /**
    * Add AI content warning box
    */
   addAiWarning(): void {

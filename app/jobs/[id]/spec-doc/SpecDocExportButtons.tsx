@@ -8,11 +8,25 @@ import { hasDocumentFeatureAccess } from "@/lib/documentAccess";
 import type { SafeUser } from "@/lib/auth";
 import type { Job } from "@/lib/jobs";
 
+interface BusinessProfile {
+  legalName?: string;
+  tradingName?: string;
+  abn?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+}
+
 interface SpecDocExportButtonsProps {
   job: Job;
   user: SafeUser | null;
   planTier?: string;
   planStatus?: string;
+  businessProfile?: BusinessProfile | null;
 }
 
 export default function SpecDocExportButtons({ 
@@ -20,6 +34,7 @@ export default function SpecDocExportButtons({
   user, 
   planTier = "FREE",
   planStatus = "TRIAL",
+  businessProfile,
 }: SpecDocExportButtonsProps) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
@@ -47,6 +62,11 @@ export default function SpecDocExportButtons({
     try {
       const pdf = new PdfDocument();
       const scopeLines = job.aiScopeOfWork?.split("\n").filter(line => line.trim()) || [];
+
+      // Business Header
+      if (businessProfile?.legalName) {
+        pdf.addBusinessHeader(businessProfile);
+      }
 
       // Title
       pdf.addTitle("Detailed Scope of Work & Specifications");
@@ -124,7 +144,11 @@ export default function SpecDocExportButtons({
       pdf.addSpace(4);
 
       // Footer
-      pdf.addStandardFooters({ jobId: job.id });
+      if (businessProfile?.legalName) {
+        pdf.addIssuedFooter(businessProfile.legalName, `SD-${job.id.slice(0, 8).toUpperCase()}`);
+      } else {
+        pdf.addStandardFooters({ jobId: job.id });
+      }
 
       // Save PDF
       const filename = `spec-doc-${job.id.slice(0, 8)}.pdf`;
