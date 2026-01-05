@@ -11,6 +11,7 @@ import { featureFlags } from "@/lib/featureFlags";
 import { hasDocumentFeatureAccess, getDocumentAccessMessage } from "@/lib/documentAccess";
 import type { Job } from "@/lib/jobs";
 import type { DocType } from "@/lib/docEngine/types";
+import type { SafeUser } from "@/lib/auth";
 
 interface JobDocumentsSectionProps {
   jobId: string;
@@ -21,7 +22,7 @@ interface JobDocumentsSectionProps {
   clientEmail?: string;
   showWarning?: boolean;
   job?: Job; // Optional job object to check confirmation status
-  user?: { isAdmin?: boolean } | null; // User info for access control
+  user?: SafeUser | null; // User info for access control
   planTier?: string; // User plan tier
   planStatus?: string; // User plan status
 }

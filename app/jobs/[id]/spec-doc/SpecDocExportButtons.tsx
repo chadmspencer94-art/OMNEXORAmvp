@@ -67,7 +67,8 @@ export default function SpecDocExportButtons({
       // Scope of Work
       pdf.addSectionHeading("Scope of Work");
       scopeLines.forEach((line, index) => {
-        pdf.addParagraph(`${index + 1}. ${line}`, { indent: 4 });
+        pdf.addText(`${index + 1}. ${line}`, { indent: 4 });
+        pdf.addSpace(4);
       });
 
       pdf.addSpace(8);
@@ -107,16 +108,20 @@ export default function SpecDocExportButtons({
       // Signature Section
       pdf.addSeparator();
       pdf.addSpace(8);
-      pdf.addParagraph("Client Signature", { fontSize: 10, bold: true });
+      pdf.addText("Client Signature", { fontSize: 10, fontWeight: "bold" });
       pdf.addSpace(12);
-      pdf.addParagraph(job.clientName || "Client Name", { fontSize: 9 });
-      pdf.addParagraph("Date: ________________", { fontSize: 9 });
+      pdf.addText(job.clientName || "Client Name", { fontSize: 9 });
+      pdf.addSpace(4);
+      pdf.addText("Date: ________________", { fontSize: 9 });
+      pdf.addSpace(4);
       
       pdf.addSpace(8);
-      pdf.addParagraph("Contractor Signature", { fontSize: 10, bold: true });
+      pdf.addText("Contractor Signature", { fontSize: 10, fontWeight: "bold" });
       pdf.addSpace(12);
-      pdf.addParagraph(user?.email?.split("@")[0] || "", { fontSize: 9 });
-      pdf.addParagraph("Date: ________________", { fontSize: 9 });
+      pdf.addText(user?.email?.split("@")[0] || "", { fontSize: 9 });
+      pdf.addSpace(4);
+      pdf.addText("Date: ________________", { fontSize: 9 });
+      pdf.addSpace(4);
 
       // Footer
       pdf.addStandardFooters({ jobId: job.id });

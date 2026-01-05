@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let docType: string | undefined; // Declare outside try block for use in catch
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -48,7 +49,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { jobId, docType, includeMaterialsMarkup } = body; // Optional flag for including markup
+    const { jobId, docType: extractedDocType, includeMaterialsMarkup } = body; // Optional flag for including markup
+    docType = extractedDocType; // Assign to outer variable
 
     if (!jobId || !docType) {
       return NextResponse.json(
@@ -161,9 +163,10 @@ export async function POST(request: NextRequest) {
     
     // Provide more specific error messages
     let errorMessage = error?.message || "Failed to generate document";
+    const docTypeForError = docType || "unknown";
     
     if (errorMessage.includes("Template not found")) {
-      errorMessage = `Document template not found for type: ${docType}. Please contact support.`;
+      errorMessage = `Document template not found for type: ${docTypeForError}. Please contact support.`;
     } else if (errorMessage.includes("Template validation failed")) {
       errorMessage = `Document template validation failed. Please contact support.`;
     } else if (errorMessage.includes("Cannot read") || errorMessage.includes("undefined")) {

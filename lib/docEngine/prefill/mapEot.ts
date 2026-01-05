@@ -53,11 +53,12 @@ export function mapEot(
   commonData: CommonPrefillData,
   existingEotCount: number = 0
 ): EotPrefillData {
+  const completionDate = estimateCompletionDate(job);
   return {
     ...commonData,
     eotNumber: generateEotNumber(job.jobId || job.id || "", existingEotCount),
     contractReference: job.jobId || job.id || "",
-    originalCompletionDate: estimateCompletionDate(job),
+    originalCompletionDate: completionDate ?? undefined,
     delayCause: "", // Required, user must fill
     daysRequested: null, // Required
     supportingInfo: "",
