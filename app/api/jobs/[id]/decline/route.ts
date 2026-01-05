@@ -68,8 +68,8 @@ export async function POST(
     job.clientStatus = "declined";
     job.clientStatusUpdatedAt = now;
     job.clientDeclinedAt = now;
-    // Set to pending_confirmation - tradie must manually confirm to move to "cancelled"
-    job.jobStatus = "pending_confirmation";
+    // NOTE: Job status is NOT automatically changed.
+    // Tradie must manually update job status (e.g., to "cancelled") via the status control.
 
     await saveJob(job);
 

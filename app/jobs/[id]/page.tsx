@@ -812,21 +812,36 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 </div>
               </div>
 
-              {/* Pending Confirmation Banner */}
-              {job.jobStatus === "pending_confirmation" && (
-                <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              {/* Action Required Banner - when client has responded but job status not updated */}
+              {job.clientStatus === "accepted" && job.jobStatus === "pending" && (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <p className="font-semibold text-purple-900 mb-1">
-                        {job.clientStatus === "accepted" ? "Client Accepted" : "Client Declined"} - Your Confirmation Required
+                      <p className="font-semibold text-emerald-900 mb-1">
+                        Client Accepted! 🎉
                       </p>
-                      <p className="text-sm text-purple-700">
-                        {job.clientStatus === "accepted" 
-                          ? "The client has accepted this quote. Use \"Change status\" above to mark the job as Booked when ready."
-                          : "The client has declined this quote. Use \"Change status\" above to mark as Cancelled when ready."}
+                      <p className="text-sm text-emerald-700">
+                        Use &quot;Change status&quot; above to mark the job as Booked when ready to proceed.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {job.clientStatus === "declined" && job.jobStatus === "pending" && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="font-semibold text-rose-900 mb-1">
+                        Client Declined
+                      </p>
+                      <p className="text-sm text-rose-700">
+                        Use &quot;Change status&quot; above to mark as Cancelled, or follow up with the client.
                       </p>
                     </div>
                   </div>
