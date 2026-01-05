@@ -91,11 +91,11 @@ export async function PATCH(
     job.scheduleNotes = scheduleNotes !== undefined ? (scheduleNotes?.trim() || null) : job.scheduleNotes;
     job.updatedAt = new Date().toISOString();
 
-    // Auto-set workflow status to "booked" if scheduledStartAt is set and job is still pending
-    // This helps tradies track that a job has been scheduled
-    if (job.scheduledStartAt && job.jobStatus === "pending") {
-      job.jobStatus = "booked";
-    }
+    // NOTE: Adding a schedule does NOT change job status.
+    // Schedule represents proposed availability for client review.
+    // Job status only changes to "booked" when:
+    // 1. Client accepts the quote (moves to pending_confirmation)
+    // 2. Tradie manually confirms by setting status to "booked"
 
     await saveJob(job);
 
