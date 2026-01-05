@@ -3,10 +3,15 @@
  * 
  * Renders a RenderModel to PDF using the existing PdfDocument class.
  * Optimized for Australian construction industry standards.
+ * 
+ * Supports two audiences:
+ * - INTERNAL: Shows AI/OVIS warnings and disclaimers (for drafts)
+ * - CLIENT: Professional client-facing export with business header, no AI warnings
  */
 
-import { PdfDocument } from "../pdfGenerator";
-import type { RenderModel, RenderSection, RenderField, RenderTable } from "./types";
+import { PdfDocument, PDF_CONFIG } from "../pdfGenerator";
+import type { RenderModel, RenderSection, RenderField, RenderTable, IssuerProfile, DocumentAudience } from "./types";
+import { formatABN, formatBusinessAddress } from "./validateIssuer";
 
 /**
  * Format date in Australian format (DD/MM/YYYY)
@@ -41,47 +46,97 @@ function formatAustralianCurrency(value: string | number | null | undefined): st
   }).format(num);
 }
 
+// formatABN imported from validateIssuer
+
 /**
- * Format ABN in Australian format (XX XXX XXX XXX)
+ * Options for rendering a document to PDF
  */
-function formatABN(abn: string | null | undefined): string {
-  if (!abn) return "";
-  const cleaned = abn.replace(/\s/g, "");
-  if (cleaned.length === 11) {
-    return `${cleaned.slice(0, 2)} ${cleaned.slice(2, 5)} ${cleaned.slice(5, 8)} ${cleaned.slice(8, 11)}`;
-  }
-  return abn;
+export interface RenderPdfOptions {
+  /** Whether the document has been approved (legacy parameter) */
+  approved?: boolean;
+  /** Document audience: INTERNAL (with warnings) or CLIENT (professional, no AI warnings) */
+  audience?: DocumentAudience;
+  /** Issuer profile for business header (required for CLIENT audience) */
+  issuer?: IssuerProfile | null;
+  /** Issued record ID (for client exports) */
+  issuedRecordId?: string | null;
+  /** Issue timestamp (for client exports) */
+  issuedAt?: string | null;
 }
 
 /**
  * Render a document model to PDF
  * @param model - The render model to convert to PDF
- * @param approved - Whether the document has been approved (if true, warnings/disclaimers are excluded)
+ * @param options - Rendering options including audience and issuer
  */
-export function renderModelToPdf(model: RenderModel, approved: boolean = false): PdfDocument {
+export function renderModelToPdf(
+  model: RenderModel, 
+  optionsOrApproved: boolean | RenderPdfOptions = false
+): PdfDocument {
+  // Handle legacy boolean parameter for backwards compatibility
+  const options: RenderPdfOptions = typeof optionsOrApproved === "boolean"
+    ? { approved: optionsOrApproved }
+    : optionsOrApproved;
+
+  const {
+    approved = false,
+    audience = "INTERNAL",
+    issuer = null,
+    issuedRecordId = null,
+    issuedAt = null,
+  } = options;
+
+  // For CLIENT audience, we never show AI warnings
+  // For INTERNAL, we show warnings unless explicitly approved
+  const showWarnings = audience === "INTERNAL" && !approved;
+  const isClientExport = audience === "CLIENT";
+
   const pdf = new PdfDocument();
+  const doc = pdf.getDoc();
+
+  // For CLIENT exports, add business identity header
+  if (isClientExport && issuer) {
+    renderBusinessHeader(pdf, issuer);
+    pdf.addSpace(4);
+  }
 
   // Title with better formatting
   pdf.addTitle(model.title);
   pdf.addSeparator();
 
   // Record ID and timestamp metadata (Australian format)
-  const timestamp = new Date(model.timestamp).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const displayRecordId = issuedRecordId || model.recordId;
+  const displayTimestamp = issuedAt 
+    ? new Date(issuedAt).toLocaleDateString("en-AU", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : new Date(model.timestamp).toLocaleDateString("en-AU", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
   
-  pdf.addMetadata([
-    { label: "Record ID", value: model.recordId },
-    { label: "Generated", value: timestamp },
-  ]);
+  const metadata: { label: string; value: string }[] = [
+    { label: isClientExport ? "Document ID" : "Record ID", value: displayRecordId },
+  ];
+  
+  if (isClientExport) {
+    metadata.push({ label: "Issued", value: displayTimestamp });
+  } else {
+    metadata.push({ label: "Generated", value: displayTimestamp });
+  }
 
-  // Only show disclaimer/warnings if not approved
-  if (!approved) {
-    // Disclaimer (warning box)
+  pdf.addMetadata(metadata);
+
+  // Only show disclaimer/warnings for INTERNAL audience when not approved
+  if (showWarnings) {
+    // Disclaimer (warning box) - AI warning
     pdf.addAiWarning();
     pdf.addParagraph(model.disclaimer);
     pdf.addSeparator();
@@ -92,36 +147,197 @@ export function renderModelToPdf(model: RenderModel, approved: boolean = false):
     renderSectionToPdf(pdf, section, index === 0);
   });
 
-  // Set custom footer with Record ID and disclaimer on every page
-  pdf.setFooter((doc, pageNum, totalPages) => {
+  // Set custom footer based on audience
+  if (isClientExport && issuer) {
+    // Professional footer for client exports - NO AI/OVIS language
+    renderClientFooter(pdf, issuer, displayRecordId, displayTimestamp);
+  } else {
+    // Internal footer with warnings if applicable
+    renderInternalFooter(pdf, model, displayRecordId, displayTimestamp, showWarnings);
+  }
+
+  return pdf;
+}
+
+/**
+ * Render business identity header for client-facing PDFs
+ * NO AI/OVIS warnings - professional business header only
+ */
+function renderBusinessHeader(pdf: PdfDocument, issuer: IssuerProfile): void {
+  const doc = pdf.getDoc();
+  const pageWidth = doc.internal.pageSize.width;
+  const marginLeft = PDF_CONFIG.marginLeft;
+  const marginRight = PDF_CONFIG.marginRight;
+  const maxWidth = pageWidth - marginLeft - marginRight;
+
+  // Header background (subtle)
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.rect(0, 0, pageWidth, 45, "F");
+  
+  // Bottom border
+  doc.setDrawColor(226, 232, 240); // slate-200
+  doc.setLineWidth(0.5);
+  doc.line(0, 45, pageWidth, 45);
+
+  let yPos = 12;
+
+  // Business legal name (large)
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 23, 42); // slate-900
+  doc.text(issuer.legalName || "Business Name", marginLeft, yPos);
+  yPos += 6;
+
+  // Trading name (if different)
+  if (issuer.tradingName && issuer.tradingName !== issuer.legalName) {
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.text(`Trading as: ${issuer.tradingName}`, marginLeft, yPos);
+    yPos += 4;
+  }
+
+  // ABN (formatted)
+  if (issuer.abn) {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text(`ABN: ${formatABN(issuer.abn)}`, marginLeft, yPos);
+    yPos += 4;
+  }
+
+  // Contact info on right side
+  let rightY = 12;
+  const rightX = pageWidth - marginRight;
+
+  // Phone
+  if (issuer.phone) {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.text(issuer.phone, rightX, rightY, { align: "right" });
+    rightY += 4;
+  }
+
+  // Email
+  if (issuer.email) {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.text(issuer.email, rightX, rightY, { align: "right" });
+    rightY += 4;
+  }
+
+  // Address
+  const fullAddress = formatBusinessAddress(issuer);
+  if (fullAddress) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139); // slate-500
+    const addressLines = doc.splitTextToSize(fullAddress, maxWidth / 2);
+    addressLines.forEach((line: string) => {
+      doc.text(line, rightX, rightY, { align: "right" });
+      rightY += 3.5;
+    });
+  }
+
+  // Set Y position after header
+  pdf.setY(55);
+}
+
+/**
+ * Render professional footer for client-facing PDFs
+ * NO AI/OVIS disclaimers - just professional issuer info
+ */
+function renderClientFooter(
+  pdf: PdfDocument, 
+  issuer: IssuerProfile,
+  recordId: string,
+  timestamp: string
+): void {
+  const doc = pdf.getDoc();
+  const totalPages = doc.getNumberOfPages();
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
+
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    
+    // Footer line
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.setLineWidth(0.3);
+    doc.line(PDF_CONFIG.marginLeft, pageHeight - 18, pageWidth - PDF_CONFIG.marginRight, pageHeight - 18);
+
+    // Issued by line
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text(
+      `Issued by ${issuer.legalName}`,
+      pageWidth / 2,
+      pageHeight - 13,
+      { align: "center" }
+    );
+    
+    // Document ID and page number
+    doc.text(
+      `Document ID: ${recordId} | ${timestamp} | Page ${i} of ${totalPages}`,
+      pageWidth / 2,
+      pageHeight - 9,
+      { align: "center" }
+    );
+  }
+}
+
+/**
+ * Render footer for internal/draft PDFs
+ * Includes AI/OVIS warnings when appropriate
+ */
+function renderInternalFooter(
+  pdf: PdfDocument,
+  model: RenderModel,
+  recordId: string,
+  timestamp: string,
+  showWarnings: boolean
+): void {
+  const doc = pdf.getDoc();
+  const totalPages = doc.getNumberOfPages();
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
+
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 116, 139); // slate-500
     
-    // Only show disclaimer if not approved
-    if (!approved) {
+    // Only show disclaimer if warnings are enabled
+    if (showWarnings) {
+      // OVIS line
+      doc.text(
+        "OVIS Checked Output - OMNEXORA Checked Intelligence Systems",
+        pageWidth / 2,
+        pageHeight - 20,
+        { align: "center" }
+      );
+      
       // Disclaimer line
       doc.text(
         "Draft generated from user inputs. Review required. Not certified or verified.",
-        doc.internal.pageSize.width / 2,
-        doc.internal.pageSize.height - 15,
+        pageWidth / 2,
+        pageHeight - 15,
         { align: "center" }
       );
     }
     
     // Record ID and timestamp
     doc.text(
-      `Record ID: ${model.recordId} | Generated: ${timestamp} | Page ${pageNum} of ${totalPages}`,
-      doc.internal.pageSize.width / 2,
-      doc.internal.pageSize.height - 10,
+      `Record ID: ${recordId} | Generated: ${timestamp} | Page ${i} of ${totalPages}`,
+      pageWidth / 2,
+      pageHeight - 10,
       { align: "center" }
     );
-  });
-
-  // Add standard footers (will use our custom footer)
-  pdf.addStandardFooters();
-
-  return pdf;
+  }
 }
 
 function renderSectionToPdf(pdf: PdfDocument, section: RenderSection, isFirstSection: boolean = false): void {

@@ -5,9 +5,10 @@ import { getJobById } from "@/lib/jobs";
 import { loadTemplate } from "@/lib/docEngine/loadTemplate";
 import { generateRenderModel } from "@/lib/docEngine/renderModel";
 import { renderModelToPdf } from "@/lib/docEngine/renderPdf";
-import type { DocType } from "@/lib/docEngine/types";
+import type { DocType, DocumentAudience, IssuerProfile } from "@/lib/docEngine/types";
 import { featureFlags } from "@/lib/featureFlags";
 import { hasDocumentFeatureAccess } from "@/lib/documentAccess";
+import { extractIssuerFromUser, validateIssuerForDoc } from "@/lib/docEngine/validateIssuer";
 
 /**
  * POST /api/docs/render
@@ -46,7 +47,16 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { jobId, docType, recordId, renderModel } = body;
+    const { jobId, docType, recordId, renderModel, audience = "INTERNAL" } = body;
+    
+    // Validate audience parameter
+    const validAudiences: DocumentAudience[] = ["INTERNAL", "CLIENT"];
+    if (!validAudiences.includes(audience)) {
+      return NextResponse.json(
+        { error: `Invalid audience. Must be one of: ${validAudiences.join(", ")}` },
+        { status: 400 }
+      );
+    }
 
     if (!jobId || !docType) {
       return NextResponse.json(
@@ -118,11 +128,18 @@ export async function POST(request: NextRequest) {
           );
         }
 
-    // Check if document is approved (load from draft if available)
+    // Load draft info and issuer data
     let isApproved = false;
+    let draftStatus = "DRAFT";
+    let issuedRecordId: string | null = null;
+    let issuedAt: string | null = null;
+    let issuerData: IssuerProfile | null = null;
+    
     try {
       const { getPrisma } = await import("@/lib/prisma");
       const prisma = getPrisma();
+      
+      // Load draft with all lifecycle fields
       const draft = await prisma.documentDraft.findUnique({
         where: {
           jobId_docType: {
@@ -130,9 +147,76 @@ export async function POST(request: NextRequest) {
             docType,
           },
         },
-        select: { approved: true },
+        select: { 
+          approved: true,
+          status: true,
+          issuedRecordId: true,
+          issuedAt: true,
+          issuerDataJson: true,
+        },
       });
-      isApproved = draft?.approved ?? false;
+      
+      if (draft) {
+        isApproved = draft.approved ?? false;
+        draftStatus = draft.status ?? "DRAFT";
+        issuedRecordId = draft.issuedRecordId ?? null;
+        issuedAt = draft.issuedAt?.toISOString() ?? null;
+        
+        // Parse issuer data if available
+        if (draft.issuerDataJson) {
+          try {
+            issuerData = JSON.parse(draft.issuerDataJson);
+          } catch {
+            issuerData = null;
+          }
+        }
+      }
+      
+      // For CLIENT audience, require ISSUED status OR load issuer from user profile
+      if (audience === "CLIENT") {
+        if (draftStatus !== "ISSUED") {
+          // If not issued, check if we can auto-issue (user has valid issuer profile)
+          const prismaUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: {
+              email: true,
+              businessName: true,
+              tradingName: true,
+              abn: true,
+              businessAddressLine1: true,
+              businessAddressLine2: true,
+              businessSuburb: true,
+              businessState: true,
+              businessPostcode: true,
+              businessPhone: true,
+              businessLogoUrl: true,
+              gstRegistered: true,
+              serviceArea: true,
+            },
+          });
+          
+          if (prismaUser) {
+            const extractedIssuer = extractIssuerFromUser(prismaUser);
+            const validation = validateIssuerForDoc(docType as DocType, extractedIssuer, false);
+            
+            if (validation.canIssue) {
+              issuerData = extractedIssuer;
+            } else {
+              return NextResponse.json(
+                { 
+                  error: "Cannot generate client PDF: missing required business details",
+                  validation: {
+                    missingRequired: validation.missingRequired,
+                    missingRecommended: validation.missingRecommended,
+                  },
+                  redirectTo: "/settings/business-profile",
+                },
+                { status: 400 }
+              );
+            }
+          }
+        }
+      }
     } catch (error) {
       console.warn("[docs/render] Failed to check approval status:", error);
     }
@@ -179,18 +263,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Render to PDF (exclude warnings if approved)
-    const pdf = renderModelToPdf(finalRenderModel, isApproved);
+    // Render to PDF with audience-based options
+    const pdf = renderModelToPdf(finalRenderModel, {
+      approved: isApproved,
+      audience: audience as DocumentAudience,
+      issuer: issuerData,
+      issuedRecordId: issuedRecordId,
+      issuedAt: issuedAt,
+    });
 
     // Return PDF as blob
     const blob = pdf.getBlob();
     const arrayBuffer = await blob.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Use issued record ID for filename if available (for client exports)
+    const filenameId = (audience === "CLIENT" && issuedRecordId) 
+      ? issuedRecordId 
+      : finalRenderModel.recordId;
+
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${docType.toLowerCase()}-${finalRenderModel.recordId}.pdf"`,
+        "Content-Disposition": `attachment; filename="${docType.toLowerCase()}-${filenameId}.pdf"`,
       },
     });
   } catch (error) {

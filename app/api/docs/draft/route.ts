@@ -92,6 +92,18 @@ export async function GET(request: NextRequest) {
       dataJson = null;
     }
 
+    // Parse issuer data if present
+    let issuerData = null;
+    if (draft.issuerDataJson) {
+      try {
+        issuerData = typeof draft.issuerDataJson === "string"
+          ? JSON.parse(draft.issuerDataJson)
+          : draft.issuerDataJson;
+      } catch {
+        issuerData = null;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       draft: {
@@ -101,6 +113,12 @@ export async function GET(request: NextRequest) {
         data: dataJson,
         approved: draft.approved ?? false,
         approvedAt: draft.approvedAt?.toISOString() ?? null,
+        // Lifecycle status fields
+        status: draft.status ?? "DRAFT",
+        confirmedAt: draft.confirmedAt?.toISOString() ?? null,
+        issuedAt: draft.issuedAt?.toISOString() ?? null,
+        issuedRecordId: draft.issuedRecordId ?? null,
+        issuer: issuerData,
         createdAt: draft.createdAt.toISOString(),
         updatedAt: draft.updatedAt.toISOString(),
       },

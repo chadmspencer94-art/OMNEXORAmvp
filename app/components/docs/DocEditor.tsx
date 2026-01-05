@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Save, AlertCircle, Loader2, RefreshCw, Copy, Mail, Download, Lock, Check } from "lucide-react";
+import { X, Save, AlertCircle, Loader2, RefreshCw, Copy, Mail, Download, Lock, Check, FileCheck, Building2 } from "lucide-react";
 import DocPreview from "./DocPreview";
-import type { RenderModel, DocType, RenderSection, RenderField, RenderTable } from "@/lib/docEngine/types";
+import type { RenderModel, DocType, RenderSection, RenderField, RenderTable, DocumentStatus, IssuerProfile } from "@/lib/docEngine/types";
 import { featureFlags } from "@/lib/featureFlags";
 import { hasDocumentFeatureAccess } from "@/lib/documentAccess";
 import type { SafeUser } from "@/lib/auth";
@@ -56,6 +56,21 @@ export default function DocEditor({
   const [error, setError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   
+  // Document lifecycle state
+  const [docStatus, setDocStatus] = useState<DocumentStatus>("DRAFT");
+  const [issuedRecordId, setIssuedRecordId] = useState<string | null>(null);
+  const [issuedAt, setIssuedAt] = useState<string | null>(null);
+  const [issuer, setIssuer] = useState<IssuerProfile | null>(null);
+  
+  // Issue modal state
+  const [showIssueModal, setShowIssueModal] = useState(false);
+  const [issuing, setIssuing] = useState(false);
+  const [issueValidation, setIssueValidation] = useState<{
+    missingRequired: string[];
+    missingRecommended: string[];
+    warnings: string[];
+  } | null>(null);
+  
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasUnsavedChanges = useRef(false);
 
@@ -85,6 +100,11 @@ export default function DocEditor({
         if (draftData.draft?.data) {
           setModel(draftData.draft.data);
           setApproved(draftData.draft.approved ?? false);
+          // Set lifecycle state
+          setDocStatus(draftData.draft.status ?? "DRAFT");
+          setIssuedRecordId(draftData.draft.issuedRecordId ?? null);
+          setIssuedAt(draftData.draft.issuedAt ?? null);
+          setIssuer(draftData.draft.issuer ?? null);
           setLoading(false);
           return;
         }
@@ -325,6 +345,58 @@ export default function DocEditor({
     }
   };
 
+  // Issue document for client export
+  const handleIssue = async () => {
+    if (!model) return;
+    
+    setIssuing(true);
+    setIssueValidation(null);
+    
+    try {
+      const response = await fetch(`/api/docs/issue`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId,
+          docType,
+          strict: true, // Require all mandatory fields
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        // Check if it's a validation error with missing fields
+        if (data.validation) {
+          setIssueValidation(data.validation);
+        }
+        throw new Error(data.error || "Failed to issue document");
+      }
+
+      // Success - update state
+      setDocStatus("ISSUED");
+      setIssuedRecordId(data.draft.issuedRecordId);
+      setIssuedAt(data.draft.issuedAt);
+      setIssuer(data.issuer);
+      setApproved(true);
+      setShowIssueModal(false);
+      hasUnsavedChanges.current = false;
+      
+      // Show warnings if any
+      if (data.validation?.warnings?.length > 0) {
+        alert(`Document issued successfully!\n\nNote: ${data.validation.warnings.join("\n")}`);
+      }
+    } catch (err: any) {
+      console.error("Failed to issue:", err);
+      // Don't close modal on error - show the validation feedback
+      if (!issueValidation) {
+        setError(err?.message || "Failed to issue document");
+      }
+    } finally {
+      setIssuing(false);
+    }
+  };
+
   // Convert RenderModel to plain text for copying/emailing (excludes warnings if approved)
   const modelToText = useCallback((model: RenderModel, isApproved: boolean): string => {
     const lines: string[] = [];
@@ -426,8 +498,8 @@ export default function DocEditor({
     window.location.href = mailtoUrl;
   }, [model, hasAccess, accessMessage, clientEmail, clientName, jobTitle, address, modelToText, approved]);
 
-  // Download PDF
-  const handleDownloadPdf = useCallback(async () => {
+  // Download PDF (internal draft)
+  const handleDownloadPdf = useCallback(async (audience: "INTERNAL" | "CLIENT" = "INTERNAL") => {
     if (!hasAccess) {
       alert(accessMessage);
       return;
@@ -435,6 +507,12 @@ export default function DocEditor({
 
     if (!model) {
       alert("No document content to download");
+      return;
+    }
+
+    // For CLIENT export, must be issued or have valid issuer profile
+    if (audience === "CLIENT" && docStatus !== "ISSUED") {
+      setShowIssueModal(true);
       return;
     }
 
@@ -448,6 +526,7 @@ export default function DocEditor({
           docType,
           recordId: model.recordId,
           renderModel: model,
+          audience,
         }),
       });
 
@@ -460,7 +539,8 @@ export default function DocEditor({
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${docType.toLowerCase()}-${model.recordId}.pdf`;
+      const filenameId = (audience === "CLIENT" && issuedRecordId) ? issuedRecordId : model.recordId;
+      a.download = `${docType.toLowerCase()}-${filenameId}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -471,7 +551,7 @@ export default function DocEditor({
     } finally {
       setDownloading(false);
     }
-  }, [model, hasAccess, accessMessage, jobId, docType]);
+  }, [model, hasAccess, accessMessage, jobId, docType, docStatus, issuedRecordId]);
 
   useEffect(() => {
     return () => {
@@ -540,7 +620,13 @@ export default function DocEditor({
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-semibold text-slate-900">{model.title}</h2>
-          {approved ? (
+          {/* Document status badge */}
+          {docStatus === "ISSUED" ? (
+            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded flex items-center gap-1">
+              <FileCheck className="w-3 h-3" />
+              Issued for Client
+            </span>
+          ) : approved ? (
             <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
               Approved
             </span>
@@ -606,12 +692,12 @@ export default function DocEditor({
             )}
           </button>
           
-          {/* Download PDF Button - Requires access */}
+          {/* Download Internal PDF Button */}
           <button
-            onClick={handleDownloadPdf}
+            onClick={() => handleDownloadPdf("INTERNAL")}
             disabled={!hasAccess || downloading || !model}
-            className="px-3 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            title={!hasAccess ? accessMessage : "Download PDF"}
+            className="px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            title={!hasAccess ? accessMessage : "Download draft PDF (internal use)"}
           >
             {downloading ? (
               <>
@@ -621,17 +707,40 @@ export default function DocEditor({
             ) : !hasAccess ? (
               <>
                 <Lock className="w-4 h-4" />
-                PDF
+                Draft PDF
               </>
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                PDF
+                Draft PDF
               </>
             )}
           </button>
           
-          {!approved && (
+          {/* Issue / Export Client PDF Button */}
+          {docStatus === "ISSUED" ? (
+            <button
+              onClick={() => handleDownloadPdf("CLIENT")}
+              disabled={!hasAccess || downloading || !model}
+              className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Export client-facing PDF"
+            >
+              <FileCheck className="w-4 h-4" />
+              Client PDF
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowIssueModal(true)}
+              disabled={!hasAccess || !model}
+              className="px-3 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Issue document for client export"
+            >
+              <Building2 className="w-4 h-4" />
+              Issue for Client
+            </button>
+          )}
+          
+          {!approved && docStatus !== "ISSUED" && (
             <button
               onClick={handleApprove}
               disabled={approving}
@@ -709,12 +818,146 @@ export default function DocEditor({
         />
       </div>
 
-      {/* Footer Disclaimer - Only show if not approved */}
-      {!approved && (
+      {/* Footer Disclaimer - Only show if not approved and not issued */}
+      {!approved && docStatus !== "ISSUED" && (
         <div className="bg-slate-50 border-t border-slate-200 px-6 py-4">
           <p className="text-xs text-slate-600 text-center">
             {model.disclaimer}
           </p>
+        </div>
+      )}
+      
+      {/* Issued info footer */}
+      {docStatus === "ISSUED" && issuedRecordId && (
+        <div className="bg-blue-50 border-t border-blue-200 px-6 py-4">
+          <p className="text-xs text-blue-700 text-center">
+            Document issued for client export • ID: {issuedRecordId}
+            {issuedAt && ` • Issued: ${new Date(issuedAt).toLocaleString("en-AU")}`}
+          </p>
+        </div>
+      )}
+
+      {/* Issue Document Modal */}
+      {showIssueModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Issue Document for Client</h3>
+                  <p className="text-sm text-slate-500">Create a professional client-facing export</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowIssueModal(false);
+                  setIssueValidation(null);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="px-6 py-4">
+              {/* Validation Errors */}
+              {issueValidation && issueValidation.missingRequired.length > 0 && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-red-900 mb-2">Missing Required Business Details</p>
+                      <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                        {issueValidation.missingRequired.map((field, i) => (
+                          <li key={i}>{field}</li>
+                        ))}
+                      </ul>
+                      <a 
+                        href="/settings/business-profile" 
+                        className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-red-700 hover:text-red-800"
+                      >
+                        Complete Business Profile →
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Warning about issuing */}
+              {(!issueValidation || issueValidation.missingRequired.length === 0) && (
+                <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-900">
+                    <strong>Important:</strong> You are issuing this document on behalf of your business. 
+                    Once issued, it represents your business and should be accurate, complete, and suitable for the client.
+                  </p>
+                </div>
+              )}
+              
+              {/* What happens when issued */}
+              <div className="space-y-3 text-sm text-slate-600">
+                <p className="font-medium text-slate-900">When you issue this document:</p>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span>Your business details appear as the document issuer</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span>A unique document ID is generated for tracking</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span>The exported PDF will be professional and client-ready</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span>Draft warnings are removed from client exports</span>
+                  </li>
+                </ul>
+              </div>
+              
+              {/* Recommended fields warning */}
+              {issueValidation && issueValidation.missingRecommended.length > 0 && (
+                <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <p className="text-xs text-slate-600">
+                    <strong>Tip:</strong> Consider adding {issueValidation.missingRecommended.join(", ")} to your business profile for a more professional appearance.
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowIssueModal(false);
+                  setIssueValidation(null);
+                }}
+                className="px-4 py-2 text-sm text-slate-700 hover:text-slate-900"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleIssue}
+                disabled={issuing || (issueValidation !== null && issueValidation.missingRequired.length > 0)}
+                className="px-4 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {issuing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Issuing...
+                  </>
+                ) : (
+                  <>
+                    <FileCheck className="w-4 h-4" />
+                    Confirm & Issue
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

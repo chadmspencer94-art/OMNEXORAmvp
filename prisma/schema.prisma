@@ -55,6 +55,15 @@ model User {
   serviceAreaCity     String?
   serviceAreaRadiusKm Int?
   
+  // Business Address (for document issuer headers)
+  businessAddressLine1 String?
+  businessAddressLine2 String?
+  businessSuburb       String?
+  businessState        String?
+  businessPostcode     String?
+  businessPhone        String?
+  businessLogoUrl      String?
+  
   // Business Profile fields (for quoting and job matching)
   primaryTrade        String?   // e.g. "Painter", "Plumber"
   doesResidential     Boolean   @default(true)
@@ -541,11 +550,22 @@ model DocumentDraft {
   dataJson  String   // JSON string containing the full draft data (RenderModel)
   approved  Boolean  @default(false) // Whether user has approved/reviewed the document
   approvedAt DateTime? // When the document was approved
+  
+  // Document lifecycle: DRAFT -> CONFIRMED -> ISSUED
+  status          String   @default("DRAFT")  // DRAFT | CONFIRMED | ISSUED
+  confirmedAt     DateTime?  // When content was confirmed by user
+  issuedAt        DateTime?  // When document was issued for client export
+  issuedRecordId  String?    // Unique record ID for issued document
+  
+  // Issuer info snapshot (captured at issue time for audit trail)
+  issuerDataJson  String?    // JSON snapshot of business profile at issue time
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
   @@unique([jobId, docType])
   @@index([jobId])
   @@index([jobId, docType])
+  @@index([status])
   @@map("document_drafts")
 }

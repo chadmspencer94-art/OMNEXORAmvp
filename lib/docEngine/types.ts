@@ -146,3 +146,55 @@ export interface JobData {
   [key: string]: any; // Allow additional fields
 }
 
+/**
+ * Document lifecycle status
+ */
+export type DocumentStatus = "DRAFT" | "CONFIRMED" | "ISSUED";
+
+/**
+ * Document audience for rendering
+ * - INTERNAL: Shows AI/OVIS warnings and disclaimers
+ * - CLIENT: Professional client-facing export with business header, no AI warnings
+ */
+export type DocumentAudience = "INTERNAL" | "CLIENT";
+
+/**
+ * Business issuer profile for document headers
+ */
+export interface IssuerProfile {
+  legalName: string;          // Required: Business legal name
+  tradingName?: string;       // Optional: Trading as / DBA name
+  abn?: string;               // Optional but required for tax invoices
+  email?: string;             // Business contact email
+  phone?: string;             // Business contact phone
+  addressLine1?: string;      // Street address
+  addressLine2?: string;      // Unit/suite/building
+  suburb?: string;            // City/suburb
+  state?: string;             // State/province
+  postcode?: string;          // Postal code
+  logoUrl?: string;           // Business logo URL
+  gstRegistered?: boolean;    // Whether registered for GST
+}
+
+/**
+ * Validation result for issuer profile
+ */
+export interface IssuerValidationResult {
+  isValid: boolean;
+  missingRequired: string[];      // Fields that must be filled
+  missingRecommended: string[];   // Fields that should be filled
+  warnings: string[];             // Warning messages
+  canIssue: boolean;              // Whether document can be issued
+}
+
+/**
+ * Extended RenderModel with issuer and audience info
+ */
+export interface RenderModelExtended extends RenderModel {
+  issuer?: IssuerProfile;
+  audience?: DocumentAudience;
+  status?: DocumentStatus;
+  issuedAt?: string;
+  issuedRecordId?: string;
+}
+

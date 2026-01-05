@@ -109,7 +109,7 @@ export default function VerificationDetailView({
         {verification.status === "verified" && (
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg font-medium">
             <CheckCircle className="w-5 h-5" />
-            Structured
+            Verified
           </span>
         )}
         {verification.status === "pending" && (
