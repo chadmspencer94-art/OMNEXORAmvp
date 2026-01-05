@@ -124,7 +124,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
               Filtered by client: {clientName || clientEmailFilter}
             </p>
             <p className="text-sm text-blue-700 mt-1">
-              Showing {jobsResult.totalItems} job{jobsResult.totalItems === 1 ? "" : "s"} for this client
+              Showing {jobsResult.totalItems} job pack{jobsResult.totalItems === 1 ? "" : "s"} for this client
             </p>
           </div>
           <Link
@@ -140,15 +140,15 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Jobs</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Job Packs</h1>
           <p className="mt-2 text-slate-600">
             {jobsResult.totalItems === 0
               ? clientEmailFilter
-                ? "No jobs found for this client."
+                ? "No job packs found for this client."
                 : "Create your first AI-powered job pack."
               : clientEmailFilter
-                ? `Showing ${jobsResult.totalItems} job${jobsResult.totalItems === 1 ? "" : "s"} for ${clientName || clientEmailFilter}`
-                : `You have ${jobsResult.totalItems} job${jobsResult.totalItems === 1 ? "" : "s"}.`}
+                ? `Showing ${jobsResult.totalItems} job pack${jobsResult.totalItems === 1 ? "" : "s"} for ${clientName || clientEmailFilter}`
+                : `You have ${jobsResult.totalItems} job pack${jobsResult.totalItems === 1 ? "" : "s"}.`}
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
@@ -157,7 +157,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-xl transition-colors shadow-lg shadow-amber-500/25"
           >
             <Plus className="w-5 h-5" />
-            <span>Create New Job</span>
+            <span>Create Job Pack</span>
           </Link>
         </div>
       </div>
@@ -168,7 +168,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-200">
             <ClipboardList className="h-7 w-7 text-slate-500" />
           </div>
-          <h2 className="text-lg font-semibold text-slate-900">No jobs yet</h2>
+          <h2 className="text-lg font-semibold text-slate-900">No job packs yet</h2>
           <p className="mt-2 max-w-sm text-sm text-slate-600">
             Create your first AI-powered job pack to scope a project in seconds instead of hours.
           </p>
@@ -177,7 +177,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span>Create your first job</span>
+            <span>Create your first job pack</span>
           </Link>
         </div>
       ) : (

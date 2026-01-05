@@ -9,7 +9,7 @@ import EmailVerificationBanner from "@/app/components/EmailVerificationBanner";
 import DevVerifyButton from "./DevVerifyButton";
 import OnboardingCard from "@/app/components/OnboardingCard";
 import GettingStartedCard from "./GettingStartedCard";
-import StructuredBadge from "@/app/components/StructuredBadge";
+import VerifiedBadge from "@/app/components/StructuredBadge";
 import FeedbackButton from "@/app/components/FeedbackButton";
 import AnalyticsSection from "./AnalyticsSection";
 import MatchingJobsSection from "./MatchingJobsSection";
@@ -302,7 +302,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3 flex-wrap">
             <span>G&apos;day, {displayName}! 👋</span>
-            {isVerified && <StructuredBadge />}
+                {isVerified && <VerifiedBadge />}
           </h1>
           <p className="mt-2 text-slate-600">
             {totalJobs === 0
@@ -328,7 +328,7 @@ export default async function DashboardPage() {
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          {isTradie ? "Create New Job" : "Post a Job"}
+          Create Job Pack
         </Link>
       </div>
 

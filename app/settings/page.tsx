@@ -5,39 +5,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { featureFlags } from "@/lib/featureFlags";
 
-interface PricingSettings {
-  hourlyRate: number | null;
-  dayRate: number | null;
-  materialMarkupPercent: number | null;
-  roughEstimateOnly: boolean | null;
-}
-
 interface UserInfo {
   email: string;
   emailVerifiedAt: string | null;
+  verificationStatus: string | null;
+  role: string | null;
 }
 
 export default function SettingsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [pricingSettings, setPricingSettings] = useState<PricingSettings>({
-    hourlyRate: null,
-    dayRate: null,
-    materialMarkupPercent: null,
-    roughEstimateOnly: null,
-  });
 
-  // Default values (used when displaying empty fields)
-  const DEFAULT_HOURLY_RATE = 50;
-  const DEFAULT_DAY_RATE = null;
-  const DEFAULT_MATERIAL_MARKUP = 0;
-  const DEFAULT_ROUGH_ESTIMATE_ONLY = true;
-
-  // Fetch current settings on mount
+  // Fetch current user info on mount
   useEffect(() => {
     async function fetchSettings() {
       try {
@@ -47,12 +28,8 @@ export default function SettingsPage() {
           setUserInfo({
             email: data.user.email,
             emailVerifiedAt: data.user.emailVerifiedAt || null,
-          });
-          setPricingSettings({
-            hourlyRate: data.user.hourlyRate ?? null,
-            dayRate: data.user.dayRate ?? null,
-            materialMarkupPercent: data.user.materialMarkupPercent ?? null,
-            roughEstimateOnly: data.user.roughEstimateOnly ?? null,
+            verificationStatus: data.user.verificationStatus || null,
+            role: data.user.role || null,
           });
         } else if (response.status === 401) {
           router.push("/login");
@@ -65,50 +42,6 @@ export default function SettingsPage() {
     }
     fetchSettings();
   }, [router]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    
-    if (type === "checkbox") {
-      setPricingSettings((prev) => ({ ...prev, [name]: checked }));
-    } else {
-      // For number inputs, allow empty string (will be converted to null)
-      const numValue = value === "" ? null : Number(value);
-      setPricingSettings((prev) => ({ ...prev, [name]: numValue }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess(false);
-    setIsSaving(true);
-
-    try {
-      const response = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pricingSettings),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "Failed to save settings");
-        setIsSaving(false);
-        return;
-      }
-
-      setSuccess(true);
-      setIsSaving(false);
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(false), 3000);
-    } catch {
-      setError("An unexpected error occurred");
-      setIsSaving(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -131,15 +64,74 @@ export default function SettingsPage() {
           </svg>
           Back to Dashboard
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Settings</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">
+          {userInfo?.role === "client" ? "Client Profile" : "Settings"}
+        </h1>
         <p className="text-slate-600">
-          Manage your account settings and preferences.
+          {userInfo?.role === "client" 
+            ? "Manage your client profile and account settings."
+            : "Manage your account settings and preferences for the Australian construction industry."}
         </p>
       </div>
 
+      {/* Navigation Tabs - Different for clients vs tradies */}
+      {userInfo?.role !== "client" && (
+        <div className="mb-6 flex gap-1 border-b border-slate-200 overflow-x-auto">
+          <Link
+            href="/settings/business-profile"
+            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
+          >
+            Business Profile
+          </Link>
+          <Link
+            href="/settings"
+            className="px-4 py-2.5 text-sm font-medium text-amber-600 border-b-2 border-amber-500 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
+          >
+            Settings
+          </Link>
+          {featureFlags.showRateTemplates && (
+            <Link
+              href="/settings/rates"
+              className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
+            >
+              Rate Templates
+            </Link>
+          )}
+          {featureFlags.showMaterials && (
+            <Link
+              href="/settings/materials"
+              className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
+            >
+              Materials
+            </Link>
+          )}
+          <Link
+            href="/settings/verification"
+            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
+          >
+            Verification
+          </Link>
+          {featureFlags.showSignature && (
+            <Link
+              href="/settings/signature"
+              className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
+            >
+              Signature
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+        </div>
+      )}
+
       {/* Account Info Card */}
       {userInfo && (
-        <div className="mb-6 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Account</h2>
           <div className="space-y-3">
             <div>
@@ -156,7 +148,10 @@ export default function SettingsPage() {
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
-                      Not structured
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      </svg>
+                      Pending
                     </span>
                     <button
                       onClick={async () => {
@@ -182,193 +177,67 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
+            {/* Admin Verification - Only for tradies */}
+            {userInfo.role !== "client" && (
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Business Verification</label>
+                <div className="mt-1">
+                  {userInfo.verificationStatus === "verified" ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-300">
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Verified
+                    </span>
+                  ) : userInfo.verificationStatus === "pending" || userInfo.verificationStatus === "pending_review" ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      </svg>
+                      Pending Review
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300">
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      Not verified yet
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Verified profiles help clients trust you. Submit your verification documents in the{" "}
+                  <Link href="/settings/verification" className="text-amber-600 hover:text-amber-700 underline">
+                    Verification
+                  </Link>{" "}
+                  section to get verified.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Navigation Tabs */}
-      <div className="mb-6 flex gap-1 border-b border-slate-200 overflow-x-auto">
-        <Link
-          href="/settings"
-          className="px-4 py-2.5 text-sm font-medium text-amber-600 border-b-2 border-amber-500 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-        >
-          Pricing
-        </Link>
-        <Link
-          href="/settings/business-profile"
-          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-        >
-          Business Profile
-        </Link>
-        <Link
-          href="/settings/business-rates"
-          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-        >
-          Business & Rates
-        </Link>
-        {featureFlags.showRateTemplates && (
-          <Link
-            href="/settings/rates"
-            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-          >
-            Rate Templates
-          </Link>
-        )}
-        {featureFlags.showMaterials && (
-          <Link
-            href="/settings/materials"
-            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-          >
-            Materials
-          </Link>
-        )}
-        <Link
-          href="/settings/verification"
-          className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-        >
-          Verification
-        </Link>
-        {featureFlags.showSignature && (
-          <Link
-            href="/settings/signature"
-            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-          >
-            Signature
-          </Link>
-        )}
-      </div>
-
-      {/* Success Message */}
-      {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
-          Settings saved successfully!
+      {/* Info Card - Only for tradies */}
+      {userInfo?.role !== "client" && (
+        <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h3 className="text-sm font-semibold text-amber-900 mb-1">Business Settings</h3>
+              <p className="text-sm text-amber-800">
+                All business profile, pricing, and rates settings for Australian construction trades have been consolidated into the{" "}
+                <Link href="/settings/business-profile" className="font-medium underline hover:text-amber-900">
+                  Business Profile
+                </Link>{" "}
+                page for easier management.
+              </p>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* Pricing Settings Form */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Pricing Settings</h2>
-          <p className="text-sm text-slate-600 mb-6">
-            Configure your default pricing rates. These will be used when generating job packs to provide more accurate estimates.
-          </p>
-        </div>
-
-        {/* Hourly Rate */}
-        <div>
-          <label htmlFor="hourlyRate" className="block text-sm font-medium text-slate-700 mb-2">
-            Hourly Rate ($/hr)
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-            <input
-              type="number"
-              id="hourlyRate"
-              name="hourlyRate"
-              value={pricingSettings.hourlyRate ?? ""}
-              onChange={handleChange}
-              placeholder={DEFAULT_HOURLY_RATE.toString()}
-              min="0"
-              step="0.01"
-              className="w-full pl-8 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
-              disabled={isSaving}
-            />
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Default: ${DEFAULT_HOURLY_RATE}/hr (used if not set)
-          </p>
-        </div>
-
-        {/* Day Rate */}
-        <div>
-          <label htmlFor="dayRate" className="block text-sm font-medium text-slate-700 mb-2">
-            Day Rate ($/day) <span className="text-slate-400 font-normal">(optional)</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-            <input
-              type="number"
-              id="dayRate"
-              name="dayRate"
-              value={pricingSettings.dayRate ?? ""}
-              onChange={handleChange}
-              placeholder="Leave empty if not applicable"
-              min="0"
-              step="0.01"
-              className="w-full pl-8 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
-              disabled={isSaving}
-            />
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Optional flat daily rate for full-day jobs
-          </p>
-        </div>
-
-        {/* Material Markup */}
-        <div>
-          <label htmlFor="materialMarkupPercent" className="block text-sm font-medium text-slate-700 mb-2">
-            Material Markup (%)
-          </label>
-          <div className="relative">
-            <input
-              type="number"
-              id="materialMarkupPercent"
-              name="materialMarkupPercent"
-              value={pricingSettings.materialMarkupPercent ?? ""}
-              onChange={handleChange}
-              placeholder={DEFAULT_MATERIAL_MARKUP.toString()}
-              min="0"
-              max="100"
-              step="0.1"
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
-              disabled={isSaving}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">%</span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Default: {DEFAULT_MATERIAL_MARKUP}% (used if not set). Percentage markup to add to material costs.
-          </p>
-        </div>
-
-        {/* Rough Estimate Only */}
-        <div className="flex items-start gap-3 pt-2">
-          <input
-            type="checkbox"
-            id="roughEstimateOnly"
-            name="roughEstimateOnly"
-            checked={pricingSettings.roughEstimateOnly ?? DEFAULT_ROUGH_ESTIMATE_ONLY}
-            onChange={handleChange}
-            className="mt-1 w-4 h-4 text-amber-500 border-slate-300 rounded focus:ring-amber-500"
-            disabled={isSaving}
-          />
-          <div className="flex-1">
-            <label htmlFor="roughEstimateOnly" className="block text-sm font-medium text-slate-700 mb-1">
-              Show prices as rough estimate only?
-            </label>
-            <p className="text-xs text-slate-500">
-              When enabled, all job pack prices will be marked as rough estimates. Default: {DEFAULT_ROUGH_ESTIMATE_ONLY ? "Enabled" : "Disabled"}
-            </p>
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        <div className="pt-6 border-t border-slate-200">
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors shadow-lg shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSaving ? "Saving..." : "Save Settings"}
-          </button>
-        </div>
-      </form>
     </div>
   );
 }

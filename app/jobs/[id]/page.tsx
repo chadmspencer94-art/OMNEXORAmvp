@@ -37,11 +37,13 @@ import SuggestedTradiesPanel from "./SuggestedTradiesPanel";
 import JobAssignmentPanel from "./JobAssignmentPanel";
 import MaterialsManagementSection from "./MaterialsManagementSection";
 import AttachmentsSection from "./AttachmentsSection";
-import StructuredBadge from "@/app/components/StructuredBadge";
+import VerifiedBadge from "@/app/components/StructuredBadge";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import FeedbackButton from "@/app/components/FeedbackButton";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
 import OvisBadge from "@/app/components/OvisBadge";
+import DocGeneratorModal from "@/app/components/docs/DocGeneratorModal";
+import { featureFlags } from "@/lib/featureFlags";
 
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
@@ -624,14 +626,18 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   
   // Get plan info from Prisma
   let planTier = "FREE";
+  let planStatus = "TRIAL";
   try {
     const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
-      select: { planTier: true },
+      select: { planTier: true, planStatus: true },
     });
     if (prismaUser?.planTier) {
       planTier = prismaUser.planTier;
+    }
+    if (prismaUser?.planStatus) {
+      planStatus = prismaUser.planStatus;
     }
   } catch (error) {
     console.warn("Failed to fetch plan tier:", error);
@@ -917,7 +923,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 <div className="pt-4 border-t border-slate-200">
                   <p className="text-sm text-slate-500 mb-2">Business Status</p>
                   {verificationStatus === "verified" ? (
-                    <StructuredBadge />
+                    <VerifiedBadge />
                   ) : (verificationStatus === "pending" || (verificationStatus as string) === "pending_review") ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full border border-amber-300">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -934,7 +940,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 text-xs font-medium rounded-full border border-slate-200">
-                      Not structured
+                      Pending
                     </span>
                   )}
                 </div>
@@ -1112,15 +1118,18 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   </div>
                 )}
                 <div className="px-6 py-4 border-b border-slate-200">
-                  <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                     <div className="flex items-center gap-3">
                       <h2 className="text-lg font-semibold text-slate-900">Job Pack</h2>
                       <OvisBadge variant="inline" size="sm" />
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      {/* Duplicate Job Button - Always available for non-client users */}
+                  </div>
+                  
+                  {/* Consolidated Action Buttons */}
+                  <div className="space-y-4">
+                    {/* Primary Actions Row */}
+                    <div className="flex flex-wrap items-center gap-2">
                       <DuplicateJobButton jobId={job.id} />
-                      {/* Only show regenerate button if AI pack is not confirmed and client hasn't accepted */}
                       {job.aiReviewStatus !== "confirmed" && job.clientStatus !== "accepted" && (
                         <RegenerateButton 
                           jobId={job.id} 
@@ -1129,93 +1138,105 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                           clientStatus={job.clientStatus}
                         />
                       )}
-                      {(job.aiReviewStatus === "confirmed" || job.clientStatus === "accepted") && (
-                        <div className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
-                          <p className="font-medium mb-1">
-                            {job.clientStatus === "accepted" 
-                              ? "Quote signed by client" 
-                              : "Job pack confirmed"}
-                          </p>
-                          <p>
-                            {job.clientStatus === "accepted"
-                              ? "This pack has been signed by the client. Create a variation instead of regenerating the original scope."
-                              : "You can make manual adjustments, but you can't regenerate this pack. For major changes, create a new job or duplicate this one."}
-                          </p>
-                        </div>
-                      )}
                       <CopyForClientButton
-                      title={job.title}
-                      address={job.address}
-                      summary={job.aiSummary}
-                      scopeOfWork={job.aiScopeOfWork}
-                      inclusions={job.aiInclusions}
-                      exclusions={job.aiExclusions}
-                      quoteJson={job.aiQuote}
-                    />
-                    <EmailToClientButton
-                      title={job.title}
-                      clientEmail={job.clientEmail}
-                      clientName={job.clientName}
-                      address={job.address}
-                      summary={job.aiSummary}
-                      scopeOfWork={job.aiScopeOfWork}
-                      inclusions={job.aiInclusions}
-                      exclusions={job.aiExclusions}
-                      quoteJson={job.aiQuote}
-                      verificationStatus={user.verificationStatus || "unverified"}
-                      planTier={planTier}
-                    />
-                    <SendToClientButton
-                      jobId={job.id}
-                      jobTitle={job.title}
-                      clientEmail={job.clientEmail}
-                      clientName={job.clientName}
-                      sentToClientAt={job.sentToClientAt}
-                      verificationStatus={user.verificationStatus || "unverified"}
-                      planTier={planTier}
-                    />
-                    {/* Hint for draft status */}
-                    {(!job.clientStatus || job.clientStatus === "draft") && (
-                      <p className="text-xs text-slate-500 mt-1">
-                        💡 Once you email the job pack, this job will move to &ldquo;Sent&rdquo; status.
-                      </p>
-                    )}
-                    <JobPackPdfButton
-                      jobId={job.id}
-                      jobTitle={job.title}
-                      jobCreatedAt={job.createdAt}
-                      tradeType={job.tradeType}
-                      propertyType={job.propertyType}
-                      address={job.address}
-                      clientName={job.clientName}
-                      notes={job.notes}
-                      aiSummary={job.aiSummary}
-                      aiQuote={job.aiQuote}
-                      aiScopeOfWork={job.aiScopeOfWork}
-                      aiInclusions={job.aiInclusions}
-                      aiExclusions={job.aiExclusions}
-                      aiMaterials={job.aiMaterials}
-                      aiClientNotes={job.aiClientNotes}
-                      materialsOverrideText={job.materialsOverrideText}
-                      materialsAreRoughEstimate={job.materialsAreRoughEstimate}
-                      materialsTotal={job.materialsTotal ?? null}
-                      clientSignatureId={job.clientSignatureId}
-                      clientSignedName={job.clientSignedName}
-                      clientSignedEmail={job.clientSignedEmail}
-                      clientAcceptedAt={job.clientAcceptedAt}
-                      clientAcceptedByName={job.clientAcceptedByName}
-                      clientAcceptanceNote={job.clientAcceptanceNote}
-                      clientAcceptedQuoteVer={job.clientAcceptedQuoteVer}
-                      quoteNumber={job.quoteNumber}
-                    />
-                    <SpecDocButton 
-                      jobId={job.id}
-                      hasScopeOfWork={!!job.aiScopeOfWork}
-                    />
-                      <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded-full border border-amber-300" title="AI-generated content must be reviewed for compliance with Australian laws and regulations">
-                        ⚠️ AI-Generated - Review Required
-                      </span>
+                        title={job.title}
+                        address={job.address}
+                        summary={job.aiSummary}
+                        scopeOfWork={job.aiScopeOfWork}
+                        inclusions={job.aiInclusions}
+                        exclusions={job.aiExclusions}
+                        quoteJson={job.aiQuote}
+                      />
                     </div>
+
+                    {/* Client Communication Row */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <EmailToClientButton
+                        title={job.title}
+                        clientEmail={job.clientEmail}
+                        clientName={job.clientName}
+                        address={job.address}
+                        summary={job.aiSummary}
+                        scopeOfWork={job.aiScopeOfWork}
+                        inclusions={job.aiInclusions}
+                        exclusions={job.aiExclusions}
+                        quoteJson={job.aiQuote}
+                        verificationStatus={user.verificationStatus || "unverified"}
+                        planTier={planTier}
+                      />
+                      <SendToClientButton
+                        jobId={job.id}
+                        jobTitle={job.title}
+                        clientEmail={job.clientEmail}
+                        clientName={job.clientName}
+                        sentToClientAt={job.sentToClientAt}
+                        verificationStatus={user.verificationStatus || "unverified"}
+                        planTier={planTier}
+                      />
+                      {(!job.clientStatus || job.clientStatus === "draft") && (
+                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Once emailed, job moves to &ldquo;Sent&rdquo; status
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Export & Documents Row */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <JobPackPdfButton
+                        jobId={job.id}
+                        jobTitle={job.title}
+                        jobCreatedAt={job.createdAt}
+                        tradeType={job.tradeType}
+                        propertyType={job.propertyType}
+                        address={job.address}
+                        clientName={job.clientName}
+                        notes={job.notes}
+                        aiSummary={job.aiSummary}
+                        aiQuote={job.aiQuote}
+                        aiScopeOfWork={job.aiScopeOfWork}
+                        aiInclusions={job.aiInclusions}
+                        aiExclusions={job.aiExclusions}
+                        aiMaterials={job.aiMaterials}
+                        aiClientNotes={job.aiClientNotes}
+                        materialsOverrideText={job.materialsOverrideText}
+                        materialsAreRoughEstimate={job.materialsAreRoughEstimate}
+                        materialsTotal={job.materialsTotal ?? null}
+                        clientSignatureId={job.clientSignatureId}
+                        clientSignedName={job.clientSignedName}
+                        clientSignedEmail={job.clientSignedEmail}
+                        clientAcceptedAt={job.clientAcceptedAt}
+                        clientAcceptedByName={job.clientAcceptedByName}
+                        clientAcceptanceNote={job.clientAcceptanceNote}
+                        clientAcceptedQuoteVer={job.clientAcceptedQuoteVer}
+                        quoteNumber={job.quoteNumber}
+                      />
+                      <SpecDocButton 
+                        jobId={job.id}
+                        hasScopeOfWork={!!job.aiScopeOfWork}
+                        user={user}
+                        planTier={planTier}
+                        planStatus={planStatus}
+                      />
+                    </div>
+
+                    {/* Status Messages */}
+                    {(job.aiReviewStatus === "confirmed" || job.clientStatus === "accepted") && (
+                      <div className="text-xs text-slate-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+                        <p className="font-medium mb-1">
+                          {job.clientStatus === "accepted" 
+                            ? "✓ Quote signed by client" 
+                            : "✓ Job pack confirmed"}
+                        </p>
+                        <p className="text-slate-600">
+                          {job.clientStatus === "accepted"
+                            ? "This pack has been signed. Create a variation for changes."
+                            : "Manual adjustments allowed. For major changes, duplicate this job."}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   {/* Client Signature Status */}
                   <div className="mt-3">
@@ -1391,11 +1412,15 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   tradeType={job.tradeType}
                   address={job.address}
                   clientName={job.clientName}
+                  clientEmail={job.clientEmail}
                   showWarning={
                     job.aiReviewStatus === "confirmed" &&
                     (job.clientStatus === "sent" || job.clientStatus === "accepted")
                   }
                   job={job}
+                  user={user}
+                  planTier={planTier}
+                  planStatus={planStatus}
                 />
               </div>
 
@@ -1412,8 +1437,8 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 </div>
               )}
 
-              {/* Suggested Tradies Panel - Admin only */}
-              {userIsAdmin && (
+              {/* Suggested Tradies Panel - Client accounts only, locked until further notice */}
+              {(userRole as string) === "client" && featureFlags.showSuggestedTradies && (
                 <div className="mt-6">
                   <SuggestedTradiesPanel jobId={job.id} />
                 </div>
@@ -1442,7 +1467,11 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 tradeType={job.tradeType}
                 address={job.address}
                 clientName={job.clientName}
+                clientEmail={job.clientEmail}
                 showWarning={false}
+                user={user}
+                planTier={planTier}
+                planStatus={planTier === "FREE" ? "TRIAL" : "ACTIVE"}
               />
 
               {/* Safety Section - Tradie/Business only */}

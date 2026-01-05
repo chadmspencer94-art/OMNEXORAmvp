@@ -61,13 +61,17 @@ export default function NewJobPage() {
     materialsAreRoughEstimate: false,
     rateTemplateId: null,
   });
+  const [businessProfile, setBusinessProfile] = useState<{
+    primaryTrade: string | null;
+    hourlyRate: number | null;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
 
-  // Fetch user role and plan info on mount
+  // Fetch user role, plan info, and business profile on mount
   useEffect(() => {
-    async function fetchUserRole() {
+    async function fetchUserData() {
       try {
         const response = await fetch("/api/auth/me", { cache: "no-store" });
         if (response.ok) {
@@ -77,6 +81,43 @@ export default function NewJobPage() {
             // Get plan tier from user data
             if (data.user.planTier) {
               setPlanTier(data.user.planTier);
+            }
+            
+            // Fetch business profile for tradies to auto-fill trade type and rates
+            if (data.user.role !== "client") {
+              try {
+                const profileResponse = await fetch("/api/settings/business-profile", { cache: "no-store" });
+                if (profileResponse.ok) {
+                  const profileData = await profileResponse.json();
+                  if (profileData.businessProfile) {
+                    setBusinessProfile({
+                      primaryTrade: profileData.businessProfile.primaryTrade,
+                      hourlyRate: profileData.businessProfile.hourlyRate,
+                    });
+                    
+                    // Auto-fill trade type if available
+                    if (profileData.businessProfile.primaryTrade) {
+                      const validTradeTypes: TradeType[] = ["Painter", "Plasterer", "Carpenter", "Electrician", "Other"];
+                      if (validTradeTypes.includes(profileData.businessProfile.primaryTrade as TradeType)) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          tradeType: profileData.businessProfile.primaryTrade as TradeType,
+                        }));
+                      }
+                    }
+                    
+                    // Auto-fill hourly rate if available and not already set
+                    if (profileData.businessProfile.hourlyRate && !formData.labourRatePerHour) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        labourRatePerHour: profileData.businessProfile.hourlyRate.toString(),
+                      }));
+                    }
+                  }
+                }
+              } catch (error) {
+                console.warn("Failed to fetch business profile:", error);
+              }
             }
           } else {
             router.push("/login");
@@ -90,7 +131,7 @@ export default function NewJobPage() {
         setIsLoadingUser(false);
       }
     }
-    fetchUserRole();
+    fetchUserData();
   }, [router]);
 
   const isClient = userRole === "client";
@@ -227,7 +268,7 @@ export default function NewJobPage() {
           Back to Jobs
         </Link>
         <h1 className="text-3xl font-bold text-slate-900">
-          {isClient ? "Post a Job" : "New Job"}
+          {isClient ? "Post a Job" : "Create Job Pack"}
         </h1>
         <p className="mt-2 text-slate-600">
           {isClient 
@@ -452,7 +493,7 @@ export default function NewJobPage() {
                         />
                       </div>
                       <p className="mt-1 text-xs text-slate-500">
-                        If empty, we&apos;ll assume a typical rate for your trade in WA.
+                        If empty, we&apos;ll use your hourly rate from Business Profile settings.
                       </p>
                     </div>
 

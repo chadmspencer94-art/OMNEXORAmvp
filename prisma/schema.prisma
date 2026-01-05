@@ -533,3 +533,19 @@ enum PricingType {
   TRADE
   SHELF
 }
+
+model DocumentDraft {
+  id        String   @id @default(cuid())
+  jobId     String   // Job ID from KV store (String, not FK since Job is in KV)
+  docType   String   // e.g., "VARIATION_CHANGE_ORDER", "EXTENSION_OF_TIME", etc.
+  dataJson  String   // JSON string containing the full draft data (RenderModel)
+  approved  Boolean  @default(false) // Whether user has approved/reviewed the document
+  approvedAt DateTime? // When the document was approved
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([jobId, docType])
+  @@index([jobId])
+  @@index([jobId, docType])
+  @@map("document_drafts")
+}

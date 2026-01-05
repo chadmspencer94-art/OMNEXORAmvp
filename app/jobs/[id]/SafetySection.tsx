@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2, FileText, Edit2, Download, Shield, AlertTriangle, Users, RefreshCw } from "lucide-react";
 import SafetyDocumentEditor from "./SafetyDocumentEditor";
 import SafetyDocumentPdfButton from "./SafetyDocumentPdfButton";
@@ -73,10 +74,26 @@ export default function SafetySection({
   const [generating, setGenerating] = useState<SafetyDocumentType | null>(null);
   const [editingDoc, setEditingDoc] = useState<SafetyDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetchDocuments();
+    checkEmailVerification();
   }, [jobId]);
+
+  const checkEmailVerification = async () => {
+    try {
+      const response = await fetch("/api/auth/me");
+      if (response.ok) {
+        const data = await response.json();
+        setEmailVerified(!!data.user?.emailVerifiedAt);
+      } else {
+        setEmailVerified(false);
+      }
+    } catch {
+      setEmailVerified(false);
+    }
+  };
 
   const fetchDocuments = async () => {
     try {
@@ -136,7 +153,10 @@ export default function SafetySection({
         } catch {
           // Ignore JSON parse errors
         }
-        throw new Error(errorMessage);
+        // Set error state directly instead of throwing to avoid console errors
+        setError(errorMessage);
+        setGenerating(null);
+        return;
       }
 
       const data = await response.json();
@@ -147,17 +167,9 @@ export default function SafetySection({
         setEditingDoc(data.document);
       }
     } catch (err) {
-      // Always use friendly message, log real error to console
+      // Handle unexpected errors (network failures, etc.)
       console.error("Error generating safety document:", err);
-      const errorMessage = err instanceof Error ? err.message : FRIENDLY_ERROR_MESSAGE;
-      // Double-check the message doesn't contain sensitive info
-      if (errorMessage.toLowerCase().includes("prisma") || 
-          errorMessage.toLowerCase().includes("database") ||
-          errorMessage.includes("Environment variable")) {
-        setError(FRIENDLY_ERROR_MESSAGE);
-      } else {
-        setError(errorMessage);
-      }
+      setError(FRIENDLY_ERROR_MESSAGE);
     } finally {
       setGenerating(null);
     }
@@ -281,6 +293,26 @@ export default function SafetySection({
             </div>
           )}
 
+          {/* Email Verification Warning */}
+          {emailVerified === false && (
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-amber-900 mb-1">Email Verification Required</h3>
+                  <p className="text-sm text-amber-800 mb-2">
+                    Please verify your email address to generate safety documents. Check your inbox for a verification email or{" "}
+                    <Link href="/settings" className="underline font-medium">
+                      resend verification email
+                    </Link>.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* AI Warning Banner */}
           <div className="mb-4">
             <AIWarningBanner variant="compact" />
@@ -290,11 +322,12 @@ export default function SafetySection({
             {DOCUMENT_CONFIGS.map((config) => {
               const doc = getDocument(config.type);
               const isGenerating = generating === config.type;
+              const isDisabled = emailVerified === false;
 
               return (
                 <div
                   key={config.type}
-                  className="border border-slate-200 rounded-lg p-4 hover:border-amber-300 transition-colors"
+                  className={`border border-slate-200 rounded-lg p-4 transition-colors ${isDisabled ? "opacity-60" : "hover:border-amber-300"}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1">
@@ -332,8 +365,9 @@ export default function SafetySection({
                       ) : (
                         <button
                           onClick={() => handleGenerate(config.type)}
-                          disabled={isGenerating || generating !== null}
+                          disabled={isGenerating || generating !== null || isDisabled}
                           className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={isDisabled ? "Email verification required" : undefined}
                         >
                           {isGenerating ? (
                             <>

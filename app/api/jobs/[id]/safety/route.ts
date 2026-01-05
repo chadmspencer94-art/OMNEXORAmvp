@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
+import { requireVerifiedEmail } from "@/lib/authChecks";
 import { getJobById } from "@/lib/jobs";
 import { getPrisma, getSafeErrorMessage, isPrismaError } from "@/lib/prisma";
 
@@ -105,6 +106,16 @@ export async function POST(
     if (isClient(user)) {
       return NextResponse.json(
         { error: "Access denied. Safety document generation is available to trades and businesses only." },
+        { status: 403 }
+      );
+    }
+
+    // Require verified email for safety document generation
+    try {
+      await requireVerifiedEmail(user);
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Email verification required. Please verify your email address to generate safety documents." },
         { status: 403 }
       );
     }

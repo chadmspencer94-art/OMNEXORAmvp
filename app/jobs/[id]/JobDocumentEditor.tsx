@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Save, X, Check, Edit2 } from "lucide-react";
+import { Loader2, Save, X, Check, Edit2, Copy, Download, Mail, Lock } from "lucide-react";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
 import OvisBadge from "@/app/components/OvisBadge";
 
@@ -14,6 +14,13 @@ interface JobDocumentEditorProps {
   documentType: "SWMS" | "VARIATION" | "EOT" | "PROGRESS_CLAIM" | "HANDOVER" | "MAINTENANCE";
   isConfirmed: boolean;
   onSave: (content: string, confirmed: boolean) => Promise<void>;
+  jobTitle?: string;
+  tradeType?: string;
+  address?: string;
+  clientName?: string;
+  clientEmail?: string;
+  hasAccess?: boolean;
+  accessMessage?: string;
 }
 
 export default function JobDocumentEditor({
@@ -25,12 +32,21 @@ export default function JobDocumentEditor({
   documentType,
   isConfirmed,
   onSave,
+  jobTitle = "",
+  tradeType = "",
+  address = "",
+  clientName = "",
+  clientEmail = "",
+  hasAccess = false,
+  accessMessage = "",
 }: JobDocumentEditorProps) {
   const [content, setContent] = useState(initialContent || "");
   const [isEditing, setIsEditing] = useState(!isConfirmed);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   if (!isOpen) return null;
 
@@ -80,6 +96,82 @@ export default function JobDocumentEditor({
     setIsEditing(false);
     setError("");
     setSuccess("");
+  };
+
+  const handleCopy = async () => {
+    if (!content) return;
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      setError("Failed to copy to clipboard");
+    }
+  };
+
+  const handleEmail = () => {
+    if (!hasAccess) {
+      setError(accessMessage);
+      return;
+    }
+
+    if (!clientEmail) {
+      setError("Client email not set for this job");
+      return;
+    }
+
+    if (!content) {
+      setError("No content to email");
+      return;
+    }
+
+    const subject = `${title} - ${jobTitle}`;
+    const body = `Hi ${clientName || "there"},\n\nPlease find the ${title.toLowerCase()} for the following job:\n\nJob: ${jobTitle}\n${address ? `Address: ${address}\n` : ""}\n---\n\n${content}\n\n---\n\nKind regards`;
+    
+    const mailtoUrl = `mailto:${encodeURIComponent(clientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoUrl;
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!hasAccess) {
+      setError(accessMessage);
+      return;
+    }
+
+    if (!content) {
+      setError("No content to download");
+      return;
+    }
+
+    setIsDownloading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/documents/${documentType.toLowerCase()}/pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to generate PDF" }));
+        throw new Error(errorData.error || "Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${documentType.toLowerCase()}-${jobId.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download PDF");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -183,14 +275,77 @@ export default function JobDocumentEditor({
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                disabled={isSaving}
-                className="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors text-sm disabled:opacity-50"
-              >
-                <Edit2 className="w-4 h-4 mr-2" />
-                Edit
-              </button>
+              <>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  disabled={isSaving}
+                  className="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors text-sm disabled:opacity-50"
+                >
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit
+                </button>
+                {content && (
+                  <>
+                    <button
+                      onClick={handleCopy}
+                      className="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors text-sm"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleEmail}
+                      disabled={!hasAccess || !clientEmail}
+                      className="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={!hasAccess ? accessMessage : !clientEmail ? "Client email not set" : "Email to client"}
+                    >
+                      {!hasAccess ? (
+                        <>
+                          <Lock className="w-4 h-4 mr-2" />
+                          Email
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleDownloadPdf}
+                      disabled={!hasAccess || isDownloading}
+                      className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={!hasAccess ? accessMessage : "Download PDF"}
+                    >
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : !hasAccess ? (
+                        <>
+                          <Lock className="w-4 h-4 mr-2" />
+                          PDF
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download PDF
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
+              </>
             )}
           </div>
 

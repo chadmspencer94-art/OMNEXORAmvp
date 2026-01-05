@@ -26,63 +26,8 @@ export default function Home() {
           className="w-full h-[105%] object-cover object-top block opacity-85"
         />
 
-        {/* CTA Buttons Overlay - positioned near top of hero */}
+        {/* OVIS Trust Strip - positioned near top of hero */}
         <div className="absolute top-[3%] sm:top-[5%] md:top-[7%] left-0 right-0 z-10 flex flex-col items-center px-4 sm:px-6 md:px-8">
-          <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3 mb-2 sm:mb-2.5 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto sm:mx-0">
-            {isLoggedIn ? (
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 text-xs sm:text-sm md:text-base font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
-              >
-                Go to Dashboard
-                <svg
-                  className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 ml-1.5 sm:ml-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 7l5 5m0 0l-5 5m5-5H6"
-                  />
-                </svg>
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 text-xs sm:text-sm md:text-base font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors w-full sm:w-auto"
-                >
-                  Get started
-                  <svg
-                    className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 ml-1.5 sm:ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 7l5 5m0 0l-5 5m5-5H6"
-                    />
-                  </svg>
-                </Link>
-                <Link
-                  href="/login"
-                  className="inline-flex items-center justify-center px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 text-xs sm:text-sm md:text-base font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors w-full sm:w-auto"
-                >
-                  Log in
-                </Link>
-              </>
-            )}
-          </div>
-          
-          {/* OVIS Trust Strip */}
           <div className="flex items-center justify-center gap-1.5 bg-slate-900/40 backdrop-blur-sm px-2 sm:px-2.5 py-1 sm:py-1 rounded-full border border-white/30">
             <span className="inline-flex items-center gap-1 text-xs font-medium text-white drop-shadow-lg">
               <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 drop-shadow-md" fill="currentColor" viewBox="0 0 20 20">
@@ -217,7 +162,7 @@ export default function Home() {
                     Compliance-Ready Tools
                   </h3>
                   <p className="text-sm text-slate-600 leading-relaxed">
-                    Built-in Australian standards to keep your documentation organized and compliant.
+                    Compliance-ready templates (AU/WA) — review required. Keep your documentation organized.
                   </p>
                 </div>
               </div>
@@ -234,7 +179,7 @@ export default function Home() {
                     AI-Powered Assistance
                   </h3>
                   <p className="text-sm text-slate-600 leading-relaxed">
-                    Leverage AI to reduce admin time by up to 80% and improve accuracy.
+                    Leverage AI to reduce admin time and improve accuracy.
                   </p>
                 </div>
               </div>
@@ -274,7 +219,7 @@ export default function Home() {
                   </svg>
                 </div>
                 <h4 className="font-semibold text-slate-900 mb-2 sm:mb-3 text-base sm:text-lg md:text-xl">Stay Compliant</h4>
-                <p className="text-sm sm:text-base text-slate-600">Australian standards and best practices built in for peace of mind.</p>
+                <p className="text-sm sm:text-base text-slate-600">Compliance-ready templates (AU/WA) — review required for peace of mind.</p>
               </div>
             </div>
           </div>

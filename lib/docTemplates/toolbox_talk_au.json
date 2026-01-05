@@ -1,0 +1,244 @@
+{
+  "schemaVersion": "1.0",
+  "jurisdiction": "AU",
+  "docType": "TOOLBOX_TALK",
+  "title": "Toolbox Talk",
+  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a draft template following best practice structure and requires professional review before use.",
+  "sections": [
+    {
+      "id": "talk-details",
+      "title": "Talk Details",
+      "order": 1,
+      "fields": [
+        {
+          "id": "topic",
+          "label": "Topic",
+          "type": "text",
+          "required": true,
+          "placeholder": "e.g., Working at Heights, Electrical Safety"
+        },
+        {
+          "id": "date",
+          "label": "Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "location",
+          "label": "Location",
+          "type": "text",
+          "required": true,
+          "dataPath": "address",
+          "placeholder": "Work location"
+        },
+        {
+          "id": "presented-by",
+          "label": "Presented By",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName",
+          "placeholder": "Presenter name"
+        },
+        {
+          "id": "project",
+          "label": "Project/Job",
+          "type": "text",
+          "required": false,
+          "dataPath": "jobTitle",
+          "placeholder": "Project or job name"
+        }
+      ]
+    },
+        {
+          "id": "attendees",
+          "title": "Attendees",
+          "order": 2,
+          "table": {
+            "id": "attendees-table",
+            "columns": [
+              {
+                "id": "name",
+                "label": "Name",
+                "width": 30
+              },
+              {
+                "id": "role",
+                "label": "Role/Position",
+                "width": 25
+              },
+              {
+                "id": "company",
+                "label": "Company",
+                "width": 25
+              },
+              {
+                "id": "signature",
+                "label": "Signature",
+                "width": 20
+              }
+            ],
+            "rowsKey": "attendees",
+            "minRows": 1
+          }
+        },
+    {
+      "id": "key-points",
+      "title": "Key Points Discussed",
+      "order": 3,
+      "fields": [
+        {
+          "id": "key-points",
+          "label": "Key Safety Points",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "List the key safety points discussed"
+        },
+        {
+          "id": "hazards",
+          "label": "Hazards Identified",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List any hazards identified"
+        },
+        {
+          "id": "controls",
+          "label": "Control Measures",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List control measures discussed"
+        }
+      ]
+    },
+    {
+      "id": "ppe",
+      "title": "Personal Protective Equipment",
+      "order": 4,
+      "fields": [
+        {
+          "id": "ppe-required",
+          "label": "PPE Required",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "List all required PPE for this work"
+        },
+        {
+          "id": "ppe-inspection",
+          "label": "PPE Inspection Requirements",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe PPE inspection requirements"
+        }
+      ]
+    },
+    {
+      "id": "emergency",
+      "title": "Emergency Procedures",
+      "order": 5,
+      "fields": [
+        {
+          "id": "emergency-procedures",
+          "label": "Emergency Procedures",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Emergency Services: 000\nEvacuation procedures:\nAssembly point:\nSite-specific emergency contacts:"
+        },
+        {
+          "id": "first-aid",
+          "label": "First Aid Arrangements",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Location of first aid kit:\nQualified first aid officer:\nNearest medical facility:"
+        },
+        {
+          "id": "emergency-contacts",
+          "label": "Emergency Contact Numbers",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Emergency Services: 000\nSite Supervisor: [Name] [Phone]\nFirst Aid Officer: [Name] [Phone]\nNearest Hospital: [Name] [Phone]"
+        }
+      ]
+    },
+    {
+      "id": "questions",
+      "title": "Questions and Discussion",
+      "order": 6,
+      "fields": [
+        {
+          "id": "questions",
+          "label": "Questions Raised",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Record any questions or concerns raised"
+        },
+        {
+          "id": "action-items",
+          "label": "Action Items",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List any action items or follow-ups required"
+        }
+      ]
+    },
+    {
+      "id": "acknowledgment",
+      "title": "Acknowledgment",
+      "order": 7,
+      "fields": [
+        {
+          "id": "acknowledgment-text",
+          "label": "Acknowledgment",
+          "type": "textarea",
+          "required": true,
+          "defaultValue": "I acknowledge that I have received and understood the information presented in this toolbox talk."
+        },
+        {
+          "id": "next-talk-date",
+          "label": "Next Toolbox Talk Date",
+          "type": "date",
+          "required": false,
+          "placeholder": "Date of next scheduled talk"
+        }
+      ]
+    }
+  ],
+  "ovisChecks": [
+    {
+      "id": "missing-topic",
+      "severity": "high",
+      "rule": "empty('topic')",
+      "message": "Topic is required"
+    },
+    {
+      "id": "missing-location",
+      "severity": "high",
+      "rule": "empty('address')",
+      "message": "Location is required"
+    },
+    {
+      "id": "missing-attendees",
+      "severity": "high",
+      "rule": "len('attendees') < 1",
+      "message": "At least one attendee is required"
+    },
+    {
+      "id": "missing-key-points",
+      "severity": "high",
+      "rule": "empty('key-points')",
+      "message": "Key safety points must be discussed"
+    },
+    {
+      "id": "missing-ppe",
+      "severity": "medium",
+      "rule": "empty('ppe-required')",
+      "message": "PPE requirements should be specified"
+    },
+    {
+      "id": "missing-emergency-procedures",
+      "severity": "high",
+      "rule": "empty('emergency-procedures')",
+      "message": "Emergency procedures are required"
+    }
+  ]
+}
+

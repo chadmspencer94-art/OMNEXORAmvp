@@ -30,6 +30,21 @@ export async function GET() {
       console.warn("[auth] Failed to fetch plan tier:", error);
     }
     
+    // Get email verification status from Prisma
+    let emailVerifiedAt: string | null = null;
+    try {
+      const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
+      const prismaUser = await prisma.user.findUnique({
+        where: { email: user.email },
+        select: { emailVerifiedAt: true },
+      });
+      if (prismaUser?.emailVerifiedAt) {
+        emailVerifiedAt = prismaUser.emailVerifiedAt.toISOString();
+      }
+    } catch (error) {
+      console.warn("[auth] Failed to fetch email verification status:", error);
+    }
+
     // Return safe user data including role, verification status, admin flag, and pricing settings
     return NextResponse.json({
       user: {
@@ -40,6 +55,7 @@ export async function GET() {
         verificationStatus: user.verificationStatus || "unverified", // Default for older users
         verifiedAt: user.verifiedAt ?? null,
         isAdmin: user.isAdmin ?? false,
+        emailVerifiedAt: emailVerifiedAt,
         businessDetails: user.businessDetails,
         hourlyRate: user.hourlyRate ?? null,
         dayRate: user.dayRate ?? null,

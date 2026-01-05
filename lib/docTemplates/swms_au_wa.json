@@ -1,0 +1,304 @@
+{
+  "schemaVersion": "1.0",
+  "jurisdiction": "AU-WA",
+  "docType": "SWMS",
+  "title": "Safe Work Method Statement (SWMS)",
+  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a draft template aligned with WA WorkSafe guidance and requires professional review before use.",
+  "sections": [
+    {
+      "id": "project-info",
+      "title": "Project Information",
+      "order": 1,
+      "fields": [
+        {
+          "id": "project-name",
+          "label": "Project Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "jobTitle",
+          "placeholder": "Enter project name"
+        },
+        {
+          "id": "location",
+          "label": "Work Location",
+          "type": "text",
+          "required": true,
+          "dataPath": "address",
+          "placeholder": "Enter work location address"
+        },
+        {
+          "id": "prepared-by",
+          "label": "Prepared By (Business Name)",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName",
+          "placeholder": "Business name"
+        },
+        {
+          "id": "prepared-by-abn",
+          "label": "ABN",
+          "type": "text",
+          "required": false,
+          "dataPath": "abn",
+          "placeholder": "ABN (if applicable)"
+        },
+        {
+          "id": "prepared-date",
+          "label": "Date Prepared",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "review-date",
+          "label": "Review Date",
+          "type": "date",
+          "required": false,
+          "placeholder": "Date of review"
+        },
+        {
+          "id": "site-contact",
+          "label": "Site Contact Person",
+          "type": "text",
+          "required": false,
+          "placeholder": "Name of site contact person"
+        },
+        {
+          "id": "site-contact-phone",
+          "label": "Site Contact Phone",
+          "type": "text",
+          "required": false,
+          "placeholder": "Contact phone number"
+        }
+      ]
+    },
+    {
+      "id": "work-description",
+      "title": "Description of Work",
+      "order": 2,
+      "fields": [
+        {
+          "id": "work-type",
+          "label": "Type of Work",
+          "type": "text",
+          "required": true,
+          "dataPath": "tradeType",
+          "placeholder": "e.g., Painting, Electrical, Plumbing"
+        },
+        {
+          "id": "work-description",
+          "label": "Detailed Description of Work",
+          "type": "textarea",
+          "required": true,
+          "dataPath": "notes",
+          "placeholder": "Provide detailed description of the work to be performed"
+        }
+      ]
+    },
+    {
+      "id": "hazards",
+      "title": "Hazards and Risks",
+      "order": 3,
+      "table": {
+        "id": "hazards-table",
+        "columns": [
+        {
+          "id": "hazard",
+          "label": "Hazard Identified",
+          "width": 25
+        },
+        {
+          "id": "risk-level",
+          "label": "Risk Level",
+          "width": 15
+        },
+        {
+          "id": "control-measures",
+          "label": "Control Measures",
+          "width": 35
+        },
+        {
+          "id": "residual-risk",
+          "label": "Residual Risk",
+          "width": 25
+        }
+        ],
+        "rowsKey": "hazards",
+        "minRows": 1
+      }
+    },
+    {
+      "id": "hrcw",
+      "title": "High Risk Construction Work (HRCW)",
+      "order": 4,
+      "fields": [
+        {
+          "id": "hrcw-applicable",
+          "label": "Is High Risk Construction Work (HRCW) applicable?",
+          "type": "select",
+          "required": true,
+          "options": ["Yes", "No"],
+          "defaultValue": "No"
+        },
+        {
+          "id": "hrcw-categories",
+          "label": "HRCW Categories (if applicable)",
+          "type": "multiSelect",
+          "required": false,
+          "options": [
+            "Work in or near a confined space",
+            "Work in or near a shaft or trench with an excavated depth greater than 1.5m",
+            "Work on or near pressurised gas distribution mains or piping",
+            "Work on or near chemical, fuel or refrigerant lines",
+            "Work on or near energised electrical installations or services",
+            "Work in an area that may have a contaminated or flammable atmosphere",
+            "Work involving structural alterations or repairs that require temporary support",
+            "Work involving tilt-up or precast concrete",
+            "Work on, in or adjacent to a road, railway, shipping lane or other traffic corridor",
+            "Work in an area with movement of powered mobile plant",
+            "Work in areas with artificial extremes of temperature",
+            "Work in or near water or other liquid that involves a risk of drowning",
+            "Work involving diving"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "control-measures",
+      "title": "Control Measures",
+      "order": 5,
+      "fields": [
+        {
+          "id": "ppe",
+          "label": "Personal Protective Equipment (PPE) Required",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "List all required PPE"
+        },
+        {
+          "id": "equipment",
+          "label": "Plant and Equipment",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List plant and equipment to be used"
+        },
+        {
+          "id": "training",
+          "label": "Training and Competency Requirements",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List required training and competencies"
+        }
+      ]
+    },
+    {
+      "id": "emergency",
+      "title": "Emergency Procedures",
+      "order": 6,
+      "fields": [
+        {
+          "id": "emergency-contacts",
+          "label": "Emergency Contacts",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Emergency Services: 000\nSite Supervisor: [Name] [Phone]\nFirst Aid Officer: [Name] [Phone]\nNearest Hospital: [Name] [Address] [Phone]"
+        },
+        {
+          "id": "first-aid",
+          "label": "First Aid Arrangements",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Location of first aid kit:\nQualified first aid officer on site: [Yes/No]\nNearest medical facility: [Name and address]"
+        },
+        {
+          "id": "evacuation-procedures",
+          "label": "Evacuation Procedures",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe evacuation procedures and assembly point if applicable"
+        }
+      ]
+    },
+    {
+      "id": "signatures",
+      "title": "Signatures",
+      "order": 7,
+      "fields": [
+        {
+          "id": "prepared-by-name",
+          "label": "Prepared By (Name)",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName"
+        },
+        {
+          "id": "prepared-by-signature",
+          "label": "Prepared By (Signature)",
+          "type": "text",
+          "required": false,
+          "placeholder": "Signature"
+        },
+        {
+          "id": "prepared-by-date",
+          "label": "Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "reviewed-by-name",
+          "label": "Reviewed By (Name)",
+          "type": "text",
+          "required": false,
+          "placeholder": "Reviewer name"
+        },
+        {
+          "id": "reviewed-by-date",
+          "label": "Review Date",
+          "type": "date",
+          "required": false,
+          "placeholder": "Review date"
+        }
+      ]
+    }
+  ],
+  "ovisChecks": [
+    {
+      "id": "missing-project-name",
+      "severity": "high",
+      "rule": "empty('jobTitle')",
+      "message": "Project name is required"
+    },
+    {
+      "id": "missing-location",
+      "severity": "high",
+      "rule": "empty('address')",
+      "message": "Work location is required"
+    },
+    {
+      "id": "missing-hazards",
+      "severity": "high",
+      "rule": "len('hazards') < 1",
+      "message": "At least one hazard must be identified"
+    },
+    {
+      "id": "missing-ppe",
+      "severity": "medium",
+      "rule": "empty('ppe')",
+      "message": "PPE requirements should be specified"
+    },
+    {
+      "id": "missing-emergency-contacts",
+      "severity": "high",
+      "rule": "empty('emergency-contacts')",
+      "message": "Emergency contacts are required"
+    },
+    {
+      "id": "hrcw-no-categories",
+      "severity": "medium",
+      "rule": "equals('hrcw-applicable', 'Yes') && empty('hrcw-categories')",
+      "message": "If HRCW is applicable, at least one category should be selected"
+    }
+  ]
+}
+

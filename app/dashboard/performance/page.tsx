@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/authChecks";
 import { getJobsForUser, type Job } from "@/lib/jobs";
 import OmnexoraHeader from "@/app/components/OmnexoraHeader";
-import StructuredBadge from "@/app/components/StructuredBadge";
+import VerifiedBadge from "@/app/components/StructuredBadge";
 import AnalyticsSection from "../AnalyticsSection";
 import { ArrowLeft } from "lucide-react";
 
@@ -50,7 +50,7 @@ export default async function PerformancePage() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               Performance
-              {isVerified && <StructuredBadge />}
+              {isVerified && <VerifiedBadge />}
             </h1>
             <p className="mt-2 text-slate-600">
               Analytics and job completion metrics

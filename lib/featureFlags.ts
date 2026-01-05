@@ -25,6 +25,12 @@ export const featureFlags: Record<string, boolean> = {
   
   // Dev tools / debug routes (if any are exposed in nav)
   showDevTools: false,
+  
+  // Document Engine V1 - compliance-ready document templates
+  DOC_ENGINE_V1: process.env.DOC_ENGINE_V1 === "true",
+  
+  // Suggested Tradies - tradie matching for clients
+  showSuggestedTradies: false,
 };
 
 export type FeatureFlag = keyof typeof featureFlags;

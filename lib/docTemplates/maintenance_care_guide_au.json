@@ -1,0 +1,389 @@
+{
+  "schemaVersion": "1.0",
+  "jurisdiction": "AU",
+  "docType": "MAINTENANCE_CARE_GUIDE",
+  "title": "Maintenance & Care Guide",
+  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a compliance-ready layout aligned with Australian construction industry best practice. Professional review required before use.",
+  "sections": [
+    {
+      "id": "header",
+      "title": "Document Header",
+      "order": 1,
+      "fields": [
+        {
+          "id": "guide-number",
+          "label": "Guide Number",
+          "type": "text",
+          "required": true,
+          "placeholder": "e.g., MCG-001, MAINT-2024-001"
+        },
+        {
+          "id": "date",
+          "label": "Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "project-reference",
+          "label": "Project Reference",
+          "type": "text",
+          "required": false,
+          "dataPath": "jobId",
+          "placeholder": "Project or job reference"
+        }
+      ]
+    },
+    {
+      "id": "parties",
+      "title": "Parties",
+      "order": 2,
+      "fields": [
+        {
+          "id": "contractor-name",
+          "label": "Contractor Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName",
+          "placeholder": "Contractor business name"
+        },
+        {
+          "id": "contractor-abn",
+          "label": "Contractor ABN",
+          "type": "text",
+          "required": false,
+          "dataPath": "abn",
+          "placeholder": "ABN (XX XXX XXX XXX)"
+        },
+        {
+          "id": "contractor-contact",
+          "label": "Contractor Contact",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Contact phone and email for maintenance inquiries"
+        },
+        {
+          "id": "client-name",
+          "label": "Client Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "clientName",
+          "placeholder": "Client name"
+        },
+        {
+          "id": "client-address",
+          "label": "Client Address",
+          "type": "textarea",
+          "required": false,
+          "dataPath": "address",
+          "placeholder": "Client address"
+        }
+      ]
+    },
+    {
+      "id": "project-details",
+      "title": "Project Details",
+      "order": 3,
+      "fields": [
+        {
+          "id": "project-name",
+          "label": "Project Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "jobTitle",
+          "placeholder": "Project or job name"
+        },
+        {
+          "id": "project-location",
+          "label": "Project Location",
+          "type": "text",
+          "required": true,
+          "dataPath": "address",
+          "placeholder": "Project site address"
+        },
+        {
+          "id": "completion-date",
+          "label": "Completion Date",
+          "type": "date",
+          "required": false,
+          "placeholder": "Project completion date"
+        }
+      ]
+    },
+    {
+      "id": "introduction",
+      "title": "Introduction",
+      "order": 4,
+      "fields": [
+        {
+          "id": "introduction-text",
+          "label": "Introduction",
+          "type": "textarea",
+          "required": true,
+          "defaultValue": "This maintenance and care guide provides information on how to maintain and care for the completed work. Following these guidelines will help ensure the longevity and performance of the work."
+        }
+      ]
+    },
+    {
+      "id": "general-maintenance",
+      "title": "General Maintenance",
+      "order": 5,
+      "fields": [
+        {
+          "id": "general-maintenance",
+          "label": "General Maintenance Guidelines",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Provide general maintenance guidelines applicable to the work"
+        },
+        {
+          "id": "cleaning-instructions",
+          "label": "Cleaning Instructions",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Provide cleaning instructions and recommended cleaning products"
+        },
+        {
+          "id": "environmental-considerations",
+          "label": "Environmental Considerations",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe any environmental factors that may affect the work"
+        }
+      ]
+    },
+    {
+      "id": "maintenance-schedule",
+      "title": "Maintenance Schedule",
+      "order": 6,
+      "table": {
+        "id": "maintenance-schedule-table",
+        "columns": [
+          {
+            "id": "maintenance-item",
+            "label": "Maintenance Item",
+            "width": 35
+          },
+          {
+            "id": "frequency",
+            "label": "Frequency",
+            "width": 20
+          },
+          {
+            "id": "description",
+            "label": "Description",
+            "width": 45
+          }
+        ],
+        "rowsKey": "maintenanceSchedule",
+        "minRows": 1
+      }
+    },
+    {
+      "id": "specific-areas",
+      "title": "Specific Areas and Components",
+      "order": 7,
+      "fields": [
+        {
+          "id": "paintwork",
+          "label": "Paintwork (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Maintenance instructions for paintwork"
+        },
+        {
+          "id": "flooring",
+          "label": "Flooring (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Maintenance instructions for flooring"
+        },
+        {
+          "id": "fixtures",
+          "label": "Fixtures and Fittings (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Maintenance instructions for fixtures and fittings"
+        },
+        {
+          "id": "electrical",
+          "label": "Electrical (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Maintenance instructions for electrical work"
+        },
+        {
+          "id": "plumbing",
+          "label": "Plumbing (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Maintenance instructions for plumbing"
+        }
+      ]
+    },
+    {
+      "id": "warranties",
+      "title": "Warranties and Guarantees",
+      "order": 8,
+      "fields": [
+        {
+          "id": "warranty-period",
+          "label": "Warranty Period",
+          "type": "text",
+          "required": false,
+          "placeholder": "e.g., 12 months, 24 months"
+        },
+        {
+          "id": "warranty-terms",
+          "label": "Warranty Terms",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe warranty terms and conditions"
+        },
+        {
+          "id": "warranty-exclusions",
+          "label": "Warranty Exclusions",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List items excluded from warranty"
+        }
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshooting",
+      "order": 9,
+      "table": {
+        "id": "troubleshooting-table",
+        "columns": [
+          {
+            "id": "issue",
+            "label": "Issue",
+            "width": 30
+          },
+          {
+            "id": "possible-cause",
+            "label": "Possible Cause",
+            "width": 35
+          },
+          {
+            "id": "solution",
+            "label": "Solution",
+            "width": 35
+          }
+        ],
+        "rowsKey": "troubleshooting",
+        "minRows": 0
+      }
+    },
+    {
+      "id": "contact",
+      "title": "Contact Information",
+      "order": 10,
+      "fields": [
+        {
+          "id": "emergency-contact",
+          "label": "Emergency Contact",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Emergency contact information"
+        },
+        {
+          "id": "maintenance-contact",
+          "label": "Maintenance Contact",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Contact information for maintenance inquiries"
+        },
+        {
+          "id": "business-hours",
+          "label": "Business Hours",
+          "type": "text",
+          "required": false,
+          "placeholder": "e.g., Monday to Friday, 8am to 5pm"
+        }
+      ]
+    },
+    {
+      "id": "acknowledgment",
+      "title": "Acknowledgment",
+      "order": 11,
+      "fields": [
+        {
+          "id": "acknowledgment-text",
+          "label": "Acknowledgment",
+          "type": "textarea",
+          "required": false,
+          "defaultValue": "I acknowledge receipt of this maintenance and care guide and understand the maintenance requirements for the completed work."
+        },
+        {
+          "id": "client-name-signature",
+          "label": "Client Name",
+          "type": "text",
+          "required": false,
+          "dataPath": "clientName",
+          "placeholder": "Client name"
+        },
+        {
+          "id": "client-signature",
+          "label": "Client Signature",
+          "type": "text",
+          "required": false,
+          "placeholder": "Signature"
+        },
+        {
+          "id": "client-date",
+          "label": "Date",
+          "type": "date",
+          "required": false,
+          "placeholder": "Date of acknowledgment"
+        }
+      ]
+    }
+  ],
+  "ovisChecks": [
+    {
+      "id": "missing-guide-number",
+      "severity": "high",
+      "rule": "empty('guide-number')",
+      "message": "Guide number is required"
+    },
+    {
+      "id": "missing-contractor-name",
+      "severity": "high",
+      "rule": "empty('businessName')",
+      "message": "Contractor name is required"
+    },
+    {
+      "id": "missing-client-name",
+      "severity": "high",
+      "rule": "empty('clientName')",
+      "message": "Client name is required"
+    },
+    {
+      "id": "missing-introduction",
+      "severity": "high",
+      "rule": "empty('introduction-text')",
+      "message": "Introduction is required"
+    },
+    {
+      "id": "missing-general-maintenance",
+      "severity": "high",
+      "rule": "empty('general-maintenance')",
+      "message": "General maintenance guidelines are required"
+    },
+    {
+      "id": "missing-maintenance-schedule",
+      "severity": "high",
+      "rule": "len('maintenanceSchedule') < 1",
+      "message": "At least one maintenance schedule item is required"
+    },
+    {
+      "id": "missing-maintenance-contact",
+      "severity": "high",
+      "rule": "empty('maintenance-contact')",
+      "message": "Maintenance contact information is required"
+    }
+  ]
+}
+

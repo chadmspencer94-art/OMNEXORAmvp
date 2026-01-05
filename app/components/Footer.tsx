@@ -36,12 +36,32 @@ export default function Footer({ showOvisModal }: FooterProps) {
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">Product</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/register" className="text-slate-300 hover:text-white transition-colors text-sm">
+                <Link 
+                  href="/register" 
+                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-bold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
+                >
                   Get Started
+                  <svg
+                    className="w-4 h-4 ml-1.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
+                  </svg>
                 </Link>
               </li>
               <li>
-                <Link href="/login" className="text-slate-300 hover:text-white transition-colors text-sm">
+                <Link 
+                  href="/login" 
+                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700"
+                >
                   Sign In
                 </Link>
               </li>

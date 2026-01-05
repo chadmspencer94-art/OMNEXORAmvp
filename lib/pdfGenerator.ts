@@ -481,43 +481,83 @@ export class PdfDocument {
   }
 
   /**
-   * Add a simple table
+   * Add a simple table with improved formatting for Australian standards
    */
   addTable(headers: string[], rows: string[][], options?: { colWidths?: number[] }): void {
     const colWidths = options?.colWidths || headers.map(() => this.maxWidth / headers.length);
-    const rowHeight = 8;
-    const cellPadding = 2;
+    const rowHeight = 9; // Slightly increased for better readability
+    const cellPadding = 3; // Increased padding
+    const headerHeight = rowHeight + 2;
 
-    // Header row
-    this.checkNewPage(rowHeight + 10);
-    this.doc.setFillColor(...this.config.colors.bgLight);
-    this.doc.rect(this.config.marginLeft, this.y - 2, this.maxWidth, rowHeight, "F");
+    // Header row with better styling
+    this.checkNewPage(headerHeight + 10);
+    const headerY = this.y;
+    
+    // Header background
+    this.doc.setFillColor(245, 158, 11); // amber-500
+    this.doc.rect(this.config.marginLeft, headerY - 2, this.maxWidth, headerHeight, "F");
+    
+    // Header border
+    this.doc.setDrawColor(217, 119, 6); // amber-600
+    this.doc.setLineWidth(0.5);
+    this.doc.rect(this.config.marginLeft, headerY - 2, this.maxWidth, headerHeight, "S");
     
     this.doc.setFontSize(this.config.fonts.small.size);
     this.doc.setFont("helvetica", "bold");
-    this.doc.setTextColor(...this.config.colors.text);
+    this.doc.setTextColor(255, 255, 255); // white text on amber background
     
     let xPos = this.config.marginLeft + cellPadding;
     for (let i = 0; i < headers.length; i++) {
-      this.doc.text(this.cleanText(headers[i]), xPos, this.y + 3);
+      const headerText = this.cleanText(headers[i]);
+      // Allow text wrapping in headers if needed
+      const lines = this.doc.splitTextToSize(headerText, colWidths[i] - (cellPadding * 2));
+      lines.forEach((line: string, lineIndex: number) => {
+        this.doc.text(line, xPos, headerY + (lineIndex * 4) + 4);
+      });
       xPos += colWidths[i];
     }
-    this.y += rowHeight;
+    this.y = headerY + headerHeight;
 
-    // Data rows
+    // Data rows with alternating colors and borders
     this.doc.setFont("helvetica", "normal");
-    for (const row of rows) {
+    this.doc.setTextColor(...this.config.colors.text);
+    
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const row = rows[rowIndex];
+      const isEvenRow = rowIndex % 2 === 0;
+      
       this.checkNewPage(rowHeight);
+      
+      // Alternating row background for better readability
+      if (isEvenRow) {
+        this.doc.setFillColor(248, 250, 252); // slate-50
+        this.doc.rect(this.config.marginLeft, this.y - 2, this.maxWidth, rowHeight, "F");
+      }
+      
+      // Row border
+      this.doc.setDrawColor(226, 232, 240); // slate-200
+      this.doc.setLineWidth(0.3);
+      this.doc.rect(this.config.marginLeft, this.y - 2, this.maxWidth, rowHeight, "S");
       
       xPos = this.config.marginLeft + cellPadding;
       for (let i = 0; i < row.length; i++) {
         const cellText = this.cleanText(row[i] || "");
-        const truncated = cellText.length > 40 ? cellText.substring(0, 37) + "..." : cellText;
-        this.doc.text(truncated, xPos, this.y + 3);
+        // Allow text wrapping in cells
+        const lines = this.doc.splitTextToSize(cellText, colWidths[i] - (cellPadding * 2));
+        const cellHeight = Math.max(rowHeight, lines.length * 4 + 2);
+        
+        lines.forEach((line: string, lineIndex: number) => {
+          this.doc.text(line, xPos, this.y + (lineIndex * 4) + 3);
+        });
         xPos += colWidths[i];
       }
       this.y += rowHeight;
     }
+    
+    // Bottom border
+    this.doc.setDrawColor(203, 213, 225); // slate-300
+    this.doc.setLineWidth(0.5);
+    this.doc.line(this.config.marginLeft, this.y - 2, this.config.marginLeft + this.maxWidth, this.y - 2);
     
     this.addSpace(this.config.paragraphSpacing);
   }

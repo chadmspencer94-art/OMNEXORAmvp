@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { requireActiveUser } from "@/lib/auth";
+import { requireActiveUser, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
-import PrintButton from "./PrintButton";
+import SpecDocExportButtons from "./SpecDocExportButtons";
 import AIWarningBanner from "@/app/components/AIWarningBanner";
 
 // Authenticated page using requireActiveUser - must be dynamic
@@ -23,14 +23,35 @@ export default async function SpecDocPage({ params }: SpecDocPageProps) {
     notFound();
   }
 
-  // Security check - ensure user owns this job
-  if (job.userId !== user.id) {
+  // Security check - ensure user owns this job or is admin
+  const userIsAdmin = isAdmin(user);
+  if (job.userId !== user.id && !userIsAdmin) {
     redirect("/jobs");
   }
 
   // Check if scope of work exists
   if (!job.aiScopeOfWork || job.aiScopeOfWork.trim() === "") {
     redirect(`/jobs/${id}?error=no_scope`);
+  }
+
+  // Get plan info for access control
+  let planTier = "FREE";
+  let planStatus = "TRIAL";
+  try {
+    const { getPrisma } = await import("@/lib/prisma");
+    const prisma = getPrisma();
+    const prismaUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: { planTier: true, planStatus: true },
+    });
+    if (prismaUser?.planTier) {
+      planTier = prismaUser.planTier;
+    }
+    if (prismaUser?.planStatus) {
+      planStatus = prismaUser.planStatus;
+    }
+  } catch (error) {
+    console.warn("Failed to fetch plan info:", error);
   }
 
   const scopeLines = job.aiScopeOfWork.split("\n").filter(line => line.trim());
@@ -241,7 +262,12 @@ export default async function SpecDocPage({ params }: SpecDocPageProps) {
       </div>
 
       {/* Action Buttons - Hidden when printing */}
-      <PrintButton jobId={job.id} />
+      <SpecDocExportButtons 
+        job={job} 
+        user={user}
+        planTier={planTier}
+        planStatus={planStatus}
+      />
 
     </div>
   );

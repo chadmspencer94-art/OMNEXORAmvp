@@ -1,0 +1,312 @@
+{
+  "schemaVersion": "1.0",
+  "jurisdiction": "AU",
+  "docType": "EXTENSION_OF_TIME",
+  "title": "Extension of Time (EOT)",
+  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a compliance-ready layout aligned with Australian construction industry best practice. Professional review required before use.",
+  "sections": [
+    {
+      "id": "header",
+      "title": "Document Header",
+      "order": 1,
+      "fields": [
+        {
+          "id": "eot-number",
+          "label": "EOT Number",
+          "type": "text",
+          "required": true,
+          "placeholder": "e.g., EOT-001, EOT-2024-001"
+        },
+        {
+          "id": "date",
+          "label": "Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "contract-reference",
+          "label": "Contract Reference",
+          "type": "text",
+          "required": false,
+          "dataPath": "jobId",
+          "placeholder": "Original contract or job reference"
+        },
+        {
+          "id": "contract-clause-reference",
+          "label": "Contract Clause Reference (if applicable)",
+          "type": "text",
+          "required": false,
+          "placeholder": "e.g., Clause 11.5, Schedule 2"
+        }
+      ]
+    },
+    {
+      "id": "parties",
+      "title": "Parties",
+      "order": 2,
+      "fields": [
+        {
+          "id": "contractor-name",
+          "label": "Contractor Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName",
+          "placeholder": "Contractor business name"
+        },
+        {
+          "id": "contractor-abn",
+          "label": "Contractor ABN",
+          "type": "text",
+          "required": false,
+          "dataPath": "abn",
+          "placeholder": "ABN (XX XXX XXX XXX)"
+        },
+        {
+          "id": "principal-name",
+          "label": "Principal/Client Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "clientName",
+          "placeholder": "Principal or client name"
+        },
+        {
+          "id": "principal-address",
+          "label": "Principal/Client Address",
+          "type": "textarea",
+          "required": false,
+          "dataPath": "address",
+          "placeholder": "Principal or client address"
+        }
+      ]
+    },
+    {
+      "id": "project-details",
+      "title": "Project Details",
+      "order": 3,
+      "fields": [
+        {
+          "id": "project-name",
+          "label": "Project Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "jobTitle",
+          "placeholder": "Project or job name"
+        },
+        {
+          "id": "project-location",
+          "label": "Project Location",
+          "type": "text",
+          "required": true,
+          "dataPath": "address",
+          "placeholder": "Project site address"
+        },
+        {
+          "id": "original-completion-date",
+          "label": "Original Completion Date",
+          "type": "date",
+          "required": false,
+          "placeholder": "Original contract completion date"
+        }
+      ]
+    },
+    {
+      "id": "eot-details",
+      "title": "Extension of Time Details",
+      "order": 4,
+      "fields": [
+        {
+          "id": "extension-requested",
+          "label": "Extension Requested",
+          "type": "text",
+          "required": true,
+          "placeholder": "e.g., 5 days, 2 weeks, 1 month"
+        },
+        {
+          "id": "new-completion-date",
+          "label": "New Proposed Completion Date",
+          "type": "date",
+          "required": true,
+          "placeholder": "Proposed new completion date"
+        },
+        {
+          "id": "reason-for-extension",
+          "label": "Reason for Extension",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Provide detailed reason for requesting extension of time"
+        },
+        {
+          "id": "circumstances",
+          "label": "Circumstances Leading to Delay",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Describe the circumstances that have caused or will cause delay"
+        },
+        {
+          "id": "impact-on-work",
+          "label": "Impact on Work Program",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe how this delay impacts the overall work program"
+        }
+      ]
+    },
+    {
+      "id": "delay-events",
+      "title": "Delay Events",
+      "order": 5,
+      "table": {
+        "id": "delay-events-table",
+        "columns": [
+          {
+            "id": "event-date",
+            "label": "Event Date",
+            "width": 20,
+            "type": "date"
+          },
+          {
+            "id": "event-description",
+            "label": "Event Description",
+            "width": 50
+          },
+          {
+            "id": "delay-days",
+            "label": "Delay (Days)",
+            "width": 15,
+            "type": "number"
+          },
+          {
+            "id": "event-type",
+            "label": "Event Type",
+            "width": 15
+          }
+        ],
+        "rowsKey": "delayEvents",
+        "minRows": 1
+      }
+    },
+    {
+      "id": "mitigation",
+      "title": "Mitigation Measures",
+      "order": 6,
+      "fields": [
+        {
+          "id": "mitigation-measures",
+          "label": "Mitigation Measures Taken or Proposed",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe measures taken or proposed to mitigate the delay"
+        },
+        {
+          "id": "additional-resources",
+          "label": "Additional Resources (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe any additional resources allocated to mitigate delay"
+        }
+      ]
+    },
+    {
+      "id": "approval",
+      "title": "Approval and Signatures",
+      "order": 7,
+      "fields": [
+        {
+          "id": "contractor-name-signature",
+          "label": "Contractor Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName"
+        },
+        {
+          "id": "contractor-signature",
+          "label": "Contractor Signature",
+          "type": "text",
+          "required": false,
+          "placeholder": "Signature"
+        },
+        {
+          "id": "contractor-date",
+          "label": "Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "principal-name-signature",
+          "label": "Principal/Client Name",
+          "type": "text",
+          "required": false,
+          "dataPath": "clientName",
+          "placeholder": "Principal or client name"
+        },
+        {
+          "id": "principal-signature",
+          "label": "Principal/Client Signature",
+          "type": "text",
+          "required": false,
+          "placeholder": "Signature"
+        },
+        {
+          "id": "principal-date",
+          "label": "Date",
+          "type": "date",
+          "required": false,
+          "placeholder": "Date of approval"
+        }
+      ]
+    }
+  ],
+  "ovisChecks": [
+    {
+      "id": "missing-eot-number",
+      "severity": "high",
+      "rule": "empty('eot-number')",
+      "message": "EOT number is required"
+    },
+    {
+      "id": "missing-contractor-name",
+      "severity": "high",
+      "rule": "empty('businessName')",
+      "message": "Contractor name is required"
+    },
+    {
+      "id": "missing-principal-name",
+      "severity": "high",
+      "rule": "empty('clientName')",
+      "message": "Principal/client name is required"
+    },
+    {
+      "id": "missing-extension-requested",
+      "severity": "high",
+      "rule": "empty('extension-requested')",
+      "message": "Extension period is required"
+    },
+    {
+      "id": "missing-new-completion-date",
+      "severity": "high",
+      "rule": "empty('new-completion-date')",
+      "message": "New completion date is required"
+    },
+    {
+      "id": "missing-reason",
+      "severity": "high",
+      "rule": "empty('reason-for-extension')",
+      "message": "Reason for extension is required"
+    },
+    {
+      "id": "missing-circumstances",
+      "severity": "high",
+      "rule": "empty('circumstances')",
+      "message": "Circumstances leading to delay are required"
+    },
+    {
+      "id": "missing-delay-events",
+      "severity": "high",
+      "rule": "len('delayEvents') < 1",
+      "message": "At least one delay event is required"
+    }
+  ]
+}
+

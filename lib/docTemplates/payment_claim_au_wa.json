@@ -1,0 +1,329 @@
+{
+  "schemaVersion": "1.0",
+  "jurisdiction": "AU-WA",
+  "docType": "PAYMENT_CLAIM_WA",
+  "title": "Payment Claim (Security of Payment - WA)",
+  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a draft template aligned with WA Construction Contracts Act 2004 guidance and requires professional review before use.",
+  "sections": [
+    {
+      "id": "claim-details",
+      "title": "Claim Details",
+      "order": 1,
+      "fields": [
+        {
+          "id": "claim-number",
+          "label": "Claim Number",
+          "type": "text",
+          "required": true,
+          "placeholder": "Auto-generated or enter claim number"
+        },
+        {
+          "id": "claim-date",
+          "label": "Claim Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "reference-number",
+          "label": "Reference Number (if applicable)",
+          "type": "text",
+          "required": false,
+          "dataPath": "jobId",
+          "placeholder": "Job or contract reference"
+        }
+      ]
+    },
+    {
+      "id": "parties",
+      "title": "Parties",
+      "order": 2,
+      "fields": [
+        {
+          "id": "claimant-name",
+          "label": "Claimant Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName",
+          "placeholder": "Your business name"
+        },
+        {
+          "id": "claimant-abn",
+          "label": "Claimant ABN",
+          "type": "text",
+          "required": false,
+          "dataPath": "abn",
+          "placeholder": "ABN (XX XXX XXX XXX)"
+        },
+        {
+          "id": "claimant-phone",
+          "label": "Claimant Phone",
+          "type": "text",
+          "required": false,
+          "placeholder": "Business phone number"
+        },
+        {
+          "id": "claimant-email",
+          "label": "Claimant Email",
+          "type": "text",
+          "required": false,
+          "placeholder": "Business email address"
+        },
+        {
+          "id": "claimant-address",
+          "label": "Claimant Address",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Business address"
+        },
+        {
+          "id": "respondent-name",
+          "label": "Respondent Name (Principal/Client)",
+          "type": "text",
+          "required": true,
+          "dataPath": "clientName",
+          "placeholder": "Client/Principal name"
+        },
+        {
+          "id": "respondent-address",
+          "label": "Respondent Address",
+          "type": "textarea",
+          "required": false,
+          "dataPath": "address",
+          "placeholder": "Client address"
+        }
+      ]
+    },
+    {
+      "id": "contract-details",
+      "title": "Contract Details",
+      "order": 3,
+      "fields": [
+        {
+          "id": "contract-description",
+          "label": "Description of Work/Contract",
+          "type": "textarea",
+          "required": true,
+          "dataPath": "jobTitle",
+          "placeholder": "Description of work performed"
+        },
+        {
+          "id": "contract-date",
+          "label": "Contract Date",
+          "type": "date",
+          "required": false,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "contract-value",
+          "label": "Contract Value (if applicable)",
+          "type": "currency",
+          "required": false,
+          "placeholder": "Total contract value"
+        }
+      ]
+    },
+    {
+      "id": "payment-claim",
+      "title": "Payment Claim",
+      "order": 4,
+      "fields": [
+        {
+          "id": "claim-period",
+          "label": "Claim Period",
+          "type": "text",
+          "required": true,
+          "placeholder": "e.g., 1 January 2024 to 31 January 2024"
+        },
+        {
+          "id": "amount-claimed",
+          "label": "Amount Claimed (ex GST)",
+          "type": "currency",
+          "required": true,
+          "placeholder": "0.00"
+        },
+        {
+          "id": "gst-registered",
+          "label": "GST Registered",
+          "type": "select",
+          "required": true,
+          "options": ["Yes", "No"],
+          "defaultValue": "Yes"
+        },
+        {
+          "id": "gst-amount",
+          "label": "GST Amount (10%)",
+          "type": "currency",
+          "required": false,
+          "placeholder": "0.00"
+        },
+        {
+          "id": "total-amount",
+          "label": "Total Amount Claimed (inc GST)",
+          "type": "currency",
+          "required": true,
+          "placeholder": "0.00"
+        },
+        {
+          "id": "previous-payments",
+          "label": "Previous Payments Received",
+          "type": "currency",
+          "required": false,
+          "placeholder": "0.00"
+        },
+        {
+          "id": "amount-owing",
+          "label": "Amount Owing",
+          "type": "currency",
+          "required": false,
+          "placeholder": "0.00"
+        }
+      ]
+    },
+    {
+      "id": "payment-schedule",
+      "title": "Payment Schedule Items",
+      "order": 5,
+      "table": {
+        "id": "payment-items",
+        "columns": [
+          {
+            "id": "description",
+            "label": "Description",
+            "width": 50
+          },
+          {
+            "id": "quantity",
+            "label": "Quantity",
+            "width": 15,
+            "type": "number"
+          },
+          {
+            "id": "unit-price",
+            "label": "Unit Price",
+            "width": 15,
+            "type": "currency"
+          },
+          {
+            "id": "amount",
+            "label": "Amount",
+            "width": 20,
+            "type": "currency"
+          }
+        ],
+        "rowsKey": "paymentItems",
+        "minRows": 1
+      }
+    },
+    {
+      "id": "payment-terms",
+      "title": "Payment Terms",
+      "order": 6,
+      "fields": [
+        {
+          "id": "payment-due-date",
+          "label": "Payment Due Date",
+          "type": "date",
+          "required": true,
+          "placeholder": "Due date for payment"
+        },
+        {
+          "id": "payment-method",
+          "label": "Payment Method",
+          "type": "select",
+          "required": false,
+          "options": ["Bank Transfer", "Cheque", "Credit Card", "Other"],
+          "placeholder": "Select payment method"
+        },
+        {
+          "id": "bank-details",
+          "label": "Bank Account Details",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Bank Name:\nBSB: XXX-XXX\nAccount Number: XXXXXXXXX\nAccount Name: [Business Name]"
+        },
+        {
+          "id": "payment-terms-days",
+          "label": "Payment Terms (Days)",
+          "type": "number",
+          "required": false,
+          "placeholder": "e.g., 14, 21, 30"
+        }
+      ]
+    },
+    {
+      "id": "statutory-declaration",
+      "title": "Statutory Declaration",
+      "order": 7,
+      "fields": [
+        {
+          "id": "declaration-text",
+          "label": "Declaration",
+          "type": "textarea",
+          "required": true,
+          "defaultValue": "I declare that the information contained in this payment claim is true and correct to the best of my knowledge and belief."
+        },
+        {
+          "id": "declarant-name",
+          "label": "Declarant Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName"
+        },
+        {
+          "id": "declarant-signature",
+          "label": "Signature",
+          "type": "text",
+          "required": false,
+          "placeholder": "Signature"
+        },
+        {
+          "id": "declaration-date",
+          "label": "Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        }
+      ]
+    }
+  ],
+  "ovisChecks": [
+    {
+      "id": "missing-claimant-name",
+      "severity": "high",
+      "rule": "empty('businessName')",
+      "message": "Claimant name is required"
+    },
+    {
+      "id": "missing-respondent-name",
+      "severity": "high",
+      "rule": "empty('clientName')",
+      "message": "Respondent (client) name is required"
+    },
+    {
+      "id": "missing-amount-claimed",
+      "severity": "high",
+      "rule": "empty('amount-claimed')",
+      "message": "Amount claimed is required"
+    },
+    {
+      "id": "missing-payment-items",
+      "severity": "high",
+      "rule": "len('paymentItems') < 1",
+      "message": "At least one payment schedule item is required"
+    },
+    {
+      "id": "missing-payment-due-date",
+      "severity": "high",
+      "rule": "empty('payment-due-date')",
+      "message": "Payment due date is required"
+    },
+    {
+      "id": "missing-declaration",
+      "severity": "high",
+      "rule": "empty('declaration-text')",
+      "message": "Statutory declaration is required"
+    }
+  ]
+}
+

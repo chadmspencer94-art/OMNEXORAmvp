@@ -1,0 +1,355 @@
+{
+  "schemaVersion": "1.0",
+  "jurisdiction": "AU",
+  "docType": "HANDOVER_PRACTICAL_COMPLETION",
+  "title": "Handover & Practical Completion",
+  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a compliance-ready layout aligned with Australian construction industry best practice. Professional review required before use.",
+  "sections": [
+    {
+      "id": "header",
+      "title": "Document Header",
+      "order": 1,
+      "fields": [
+        {
+          "id": "handover-number",
+          "label": "Handover Number",
+          "type": "text",
+          "required": true,
+          "placeholder": "e.g., HO-001, PC-2024-001"
+        },
+        {
+          "id": "date",
+          "label": "Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "contract-reference",
+          "label": "Contract Reference",
+          "type": "text",
+          "required": false,
+          "dataPath": "jobId",
+          "placeholder": "Contract or job reference"
+        },
+        {
+          "id": "practical-completion-date",
+          "label": "Practical Completion Date",
+          "type": "date",
+          "required": true,
+          "placeholder": "Date of practical completion"
+        }
+      ]
+    },
+    {
+      "id": "parties",
+      "title": "Parties",
+      "order": 2,
+      "fields": [
+        {
+          "id": "contractor-name",
+          "label": "Contractor Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName",
+          "placeholder": "Contractor business name"
+        },
+        {
+          "id": "contractor-abn",
+          "label": "Contractor ABN",
+          "type": "text",
+          "required": false,
+          "dataPath": "abn",
+          "placeholder": "ABN (XX XXX XXX XXX)"
+        },
+        {
+          "id": "contractor-address",
+          "label": "Contractor Address",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Contractor business address"
+        },
+        {
+          "id": "principal-name",
+          "label": "Principal/Client Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "clientName",
+          "placeholder": "Principal or client name"
+        },
+        {
+          "id": "principal-address",
+          "label": "Principal/Client Address",
+          "type": "textarea",
+          "required": false,
+          "dataPath": "address",
+          "placeholder": "Principal or client address"
+        }
+      ]
+    },
+    {
+      "id": "project-details",
+      "title": "Project Details",
+      "order": 3,
+      "fields": [
+        {
+          "id": "project-name",
+          "label": "Project Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "jobTitle",
+          "placeholder": "Project or job name"
+        },
+        {
+          "id": "project-location",
+          "label": "Project Location",
+          "type": "text",
+          "required": true,
+          "dataPath": "address",
+          "placeholder": "Project site address"
+        },
+        {
+          "id": "contract-value",
+          "label": "Contract Value (if applicable)",
+          "type": "currency",
+          "required": false,
+          "placeholder": "Original contract amount"
+        }
+      ]
+    },
+    {
+      "id": "completion-details",
+      "title": "Completion Details",
+      "order": 4,
+      "fields": [
+        {
+          "id": "work-completed",
+          "label": "Work Completed",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Describe the work that has been completed"
+        },
+        {
+          "id": "completion-status",
+          "label": "Completion Status",
+          "type": "select",
+          "required": true,
+          "options": ["Practical Completion Achieved", "Substantial Completion", "Partial Completion", "Other"],
+          "defaultValue": "Practical Completion Achieved"
+        },
+        {
+          "id": "outstanding-work",
+          "label": "Outstanding Work (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List any outstanding work or defects to be rectified"
+        },
+        {
+          "id": "defects-list",
+          "label": "Defects List (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List any defects identified during inspection"
+        }
+      ]
+    },
+    {
+      "id": "inspections",
+      "title": "Inspections and Testing",
+      "order": 5,
+      "fields": [
+        {
+          "id": "inspections-completed",
+          "label": "Inspections Completed",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List inspections and tests completed (e.g., building inspection, electrical safety test)"
+        },
+        {
+          "id": "certificates-provided",
+          "label": "Certificates Provided",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List certificates and compliance documents provided"
+        },
+        {
+          "id": "warranties",
+          "label": "Warranties and Guarantees",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Details of warranties and guarantees provided"
+        }
+      ]
+    },
+    {
+      "id": "handover-items",
+      "title": "Handover Items",
+      "order": 6,
+      "table": {
+        "id": "handover-items-table",
+        "columns": [
+          {
+            "id": "item",
+            "label": "Item",
+            "width": 40
+          },
+          {
+            "id": "description",
+            "label": "Description",
+            "width": 35
+          },
+          {
+            "id": "location",
+            "label": "Location",
+            "width": 25
+          },
+          {
+            "id": "status",
+            "label": "Status",
+            "width": 20
+          }
+        ],
+        "rowsKey": "handoverItems",
+        "minRows": 0
+      }
+    },
+    {
+      "id": "keys-and-access",
+      "title": "Keys and Access",
+      "order": 7,
+      "fields": [
+        {
+          "id": "keys-handed-over",
+          "label": "Keys Handed Over",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List keys and access devices handed over"
+        },
+        {
+          "id": "access-codes",
+          "label": "Access Codes (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List access codes, alarm codes, or security information"
+        }
+      ]
+    },
+    {
+      "id": "maintenance",
+      "title": "Maintenance Information",
+      "order": 8,
+      "fields": [
+        {
+          "id": "maintenance-requirements",
+          "label": "Maintenance Requirements",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe ongoing maintenance requirements"
+        },
+        {
+          "id": "maintenance-schedule",
+          "label": "Maintenance Schedule",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Provide maintenance schedule if applicable"
+        }
+      ]
+    },
+    {
+      "id": "acknowledgment",
+      "title": "Acknowledgment and Signatures",
+      "order": 9,
+      "fields": [
+        {
+          "id": "contractor-name-signature",
+          "label": "Contractor Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName"
+        },
+        {
+          "id": "contractor-signature",
+          "label": "Contractor Signature",
+          "type": "text",
+          "required": false,
+          "placeholder": "Signature"
+        },
+        {
+          "id": "contractor-date",
+          "label": "Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "principal-name-signature",
+          "label": "Principal/Client Name",
+          "type": "text",
+          "required": false,
+          "dataPath": "clientName",
+          "placeholder": "Principal or client name"
+        },
+        {
+          "id": "principal-signature",
+          "label": "Principal/Client Signature",
+          "type": "text",
+          "required": false,
+          "placeholder": "Signature"
+        },
+        {
+          "id": "principal-date",
+          "label": "Date",
+          "type": "date",
+          "required": false,
+          "placeholder": "Date of acknowledgment"
+        },
+        {
+          "id": "acknowledgment-text",
+          "label": "Acknowledgment",
+          "type": "textarea",
+          "required": false,
+          "defaultValue": "I acknowledge receipt of the completed work and accept handover of the project as described above."
+        }
+      ]
+    }
+  ],
+  "ovisChecks": [
+    {
+      "id": "missing-handover-number",
+      "severity": "high",
+      "rule": "empty('handover-number')",
+      "message": "Handover number is required"
+    },
+    {
+      "id": "missing-contractor-name",
+      "severity": "high",
+      "rule": "empty('businessName')",
+      "message": "Contractor name is required"
+    },
+    {
+      "id": "missing-principal-name",
+      "severity": "high",
+      "rule": "empty('clientName')",
+      "message": "Principal/client name is required"
+    },
+    {
+      "id": "missing-practical-completion-date",
+      "severity": "high",
+      "rule": "empty('practical-completion-date')",
+      "message": "Practical completion date is required"
+    },
+    {
+      "id": "missing-work-completed",
+      "severity": "high",
+      "rule": "empty('work-completed')",
+      "message": "Description of completed work is required"
+    },
+    {
+      "id": "missing-completion-status",
+      "severity": "high",
+      "rule": "empty('completion-status')",
+      "message": "Completion status is required"
+    }
+  ]
+}
+

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
 import { getJobById, saveJob } from "@/lib/jobs";
-import { openai } from "@/lib/openai";
+import { openai, isOpenAIAvailable } from "@/lib/openai";
 
 /**
  * POST /api/jobs/[id]/variation
@@ -48,13 +48,21 @@ export async function POST(
       );
     }
 
+    // Check if OpenAI is available
+    if (!isOpenAIAvailable()) {
+      return NextResponse.json(
+        { error: "AI service is not available. Please contact support." },
+        { status: 503 }
+      );
+    }
+
     // Load business profile data if available
     let businessName = "";
     let abn = "";
     try {
       const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
       const prismaUser = await prisma.user.findUnique({
-        where: { id: user.id },
+        where: { email: user.email },
         select: {
           businessName: true,
           abn: true,
@@ -145,23 +153,35 @@ ${abn ? `**ABN:** ${abn}` : ""}
 Create a professional Variation document that clearly outlines the change in scope, cost impact, and time implications. Use Australian construction terminology and formatting.`;
 
     // Call OpenAI
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 3000,
-    });
+    let documentContent = "";
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 3000,
+      });
 
-    const documentContent = response.choices[0]?.message?.content || "";
+      documentContent = response.choices[0]?.message?.content || "";
 
-    if (!documentContent.trim()) {
-      return NextResponse.json(
-        { error: "Failed to generate Variation document" },
-        { status: 500 }
-      );
+      if (!documentContent.trim()) {
+        return NextResponse.json(
+          { error: "Failed to generate Variation document. No content received from AI service." },
+          { status: 500 }
+        );
+      }
+    } catch (openaiError: any) {
+      console.error("[variation] OpenAI API error:", openaiError);
+      if (openaiError?.message?.includes("API key") || openaiError?.code === "invalid_api_key") {
+        return NextResponse.json(
+          { error: "AI service is not available. Please contact support." },
+          { status: 503 }
+        );
+      }
+      throw openaiError; // Re-throw to be caught by outer catch
     }
 
     // Save document as draft (not confirmed)
@@ -177,10 +197,20 @@ Create a professional Variation document that clearly outlines the change in sco
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Error generating Variation:", error);
+  } catch (error: any) {
+    console.error("[variation] Error generating Variation:", error);
+    
+    // If it's already a handled OpenAI error, return it
+    if (error?.message && (error.message.includes("AI service") || error.message.includes("API key"))) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 503 }
+      );
+    }
+    
+    // Generic error fallback
     return NextResponse.json(
-      { error: "Failed to generate Variation document. Please try again." },
+      { error: error?.message || "Failed to generate Variation document. Please try again." },
       { status: 500 }
     );
   }

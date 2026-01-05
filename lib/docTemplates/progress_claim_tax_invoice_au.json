@@ -1,0 +1,353 @@
+{
+  "schemaVersion": "1.0",
+  "jurisdiction": "AU",
+  "docType": "PROGRESS_CLAIM_TAX_INVOICE",
+  "title": "Progress Claim / Tax Invoice",
+  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a compliance-ready layout aligned with Australian construction industry best practice. Professional review required before use.",
+  "sections": [
+    {
+      "id": "header",
+      "title": "Document Header",
+      "order": 1,
+      "fields": [
+        {
+          "id": "invoice-number",
+          "label": "Invoice Number",
+          "type": "text",
+          "required": true,
+          "placeholder": "e.g., INV-001, PC-2024-001"
+        },
+        {
+          "id": "invoice-date",
+          "label": "Invoice Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        },
+        {
+          "id": "due-date",
+          "label": "Payment Due Date",
+          "type": "date",
+          "required": true,
+          "placeholder": "Payment due date"
+        },
+        {
+          "id": "contract-reference",
+          "label": "Contract Reference",
+          "type": "text",
+          "required": false,
+          "dataPath": "jobId",
+          "placeholder": "Contract or job reference"
+        },
+        {
+          "id": "claim-period",
+          "label": "Claim Period",
+          "type": "text",
+          "required": false,
+          "placeholder": "e.g., 1 January 2024 to 31 January 2024"
+        }
+      ]
+    },
+    {
+      "id": "parties",
+      "title": "Parties",
+      "order": 2,
+      "fields": [
+        {
+          "id": "supplier-name",
+          "label": "Supplier/Contractor Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName",
+          "placeholder": "Supplier or contractor business name"
+        },
+        {
+          "id": "supplier-abn",
+          "label": "Supplier ABN",
+          "type": "text",
+          "required": true,
+          "dataPath": "abn",
+          "placeholder": "ABN (XX XXX XXX XXX)"
+        },
+        {
+          "id": "supplier-address",
+          "label": "Supplier Address",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Supplier business address"
+        },
+        {
+          "id": "supplier-phone",
+          "label": "Supplier Phone",
+          "type": "text",
+          "required": false,
+          "placeholder": "Business phone number"
+        },
+        {
+          "id": "supplier-email",
+          "label": "Supplier Email",
+          "type": "text",
+          "required": false,
+          "placeholder": "Business email address"
+        },
+        {
+          "id": "customer-name",
+          "label": "Customer/Client Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "clientName",
+          "placeholder": "Customer or client name"
+        },
+        {
+          "id": "customer-address",
+          "label": "Customer Address",
+          "type": "textarea",
+          "required": false,
+          "dataPath": "address",
+          "placeholder": "Customer address"
+        }
+      ]
+    },
+    {
+      "id": "project-details",
+      "title": "Project Details",
+      "order": 3,
+      "fields": [
+        {
+          "id": "project-name",
+          "label": "Project Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "jobTitle",
+          "placeholder": "Project or job name"
+        },
+        {
+          "id": "project-location",
+          "label": "Project Location",
+          "type": "text",
+          "required": false,
+          "dataPath": "address",
+          "placeholder": "Project site address"
+        }
+      ]
+    },
+    {
+      "id": "invoice-items",
+      "title": "Invoice Items",
+      "order": 4,
+      "table": {
+        "id": "invoice-items-table",
+        "columns": [
+          {
+            "id": "item-number",
+            "label": "Item #",
+            "width": 8
+          },
+          {
+            "id": "description",
+            "label": "Description",
+            "width": 42
+          },
+          {
+            "id": "quantity",
+            "label": "Quantity",
+            "width": 12,
+            "type": "number"
+          },
+          {
+            "id": "unit",
+            "label": "Unit",
+            "width": 8
+          },
+          {
+            "id": "unit-price",
+            "label": "Unit Price",
+            "width": 15,
+            "type": "currency"
+          },
+          {
+            "id": "amount",
+            "label": "Amount",
+            "width": 15,
+            "type": "currency"
+          }
+        ],
+        "rowsKey": "invoiceItems",
+        "minRows": 1
+      }
+    },
+    {
+      "id": "summary",
+      "title": "Summary",
+      "order": 5,
+      "fields": [
+        {
+          "id": "subtotal-ex-gst",
+          "label": "Subtotal (ex GST)",
+          "type": "currency",
+          "required": true,
+          "placeholder": "0.00"
+        },
+        {
+          "id": "gst-amount",
+          "label": "GST Amount (10%)",
+          "type": "currency",
+          "required": false,
+          "placeholder": "0.00"
+        },
+        {
+          "id": "total-inc-gst",
+          "label": "Total (inc GST)",
+          "type": "currency",
+          "required": true,
+          "placeholder": "0.00"
+        },
+        {
+          "id": "previous-payments",
+          "label": "Previous Payments Received",
+          "type": "currency",
+          "required": false,
+          "placeholder": "0.00"
+        },
+        {
+          "id": "amount-owing",
+          "label": "Amount Owing",
+          "type": "currency",
+          "required": false,
+          "placeholder": "0.00"
+        }
+      ]
+    },
+    {
+      "id": "payment-details",
+      "title": "Payment Details",
+      "order": 6,
+      "fields": [
+        {
+          "id": "bank-name",
+          "label": "Bank Name",
+          "type": "text",
+          "required": true,
+          "placeholder": "Bank name"
+        },
+        {
+          "id": "bsb",
+          "label": "BSB",
+          "type": "text",
+          "required": true,
+          "placeholder": "XXX-XXX"
+        },
+        {
+          "id": "account-number",
+          "label": "Account Number",
+          "type": "text",
+          "required": true,
+          "placeholder": "Account number"
+        },
+        {
+          "id": "account-name",
+          "label": "Account Name",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName",
+          "placeholder": "Account name"
+        },
+        {
+          "id": "payment-terms",
+          "label": "Payment Terms",
+          "type": "text",
+          "required": false,
+          "placeholder": "e.g., 14 days, 30 days, Net 30"
+        }
+      ]
+    },
+    {
+      "id": "tax-invoice-statement",
+      "title": "Tax Invoice Statement",
+      "order": 7,
+      "fields": [
+        {
+          "id": "tax-invoice-statement",
+          "label": "Tax Invoice Statement",
+          "type": "textarea",
+          "required": true,
+          "defaultValue": "This is a tax invoice for GST purposes. The supplier is registered for GST."
+        }
+      ]
+    },
+    {
+      "id": "signature",
+      "title": "Authorised Signature",
+      "order": 8,
+      "fields": [
+        {
+          "id": "authorised-by-name",
+          "label": "Authorised By",
+          "type": "text",
+          "required": true,
+          "dataPath": "businessName",
+          "placeholder": "Authorised person name"
+        },
+        {
+          "id": "authorised-signature",
+          "label": "Signature",
+          "type": "text",
+          "required": false,
+          "placeholder": "Signature"
+        },
+        {
+          "id": "authorised-date",
+          "label": "Date",
+          "type": "date",
+          "required": true,
+          "dataPath": "createdAt"
+        }
+      ]
+    }
+  ],
+  "ovisChecks": [
+    {
+      "id": "missing-invoice-number",
+      "severity": "high",
+      "rule": "empty('invoice-number')",
+      "message": "Invoice number is required"
+    },
+    {
+      "id": "missing-supplier-name",
+      "severity": "high",
+      "rule": "empty('businessName')",
+      "message": "Supplier name is required"
+    },
+    {
+      "id": "missing-supplier-abn",
+      "severity": "high",
+      "rule": "empty('abn')",
+      "message": "Supplier ABN is required for tax invoice"
+    },
+    {
+      "id": "missing-customer-name",
+      "severity": "high",
+      "rule": "empty('clientName')",
+      "message": "Customer name is required"
+    },
+    {
+      "id": "missing-invoice-items",
+      "severity": "high",
+      "rule": "len('invoiceItems') < 1",
+      "message": "At least one invoice item is required"
+    },
+    {
+      "id": "missing-total",
+      "severity": "high",
+      "rule": "empty('total-inc-gst')",
+      "message": "Total amount is required"
+    },
+    {
+      "id": "missing-bank-details",
+      "severity": "high",
+      "rule": "empty('bank-name') || empty('bsb') || empty('account-number')",
+      "message": "Bank account details are required"
+    }
+  ]
+}
+
