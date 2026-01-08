@@ -80,8 +80,8 @@ model User {
   
   // Business Rates & Defaults
   gstRegistered       Boolean   @default(false) // whether prices should include GST
-  defaultMarginPct    Decimal?  // default % markup on materials
-  defaultDepositPct   Decimal?  // default % deposit requested
+  defaultMarginPct    Float?    // default % markup on materials
+  defaultDepositPct   Float?    // default % deposit requested
   defaultPaymentTerms String?   // e.g. "7 days", "14 days", etc.
   tradeRatesJson      String?   // trade-specific rates stored as JSON string (e.g. painter: walls/ceilings per m²)
   
@@ -321,7 +321,7 @@ model MaterialItem {
   supplier  String?             // free text for now, e.g. "Paint Place", "Bunnings"
 
   unitLabel String              // e.g. "Litre", "4L can", "10L can", "Each", "Box"
-  unitCost  Decimal?            // cost per unit (internal reference)
+  unitCost  Float?              // cost per unit (internal reference)
   notes     String?             // free text (finish, base, etc.)
 
   isArchived Boolean @default(false)
@@ -350,7 +350,7 @@ model JobMaterial {
 
   name      String        // snapshot of material name at time of use
   unitLabel String        // snapshot of unit label
-  unitCost  Decimal?      // snapshot of unit cost (pre-markup, optional)
+  unitCost  Float?        // snapshot of unit cost (pre-markup, optional)
 
   quantity  Float         // number of units for this job
   markupPercent Float?    // override markup for this line, if any
@@ -358,7 +358,7 @@ model JobMaterial {
   notes     String?       // job-specific notes
 
   // Cache total for this line (optional but useful): quantity * unitCost * (1 + markup)
-  lineTotal Decimal?
+  lineTotal Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -415,11 +415,11 @@ model JobQuoteVersion {
   quoteExpiryAt         DateTime?
 
   labourHoursEstimate   Float?
-  labourSubtotal        Decimal?
-  materialsTotal        Decimal?
-  subtotal              Decimal?
-  gstAmount             Decimal?
-  totalInclGst          Decimal?
+  labourSubtotal        Float?
+  materialsTotal        Float?
+  subtotal              Float?
+  gstAmount             Float?
+  totalInclGst          Float?
 
   summary               String? // job pack summary text
   scopeOfWork           String?

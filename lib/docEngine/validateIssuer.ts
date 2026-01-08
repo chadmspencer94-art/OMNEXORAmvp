@@ -175,3 +175,4 @@ export function formatBusinessAddress(issuer: IssuerProfile): string {
   return parts.join(", ");
 }
 
+
