@@ -289,6 +289,37 @@ export async function POST(
     metaItems.push({ label: "Date", value: formatDate(job.createdAt) });
     pdf.addMetadata(metaItems);
 
+    // =========================================
+    // R5: EXPORT IDENTIFIERS - Client-ready baseline
+    // =========================================
+    pdf.addExportIdentifiers({
+      documentType: "Job Pack / Quote",
+      documentId: `JP-${jobId.slice(0, 8).toUpperCase()}`,
+      jobId: jobId.slice(0, 12),
+      generatedAt: new Date().toISOString(),
+      revision: job.quoteVersion || 1,
+      contractorName: businessProfile?.legalName,
+    });
+
+    // =========================================
+    // R11: JURISDICTION LABEL - From user's businessState
+    // =========================================
+    // Map state codes to full names for readability
+    const stateToJurisdiction: Record<string, string> = {
+      WA: "Western Australia",
+      NSW: "New South Wales",
+      VIC: "Victoria",
+      QLD: "Queensland",
+      SA: "South Australia",
+      TAS: "Tasmania",
+      NT: "Northern Territory",
+      ACT: "Australian Capital Territory",
+    };
+    const jurisdiction = businessProfile?.state
+      ? stateToJurisdiction[businessProfile.state.toUpperCase()] || businessProfile.state
+      : "Western Australia";
+    pdf.addJurisdictionLabel(jurisdiction);
+
     // R1: No AI warnings on confirmed exports (already gated above)
 
     // =========================================

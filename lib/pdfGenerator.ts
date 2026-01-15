@@ -649,6 +649,101 @@ export class PdfDocument {
   }
 
   /**
+   * R5: Add client-ready baseline identifiers to export
+   * Includes Document Type, Document ID, Job ID, Generated time, Revision
+   */
+  addExportIdentifiers(identifiers: {
+    documentType: string;
+    documentId: string;
+    jobId: string;
+    generatedAt?: string;
+    revision?: number;
+    contractorName?: string;
+  }): void {
+    this.checkNewPage(30);
+
+    // Light gray background box for identifiers
+    this.doc.setFillColor(248, 250, 252); // slate-50
+    this.doc.rect(this.config.marginLeft, this.y - 2, this.maxWidth, 24, "F");
+    this.doc.setDrawColor(226, 232, 240); // slate-200
+    this.doc.setLineWidth(0.3);
+    this.doc.rect(this.config.marginLeft, this.y - 2, this.maxWidth, 24, "S");
+
+    // Format generated timestamp
+    const generatedTime = identifiers.generatedAt
+      ? new Date(identifiers.generatedAt).toLocaleString("en-AU", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : new Date().toLocaleString("en-AU", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+    // Left column
+    this.doc.setFontSize(8);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setTextColor(100, 116, 139); // slate-500
+    this.doc.text(`Document: ${identifiers.documentType}`, this.config.marginLeft + 4, this.y + 4);
+    this.doc.text(`ID: ${identifiers.documentId}`, this.config.marginLeft + 4, this.y + 10);
+    this.doc.text(`Job Ref: ${identifiers.jobId}`, this.config.marginLeft + 4, this.y + 16);
+
+    // Right column
+    const rightX = this.config.pageWidth - this.config.marginRight - 4;
+    this.doc.text(`Generated: ${generatedTime}`, rightX, this.y + 4, { align: "right" });
+    this.doc.text(`Revision: ${identifiers.revision || 1}`, rightX, this.y + 10, { align: "right" });
+    if (identifiers.contractorName) {
+      this.doc.text(`Issued by: ${identifiers.contractorName}`, rightX, this.y + 16, { align: "right" });
+    }
+
+    this.y += 30;
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
+   * R11: Add jurisdiction label with safe note (no compliance claims)
+   * Uses user's businessState or defaults to Western Australia
+   */
+  addJurisdictionLabel(jurisdiction?: string): void {
+    this.checkNewPage(20);
+
+    // Use provided jurisdiction or default to Western Australia
+    const jurisdictionLabel = jurisdiction || "Western Australia";
+    
+    // Light blue background for jurisdiction
+    this.doc.setFillColor(239, 246, 255); // blue-50
+    this.doc.rect(this.config.marginLeft, this.y - 2, this.maxWidth, 16, "F");
+    this.doc.setDrawColor(191, 219, 254); // blue-200
+    this.doc.setLineWidth(0.3);
+    this.doc.rect(this.config.marginLeft, this.y - 2, this.maxWidth, 16, "S");
+
+    // Jurisdiction label
+    this.doc.setFontSize(8);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(30, 64, 175); // blue-800
+    this.doc.text(`Jurisdiction: ${jurisdictionLabel}`, this.config.marginLeft + 4, this.y + 4);
+
+    // Safe note (no compliance claims per LEGAL / REGULATORY SAFETY requirements)
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setFontSize(7);
+    this.doc.setTextColor(59, 130, 246); // blue-500
+    this.doc.text(
+      "This document supports alignment with industry standards; professional review required.",
+      this.config.marginLeft + 4,
+      this.y + 10
+    );
+
+    this.y += 22;
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
    * Add a simple table with improved formatting for Australian standards
    */
   addTable(headers: string[], rows: string[][], options?: { colWidths?: number[] }): void {
