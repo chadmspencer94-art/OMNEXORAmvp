@@ -129,9 +129,17 @@ export default function ScheduleSection({
       <div className="px-6 py-4 border-b border-slate-200">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Schedule</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-slate-900">Schedule</h2>
+              {/* PROPOSED indicator - schedule is not confirmed until client accepts */}
+              {hasSchedule && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                  Proposed
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500 mt-1">
-              Set the date and time for this job
+              Set the proposed date and time for this job
             </p>
           </div>
           {!isEditing && (
@@ -247,11 +255,26 @@ export default function ScheduleSection({
           <div className="space-y-3">
             {hasSchedule ? (
               <>
+                {/* SCHEDULING SEMANTICS (Requirement 4): 
+                    Schedule represents proposed availability, not confirmed booking.
+                    Status only changes to "Booked" when client accepts or tradie confirms. */}
+                <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-xs text-amber-800">
+                      <strong>Proposed availability</strong> – This schedule is pending confirmation. 
+                      Job status will change to &quot;Booked&quot; when the client accepts or you manually confirm.
+                    </p>
+                  </div>
+                </div>
+
                 {initialScheduledStartAt && (
                   <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                     <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-slate-700">Scheduled Start</p>
+                      <p className="text-sm font-medium text-slate-700">Proposed Start</p>
                       <p className="text-sm text-slate-900">{formatDateTimeForDisplay(initialScheduledStartAt)}</p>
                     </div>
                   </div>
@@ -260,7 +283,7 @@ export default function ScheduleSection({
                   <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                     <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-slate-700">Scheduled End</p>
+                      <p className="text-sm font-medium text-slate-700">Proposed End</p>
                       <p className="text-sm text-slate-900">{formatDateTimeForDisplay(initialScheduledEndAt)}</p>
                     </div>
                   </div>
