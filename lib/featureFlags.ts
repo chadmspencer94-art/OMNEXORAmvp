@@ -18,7 +18,8 @@ export const featureFlags: Record<string, boolean> = {
   showRateTemplates: false,
   
   // Materials - material catalog management
-  showMaterials: false,
+  // ENABLED: Materials costing section is now available for business profiles (Req 5)
+  showMaterials: true,
   
   // Signature - digital signature management
   showSignature: false,
