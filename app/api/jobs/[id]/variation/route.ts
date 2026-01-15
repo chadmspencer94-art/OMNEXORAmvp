@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, isClient } from "@/lib/auth";
+import { requireVerifiedUser, UserNotVerifiedError } from "@/lib/authChecks";
 import { getJobById, saveJob } from "@/lib/jobs";
 import { openai, isOpenAIAvailable } from "@/lib/openai";
 
 /**
  * POST /api/jobs/[id]/variation
  * Generates a Variation / Change Order document for the specified job
+ * 
+ * VERIFICATION GATE: Requires business verification before generating documents.
  */
 export async function POST(
   request: NextRequest,
@@ -19,6 +22,19 @@ export async function POST(
         { error: "Unauthorized. Please log in." },
         { status: 401 }
       );
+    }
+
+    // VERIFICATION GATE: Require business verification before document generation
+    try {
+      await requireVerifiedUser(user);
+    } catch (error) {
+      if (error instanceof UserNotVerifiedError) {
+        return NextResponse.json(
+          { error: error.message, code: "VERIFICATION_REQUIRED" },
+          { status: 403 }
+        );
+      }
+      throw error;
     }
 
     // Get job ID from params

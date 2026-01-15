@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { requireVerifiedUser, UserNotVerifiedError } from "@/lib/authChecks";
 import { getJobById } from "@/lib/jobs";
 import { getPrisma } from "@/lib/prisma";
 import { featureFlags } from "@/lib/featureFlags";
@@ -135,6 +136,8 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/docs/draft
  * Create or update draft for a job + document type
+ * 
+ * VERIFICATION GATE: Requires business verification before creating document drafts.
  */
 export async function POST(request: NextRequest) {
   if (!featureFlags.DOC_ENGINE_V1) {
@@ -151,6 +154,19 @@ export async function POST(request: NextRequest) {
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // VERIFICATION GATE: Require business verification before document generation
+    try {
+      await requireVerifiedUser(user);
+    } catch (error) {
+      if (error instanceof UserNotVerifiedError) {
+        return NextResponse.json(
+          { error: error.message, code: "VERIFICATION_REQUIRED" },
+          { status: 403 }
+        );
+      }
+      throw error;
     }
 
     const body = await request.json();

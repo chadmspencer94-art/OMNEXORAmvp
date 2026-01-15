@@ -603,6 +603,21 @@ export async function getAllActiveJobs(limit: number = 50): Promise<Job[]> {
  */
 export async function generateJobPack(job: Job, user?: SafeUser): Promise<Job> {
   try {
+    // VERIFICATION GATE: Require business verification before document generation
+    // All users must be verified by admin before generating ANY documentation
+    if (user) {
+      try {
+        const { requireVerifiedUser, UserNotVerifiedError } = await import("./authChecks");
+        await requireVerifiedUser(user);
+      } catch (error: any) {
+        if (error.name === "UserNotVerifiedError") {
+          throw new Error(`VERIFICATION_REQUIRED: ${error.message}`);
+        }
+        // Re-throw other errors
+        throw error;
+      }
+    }
+
     // Email verification check: require verified email for job pack generation (only for paid users)
     // Free users can generate but cannot save client details or send to clients
     if (user) {
