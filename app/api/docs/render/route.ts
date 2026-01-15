@@ -14,6 +14,13 @@ import { extractIssuerFromUser, validateIssuerForDoc } from "@/lib/docEngine/val
  * POST /api/docs/render
  * 
  * Generates a PDF document from a template and job data.
+ * 
+ * Export Gates:
+ * - Requires paid plan (hasDocumentFeatureAccess) for all PDF exports
+ * - R3,R6: CLIENT audience requires document confirmation/approval
+ * - AI warnings are shown for INTERNAL audience unless approved
+ * - AI warnings are never shown for CLIENT audience (post-confirmation)
+ * 
  * Requires DOC_ENGINE_V1 feature flag to be enabled.
  */
 export async function POST(request: NextRequest) {
@@ -172,6 +179,19 @@ export async function POST(request: NextRequest) {
         }
       }
       
+      // R3,R6: For CLIENT audience, require document to be confirmed/approved first
+      // This ensures AI warnings are only removed from client-facing exports after explicit user confirmation
+      if (audience === "CLIENT" && !isApproved) {
+        return NextResponse.json(
+          {
+            error: "Document must be confirmed before generating client-facing PDF. Please review and confirm the AI-generated content first.",
+            code: "CONFIRMATION_REQUIRED",
+            hint: "Confirm the document to remove AI warnings and enable client export.",
+          },
+          { status: 400 }
+        );
+      }
+
       // For CLIENT audience, require ISSUED status OR load issuer from user profile
       if (audience === "CLIENT") {
         if (draftStatus !== "ISSUED") {

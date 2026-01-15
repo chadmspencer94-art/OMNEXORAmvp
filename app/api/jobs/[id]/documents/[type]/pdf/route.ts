@@ -17,7 +17,12 @@ const DOCUMENT_FIELDS: Record<DocumentType, { textField: keyof any; confirmedFie
 
 /**
  * POST /api/jobs/[id]/documents/[type]/pdf
- * Generate PDF for a document
+ * Generate PDF for a document (client-facing export)
+ * 
+ * Export Gates:
+ * - Requires paid plan (hasDocumentFeatureAccess)
+ * - R3,R6: Requires document confirmation before export
+ * - AI warnings only shown for unconfirmed internal previews
  */
 export async function POST(
   request: NextRequest,
@@ -126,6 +131,20 @@ export async function POST(
       );
     }
 
+    // R3,R6: Check document confirmation status before allowing export
+    // PDF downloads are client-facing exports and require confirmation
+    const isConfirmed = (job as any)[DOCUMENT_FIELDS[docType].confirmedField] === true;
+    if (!isConfirmed) {
+      return NextResponse.json(
+        {
+          error: "Document must be confirmed before downloading PDF. Please review and confirm the AI-generated content first.",
+          code: "CONFIRMATION_REQUIRED",
+          hint: "Confirm the document to remove AI warnings and enable PDF export.",
+        },
+        { status: 400 }
+      );
+    }
+
     // Get document content from request body or job
     const body = await request.json().catch(() => ({}));
     const content = body.content || (job as any)[DOCUMENT_FIELDS[docType].textField];
@@ -158,10 +177,8 @@ export async function POST(
       { label: "Date", value: new Date().toLocaleDateString("en-AU") },
     ]);
 
-    // AI Warning (only for internal/no business profile)
-    if (!businessProfile?.legalName) {
-      pdf.addAiWarning();
-    }
+    // R3: No AI warnings on confirmed document exports (client-facing)
+    // AI warnings are only shown in draft/preview mode, not in exported PDFs
 
     // Document content
     const sections = content.split("\n\n");

@@ -96,6 +96,18 @@ export async function POST(
       );
     }
 
+    // R3: AI pack confirmation check - require confirmed status before sending to clients
+    // This ensures AI-generated content has been reviewed before client-facing export
+    if (job.aiReviewStatus !== "confirmed") {
+      return NextResponse.json(
+        {
+          error: "Please confirm the AI pack before sending to clients. Review the AI-generated content and click 'Mark AI pack as confirmed'.",
+          code: "CONFIRMATION_REQUIRED",
+        },
+        { status: 400 }
+      );
+    }
+
     // Parse request body
     const body = (await request.json()) as SendToClientRequestBody;
     const { clientEmail, subject, message } = body;

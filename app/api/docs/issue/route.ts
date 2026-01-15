@@ -3,6 +3,8 @@
  * 
  * POST /api/docs/issue
  * Issues document for client export. This:
+ * - Requires paid plan (R5: payment gate for client-facing exports)
+ * - Requires document to be approved/confirmed first (R6)
  * - Validates issuer (business profile) has required fields
  * - Sets status to ISSUED
  * - Generates unique issued record ID
@@ -22,6 +24,7 @@ import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
 import { getPrisma } from "@/lib/prisma";
 import { featureFlags } from "@/lib/featureFlags";
+import { hasDocumentFeatureAccess } from "@/lib/documentAccess";
 import type { DocType } from "@/lib/docEngine/types";
 import { validateIssuerForDoc, extractIssuerFromUser } from "@/lib/docEngine/validateIssuer";
 
@@ -119,7 +122,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Load full user profile for issuer validation
+    // Load full user profile for issuer validation and plan check
     const prismaUser = await prisma.user.findUnique({
       where: { email: user.email },
       select: {
@@ -136,6 +139,8 @@ export async function POST(request: NextRequest) {
         businessLogoUrl: true,
         gstRegistered: true,
         serviceArea: true,
+        planTier: true,
+        planStatus: true,
       },
     });
 
@@ -143,6 +148,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "User profile not found" },
         { status: 404 }
+      );
+    }
+
+    // R5: Payment gate - require paid plan to issue documents for client export
+    const planTier = prismaUser.planTier || "FREE";
+    const planStatus = prismaUser.planStatus || "TRIAL";
+    if (!hasDocumentFeatureAccess(user, { planTier, planStatus, isAdmin: isAdmin(user) })) {
+      return NextResponse.json(
+        {
+          error: "A paid plan is required to issue documents for client export. Please upgrade your plan.",
+          code: "PAID_PLAN_REQUIRED",
+          redirectTo: "/pricing",
+        },
+        { status: 403 }
       );
     }
 

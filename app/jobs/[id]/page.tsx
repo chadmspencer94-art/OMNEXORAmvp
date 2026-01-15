@@ -237,6 +237,7 @@ function PricingSection({
   quoteVersion,
   quoteExpiryAt,
   quoteLastSentAt,
+  isConfirmed = false,
 }: { 
   content?: string; 
   effectiveRates?: EffectiveRates | null;
@@ -244,6 +245,7 @@ function PricingSection({
   quoteVersion?: number | null;
   quoteExpiryAt?: string | null;
   quoteLastSentAt?: string | null;
+  isConfirmed?: boolean;
 }) {
   if (!content) return null;
 
@@ -373,17 +375,19 @@ function PricingSection({
           </pre>
         )}
         
-        {/* Pricing disclaimer */}
-        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-xs text-amber-700 flex items-start gap-2">
-            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>
-              <strong>Important:</strong> All pricing shown is an estimate only. Labour hours and material costs are approximate and must be confirmed against actual site conditions and current supplier pricing before sending to clients.
-            </span>
-          </p>
-        </div>
+        {/* Pricing disclaimer - Only show for unconfirmed packs (R5) */}
+        {!isConfirmed && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-700 flex items-start gap-2">
+              <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                <strong>Important:</strong> All pricing shown is an estimate only. Labour hours and material costs are approximate and must be confirmed against actual site conditions and current supplier pricing before sending to clients.
+              </span>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -473,11 +477,13 @@ function MaterialsSection({
   overrideText,
   showRoughEstimateDisclaimer,
   editButton,
+  isConfirmed = false,
 }: { 
   content?: string;
   overrideText?: string | null;
   showRoughEstimateDisclaimer?: boolean;
   editButton?: React.ReactNode;
+  isConfirmed?: boolean;
 }) {
   // If override text is present, show that instead of AI content
   const hasOverride = overrideText && overrideText.trim().length > 0;
@@ -549,8 +555,8 @@ function MaterialsSection({
           </pre>
         ) : null}
 
-        {/* Materials disclaimer */}
-        {showDisclaimer && (
+        {/* Materials disclaimer - Only show for unconfirmed packs (R5) */}
+        {showDisclaimer && !isConfirmed && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs text-amber-700 flex items-start gap-2">
               <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1293,6 +1299,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                         clientAcceptedQuoteVer={job.clientAcceptedQuoteVer}
                         quoteNumber={job.quoteNumber}
                         businessProfile={businessProfile}
+                        aiReviewStatus={job.aiReviewStatus}
                       />
                       <SpecDocButton 
                         jobId={job.id}
@@ -1360,10 +1367,12 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     />
                   </div>
                 )}
-                {/* AI Warning Banner */}
-                <div className="px-6 pt-6">
-                  <AIWarningBanner />
-                </div>
+                {/* AI Warning Banner - Only show for unconfirmed packs (R2) */}
+                {job.aiReviewStatus !== "confirmed" && (
+                  <div className="px-6 pt-6">
+                    <AIWarningBanner />
+                  </div>
+                )}
                 <div className="p-6 space-y-6">
                   <SummarySection 
                     content={job.aiSummary}
@@ -1385,6 +1394,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     quoteVersion={job.quoteVersion}
                     quoteExpiryAt={job.quoteExpiryAt}
                     quoteLastSentAt={job.quoteLastSentAt}
+                    isConfirmed={job.aiReviewStatus === "confirmed"}
                   />
                   <ScopeSection 
                     content={job.aiScopeOfWork}
@@ -1443,6 +1453,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     content={job.aiMaterials} 
                     overrideText={job.materialsOverrideText}
                     showRoughEstimateDisclaimer={job.materialsAreRoughEstimate}
+                    isConfirmed={job.aiReviewStatus === "confirmed"}
                     editButton={
                       <MaterialsEditButton 
                         jobId={job.id} 

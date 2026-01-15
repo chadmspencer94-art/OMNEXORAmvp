@@ -76,6 +76,8 @@ interface JobPackPdfButtonProps {
   quoteNumber?: string | null;
   // Business profile for header
   businessProfile?: BusinessProfile | null;
+  // AI review status for warning suppression (R2)
+  aiReviewStatus?: "pending" | "confirmed";
 }
 
 export default function JobPackPdfButton({
@@ -106,6 +108,7 @@ export default function JobPackPdfButton({
   clientAcceptedQuoteVer,
   quoteNumber,
   businessProfile,
+  aiReviewStatus,
 }: JobPackPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -200,9 +203,11 @@ export default function JobPackPdfButton({
       pdf.addMetadata(metaItems);
 
       // =========================================
-      // AI WARNING (only if no business profile - internal draft)
+      // AI WARNING - Only show for unconfirmed packs (R2, R4)
+      // Confirmed packs should never have AI warnings in exports
       // =========================================
-      if (!businessProfile?.legalName) {
+      const isConfirmed = aiReviewStatus === "confirmed";
+      if (!isConfirmed) {
         pdf.addAiWarning();
       }
 
@@ -342,8 +347,8 @@ export default function JobPackPdfButton({
         }
       }
 
-      // Materials disclaimer
-      if ((hasOverride || aiMaterials || hasJobMaterials) && showMaterialsDisclaimer) {
+      // Materials disclaimer - Only show for unconfirmed packs (R5)
+      if ((hasOverride || aiMaterials || hasJobMaterials) && showMaterialsDisclaimer && !isConfirmed) {
         pdf.addText(
           "Note: Material prices are an estimate only and must be checked against current supplier pricing.",
           { fontSize: 9, color: [180, 83, 9] }
@@ -398,13 +403,16 @@ export default function JobPackPdfButton({
       }
 
       // =========================================
-      // FOOTER
+      // FOOTER - Confirmed exports use professional footer (R2)
       // =========================================
-      if (businessProfile?.legalName) {
-        // Professional footer for client-facing export
+      if (isConfirmed && businessProfile?.legalName) {
+        // Professional footer for confirmed client-facing export
         pdf.addIssuedFooter(businessProfile.legalName, `JP-${jobId.slice(0, 8).toUpperCase()}`);
+      } else if (isConfirmed) {
+        // Confirmed but no business profile - use standard footer without AI warnings
+        pdf.addStandardFooters({ jobId });
       } else {
-        // Standard footer with AI warnings for internal use
+        // Unconfirmed - standard footer (may include branding)
         pdf.addStandardFooters({ jobId });
       }
 
