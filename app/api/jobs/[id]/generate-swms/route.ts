@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { requireVerifiedUser, UserNotVerifiedError } from "@/lib/authChecks";
+import { hasPaidPlan } from "@/lib/planChecks";
 import { getJobById, generateSWMS, saveJob } from "@/lib/jobs";
 
 /**
@@ -8,6 +9,7 @@ import { getJobById, generateSWMS, saveJob } from "@/lib/jobs";
  * Generates a SWMS (Safe Work Method Statement) for the specified job
  * 
  * VERIFICATION GATE: Requires business verification before generating documents.
+ * PAID PLAN GATE: Safety/SWMS is locked until paid plan (admin override allowed).
  */
 export async function POST(
   request: NextRequest,
@@ -20,6 +22,17 @@ export async function POST(
       return NextResponse.json(
         { error: "Unauthorized. Please log in." },
         { status: 401 }
+      );
+    }
+
+    // PAID PLAN GATE: Safety/SWMS is locked until paid plan (admin override allowed)
+    if (!hasPaidPlan(user)) {
+      return NextResponse.json(
+        { 
+          error: "SWMS generation requires a paid plan. Upgrade your plan to access safety documentation features.",
+          code: "PAID_PLAN_REQUIRED" 
+        },
+        { status: 403 }
       );
     }
 

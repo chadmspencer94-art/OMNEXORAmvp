@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isClient, isAdmin } from "@/lib/auth";
-import { requireVerifiedEmail } from "@/lib/authChecks";
+import { requireVerifiedEmail, requireVerifiedUser, UserNotVerifiedError } from "@/lib/authChecks";
+import { hasPaidPlan } from "@/lib/planChecks";
 import { getJobById } from "@/lib/jobs";
 import { getPrisma, getSafeErrorMessage, isPrismaError } from "@/lib/prisma";
 
@@ -88,6 +89,9 @@ export async function GET(
  * POST /api/jobs/[id]/safety/generate
  * Generate a safety document (SWMS, Risk Assessment, or Toolbox Talk)
  * Auth: tradie/business only, must own the job
+ * 
+ * PAID PLAN GATE: Safety documentation is locked until paid plan (admin override allowed).
+ * VERIFICATION GATE: Requires business verification before generating documents.
  */
 export async function POST(
   request: NextRequest,
@@ -108,6 +112,30 @@ export async function POST(
         { error: "Access denied. Safety document generation is available to trades and businesses only." },
         { status: 403 }
       );
+    }
+
+    // PAID PLAN GATE: Safety documentation is locked until paid plan (admin override allowed)
+    if (!hasPaidPlan(user)) {
+      return NextResponse.json(
+        { 
+          error: "Safety documentation requires a paid plan. Upgrade your plan to access SWMS, Risk Assessments, and Toolbox Talks.",
+          code: "PAID_PLAN_REQUIRED" 
+        },
+        { status: 403 }
+      );
+    }
+
+    // VERIFICATION GATE: Require business verification before document generation
+    try {
+      await requireVerifiedUser(user);
+    } catch (error) {
+      if (error instanceof UserNotVerifiedError) {
+        return NextResponse.json(
+          { error: error.message, code: "VERIFICATION_REQUIRED" },
+          { status: 403 }
+        );
+      }
+      throw error;
     }
 
     // Require verified email for safety document generation
