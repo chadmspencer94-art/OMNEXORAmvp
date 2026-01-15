@@ -11,13 +11,20 @@ export type UserJobAnalytics = {
     declined: number;
     cancelled: number;
   };
+  // Variation cost tracking
+  variationMetrics: {
+    totalVariationCost: number; // Sum of all variation cost impacts
+    variationCount: number; // Total number of variations across all jobs
+    jobsWithVariations: number; // Number of jobs that have variations
+    avgVariationCost: number; // Average cost per variation
+  };
   // Note: Revenue metrics skipped for now as Job model uses aiQuote (text) not numeric total
 };
 
 /**
  * Computes analytics for a single tradie/business user
  * @param userId - The user's ID
- * @returns Analytics object with job counts and quote status breakdown
+ * @returns Analytics object with job counts, quote status breakdown, and variation metrics
  */
 export async function getUserJobAnalytics(userId: string): Promise<UserJobAnalytics> {
   // Get all jobs for this user (excludes deleted jobs by default)
@@ -35,6 +42,11 @@ export async function getUserJobAnalytics(userId: string): Promise<UserJobAnalyt
     declined: 0,
     cancelled: 0,
   };
+
+  // Initialize variation metrics
+  let totalVariationCost = 0;
+  let variationCount = 0;
+  let jobsWithVariations = 0;
 
   let jobsLast30Days = 0;
   let jobsLast7Days = 0;
@@ -69,13 +81,35 @@ export async function getUserJobAnalytics(userId: string): Promise<UserJobAnalyt
         quoteCounts.cancelled++;
         break;
     }
+
+    // Track variation metrics
+    if (job.variationCostImpact !== null && job.variationCostImpact !== undefined) {
+      totalVariationCost += job.variationCostImpact;
+    }
+    if (job.variationCount !== null && job.variationCount !== undefined && job.variationCount > 0) {
+      variationCount += job.variationCount;
+      jobsWithVariations++;
+    } else if (job.variationText && job.variationText.trim().length > 0) {
+      // Legacy: count jobs with variation text as having at least 1 variation
+      variationCount += 1;
+      jobsWithVariations++;
+    }
   }
+
+  // Calculate average variation cost
+  const avgVariationCost = variationCount > 0 ? totalVariationCost / variationCount : 0;
 
   return {
     totalJobs: allJobs.length,
     jobsLast30Days,
     jobsLast7Days,
     quoteCounts,
+    variationMetrics: {
+      totalVariationCost,
+      variationCount,
+      jobsWithVariations,
+      avgVariationCost,
+    },
   };
 }
 

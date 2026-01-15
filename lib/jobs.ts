@@ -91,6 +91,9 @@ export interface Job {
   // Document fields (variation, EOT, progress claim, handover, maintenance)
   variationText?: string | null;
   variationConfirmed?: boolean;
+  // Variation cost tracking (for analytics)
+  variationCostImpact?: number | null; // Cost impact of the variation (positive or negative)
+  variationCount?: number | null; // Number of variations for this job
   eotText?: string | null;
   eotConfirmed?: boolean;
   progressClaimText?: string | null;
