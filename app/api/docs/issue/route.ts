@@ -8,6 +8,12 @@
  * - Generates unique issued record ID
  * - Snapshots issuer data for audit trail
  * 
+ * DOCUMENT APPROVAL FLOW (Requirement 2):
+ * - AI warnings/disclaimers are shown during drafting/review
+ * - Client-facing export (ISSUED status) removes AI warnings
+ * - Documents must be explicitly approved before issuing
+ * - Missing required fields block finalization/approval/export
+ * 
  * Requires DOC_ENGINE_V1 feature flag.
  */
 
@@ -94,6 +100,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Document draft not found. Please create a draft first." },
         { status: 404 }
+      );
+    }
+
+    // DOCUMENT APPROVAL REQUIREMENT (Requirement 2):
+    // Documents must be explicitly approved before issuing for client export.
+    // AI warnings are only removed from client-facing output AFTER approval.
+    // Allow issuing if either: already approved, or skipApprovalCheck flag is set by admin
+    const skipApprovalCheck = body.skipApprovalCheck === true && isAdmin(user);
+    if (!existingDraft.approved && !skipApprovalCheck) {
+      return NextResponse.json(
+        { 
+          error: "Document must be approved before issuing for client export. Please review the AI-generated content and approve it first.",
+          code: "APPROVAL_REQUIRED",
+          hint: "Review the document content, acknowledge the AI-generated content warning, and approve before issuing."
+        },
+        { status: 400 }
       );
     }
 
