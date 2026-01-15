@@ -126,26 +126,10 @@ export default function ClientJobPackView({ job, businessProfile }: ClientJobPac
         <p className="text-slate-600 mb-4 text-sm">
           Download a complete PDF version of this job pack for your records.
         </p>
+        {/* R9, R10: PDF generation now uses server endpoint for proper export gating */}
         <JobPackPdfButton
           jobId={job.id}
-          jobTitle={job.title}
-          jobCreatedAt={job.createdAt}
-          tradeType={job.tradeType}
-          propertyType={job.propertyType}
-          address={job.address}
-          clientName={job.clientName}
-          notes={job.notes}
-          aiSummary={job.aiSummary}
-          aiScopeOfWork={job.aiScopeOfWork}
-          aiInclusions={job.aiInclusions}
-          aiExclusions={job.aiExclusions}
-          aiMaterials={job.aiMaterials}
-          aiClientNotes={job.aiClientNotes}
-          clientSignatureId={job.clientSignatureId}
-          clientSignedName={job.clientSignedName}
-          clientSignedEmail={job.clientSignedEmail}
-          clientAcceptedAt={job.clientAcceptedAt}
-          businessProfile={businessProfile}
+          aiReviewStatus={job.aiReviewStatus}
         />
       </div>
     </div>
