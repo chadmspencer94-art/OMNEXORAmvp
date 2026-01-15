@@ -5,8 +5,23 @@ import { getJobById, saveJob } from "@/lib/jobs";
 /**
  * PATCH /api/jobs/[id]/pack-sections
  * Updates job pack section fields (e.g. aiScopeOfWork, aiInclusions, aiExclusions, etc.)
+ * 
+ * CLIENT COPY LOCK (Requirement 11):
+ * Client-facing document sections are locked for non-admin users.
+ * Only admins can edit aiScopeOfWork, aiInclusions, aiExclusions, aiMaterials, aiQuote, aiClientNotes, aiSummary.
  */
 export const dynamic = "force-dynamic";
+
+// CLIENT-FACING FIELDS - Locked for non-admin users
+const CLIENT_FACING_FIELDS = [
+  "aiScopeOfWork",
+  "aiInclusions",
+  "aiExclusions",
+  "aiMaterials",
+  "aiQuote",
+  "aiClientNotes",
+  "aiSummary",
+];
 
 export async function PATCH(
   req: NextRequest,
@@ -33,15 +48,26 @@ export async function PATCH(
 
     // Parse request body to get field updates
     const body = await req.json();
-    const allowedFields = [
-      "aiScopeOfWork",
-      "aiInclusions",
-      "aiExclusions",
-      "aiMaterials",
-      "aiQuote",
-      "aiClientNotes",
-      "aiSummary",
-    ];
+    const allowedFields = [...CLIENT_FACING_FIELDS];
+
+    // CLIENT COPY LOCK: Non-admin users cannot edit client-facing sections
+    if (!isAdmin(user)) {
+      // Check if any client-facing fields are being updated
+      const clientFacingUpdates = Object.keys(body).filter((field) =>
+        CLIENT_FACING_FIELDS.includes(field)
+      );
+      
+      if (clientFacingUpdates.length > 0) {
+        console.log(`[pack-sections] non-admin user ${user.email} attempted to edit client-facing fields: ${clientFacingUpdates.join(", ")}`);
+        return NextResponse.json(
+          { 
+            error: "Client-facing document sections are locked. Only admin users can edit these fields.",
+            code: "CLIENT_COPY_LOCKED"
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     // Validate that only allowed fields are being updated
     const updates: any = {};
