@@ -134,7 +134,7 @@ function convertToWordOptions(
       }
 
       // Process fields into paragraphs
-      if (section.fields) {
+      if (section.fields && section.fields.length > 0) {
         const paragraphs: string[] = [];
         for (const field of section.fields) {
           if (field.value !== null && field.value !== undefined && field.value !== "") {
@@ -146,20 +146,21 @@ function convertToWordOptions(
         }
       }
 
-      // Process list items
-      if (section.listItems && section.listItems.length > 0) {
-        wordSection.bulletList = section.listItems;
+      // Process tables (RenderSection has 'table' not 'tableData')
+      if (section.table && section.table.rows && section.table.rows.length > 0) {
+        // Convert table columns and rows to Word format
+        const headers = section.table.columns.map(col => col.label);
+        const rows = section.table.rows.map(row => {
+          return section.table!.columns.map(col => {
+            const value = row[col.id];
+            return value !== null && value !== undefined ? String(value) : "";
+          });
+        });
+        
+        wordSection.table = { headers, rows };
       }
 
-      // Process tables
-      if (section.tableData) {
-        wordSection.table = {
-          headers: section.tableData.headers || [],
-          rows: section.tableData.rows || [],
-        };
-      }
-
-      if (wordSection.heading || wordSection.paragraphs || wordSection.bulletList || wordSection.table) {
+      if (wordSection.heading || wordSection.paragraphs || wordSection.table) {
         sections.push(wordSection);
       }
     }
