@@ -334,6 +334,7 @@ export class PdfDocument {
 
   /**
    * Add inclusions list (with green checkmarks)
+   * R2: Uses PDF-safe drawn shapes instead of Unicode symbols
    */
   addInclusionsList(items: string[]): void {
     for (const item of items) {
@@ -342,17 +343,20 @@ export class PdfDocument {
 
       this.checkNewPage(10);
       
-      // Checkmark
-      this.doc.setTextColor(...this.config.colors.success);
-      this.doc.setFontSize(this.config.fonts.body.size);
-      this.doc.text("\u2713", this.config.marginLeft, this.y); // Unicode checkmark
+      // R2: Draw a filled green circle as PDF-safe checkmark indicator
+      // This avoids font dependency issues with Unicode symbols
+      const symbolX = this.config.marginLeft + 2;
+      const symbolY = this.y - 1.5;
+      this.doc.setFillColor(...this.config.colors.success);
+      this.doc.circle(symbolX, symbolY, 1.5, "F");
       
       // Item text
       this.doc.setTextColor(...this.config.colors.text);
-      const lines = this.doc.splitTextToSize(cleanItem, this.maxWidth - 8);
+      this.doc.setFontSize(this.config.fonts.body.size);
+      const lines = this.doc.splitTextToSize(cleanItem, this.maxWidth - 10);
       for (let i = 0; i < lines.length; i++) {
         if (i > 0) this.checkNewPage(5);
-        this.doc.text(lines[i], this.config.marginLeft + 8, this.y);
+        this.doc.text(lines[i], this.config.marginLeft + 10, this.y);
         this.y += this.config.fonts.body.size * 0.4;
       }
       this.y += 2;
@@ -362,6 +366,7 @@ export class PdfDocument {
 
   /**
    * Add exclusions list (with red X marks)
+   * R2: Uses PDF-safe drawn shapes instead of Unicode symbols
    */
   addExclusionsList(items: string[]): void {
     for (const item of items) {
@@ -370,17 +375,23 @@ export class PdfDocument {
 
       this.checkNewPage(10);
       
-      // X mark
-      this.doc.setTextColor(...this.config.colors.error);
-      this.doc.setFontSize(this.config.fonts.body.size);
-      this.doc.text("\u2717", this.config.marginLeft, this.y); // Unicode X mark
+      // R2: Draw a red X shape as PDF-safe exclusion indicator
+      // This avoids font dependency issues with Unicode symbols
+      const symbolX = this.config.marginLeft + 2;
+      const symbolY = this.y - 1.5;
+      this.doc.setDrawColor(...this.config.colors.error);
+      this.doc.setLineWidth(0.5);
+      // Draw X shape
+      this.doc.line(symbolX - 1.5, symbolY - 1.5, symbolX + 1.5, symbolY + 1.5);
+      this.doc.line(symbolX - 1.5, symbolY + 1.5, symbolX + 1.5, symbolY - 1.5);
       
       // Item text
       this.doc.setTextColor(...this.config.colors.text);
-      const lines = this.doc.splitTextToSize(cleanItem, this.maxWidth - 8);
+      this.doc.setFontSize(this.config.fonts.body.size);
+      const lines = this.doc.splitTextToSize(cleanItem, this.maxWidth - 10);
       for (let i = 0; i < lines.length; i++) {
         if (i > 0) this.checkNewPage(5);
-        this.doc.text(lines[i], this.config.marginLeft + 8, this.y);
+        this.doc.text(lines[i], this.config.marginLeft + 10, this.y);
         this.y += this.config.fonts.body.size * 0.4;
       }
       this.y += 2;
