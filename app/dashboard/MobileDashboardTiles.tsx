@@ -11,14 +11,19 @@ interface TileProps {
   count?: number;
 }
 
+/**
+ * Dashboard tile component optimized for mobile touch
+ * - Larger touch target with min-height
+ * - Better active states for touch feedback
+ */
 function DashboardTile({ href, icon, title, description, count }: TileProps) {
   return (
     <Link
       href={href}
-      className="block bg-white rounded-xl border-2 border-slate-200 p-6 shadow-sm hover:border-amber-300 hover:shadow-md transition-all active:scale-[0.98]"
+      className="block bg-white rounded-xl border-2 border-slate-200 p-5 sm:p-6 shadow-sm hover:border-amber-300 hover:shadow-md transition-all active:scale-[0.98] active:bg-slate-50 touch-manipulation min-h-[80px]"
     >
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+      <div className="flex items-center gap-4">
+        <div className="flex-shrink-0 w-14 h-14 sm:w-12 sm:h-12 bg-amber-100 rounded-lg flex items-center justify-center">
           {icon}
         </div>
         <div className="flex-1 min-w-0">
@@ -31,7 +36,7 @@ function DashboardTile({ href, icon, title, description, count }: TileProps) {
           <p className="text-sm text-slate-600">{description}</p>
         </div>
         <div className="flex-shrink-0">
-          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 sm:w-5 sm:h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>

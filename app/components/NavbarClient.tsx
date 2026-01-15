@@ -384,7 +384,7 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
           {isLoggedIn ? (
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              className="md:hidden p-3 min-w-[48px] min-h-[48px] text-slate-300 hover:text-white hover:bg-slate-800 active:bg-slate-700 rounded-lg transition-colors touch-manipulation"
               aria-label="Toggle menu"
             >
               <svg
@@ -411,14 +411,14 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
               </svg>
             </button>
           ) : (
-            <div className="md:hidden flex items-center gap-1">
+            <div className="md:hidden flex items-center gap-2">
               <Link
                 href="/register"
-                className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
+                className="inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-lg transition-colors touch-manipulation"
               >
                 Get started
                 <svg
-                  className="w-2 h-2 ml-1"
+                  className="w-3 h-3 ml-1"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -434,7 +434,7 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
               </Link>
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                className="inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors touch-manipulation"
               >
                 Log in
               </Link>
@@ -443,10 +443,10 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
         </div>
       </div>
 
-      {/* Mobile Navigation */}
+      {/* Mobile Navigation - Optimized for touch */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-slate-800 border-t border-slate-700">
-          <div className="px-4 py-3 space-y-1">
+          <div className="px-4 py-3 space-y-2">
             {isLoggedIn && navLinks.map((link) => {
               // Only calculate active state after hydration to avoid mismatch
               const isActive = mounted && (pathname === link.href || (link.href !== "/dashboard" && pathname?.startsWith(link.href)));
@@ -457,10 +457,10 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
                     setMobileMenuOpen(false);
                     router.push(link.href);
                   }}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors text-sm font-medium ${
+                  className={`w-full text-left px-4 py-4 min-h-[52px] rounded-lg transition-colors text-base font-medium touch-manipulation active:scale-[0.98] ${
                     isActive
                       ? "text-white bg-slate-700"
-                      : "text-slate-300 hover:text-white hover:bg-slate-700"
+                      : "text-slate-300 hover:text-white hover:bg-slate-700 active:bg-slate-600"
                   }`}
                 >
                   {link.label}
@@ -482,18 +482,18 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
                         setMobileMenuOpen(false);
                         router.push("/admin/dashboard");
                       }}
-                      className="w-full mx-4 my-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-center rounded-lg transition-colors text-sm font-medium"
+                      className="w-full mx-4 my-2 px-4 py-3 min-h-[48px] bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white text-center rounded-lg transition-colors text-base font-medium touch-manipulation active:scale-[0.98]"
                     >
                       Admin Panel
                     </button>
                   )}
-                  <p className="px-4 py-2 text-slate-400 text-sm truncate">
+                  <p className="px-4 py-3 text-slate-400 text-sm truncate">
                     {user.email}
                   </p>
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="w-full text-left px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                    className="w-full text-left px-4 py-4 min-h-[52px] text-slate-300 hover:text-white hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-base font-medium disabled:opacity-50 touch-manipulation active:scale-[0.98]"
                   >
                     {isLoggingOut ? "Logging out..." : "Logout"}
                   </button>

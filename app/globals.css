@@ -123,3 +123,88 @@ textarea:focus-visible {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-secondary);
 }
+
+/* ============================================
+   MOBILE RESPONSIVENESS IMPROVEMENTS
+   ============================================ */
+
+/* Minimum touch target size for mobile (Apple HIG: 44x44px) */
+@media (max-width: 768px) {
+  /* Ensure all interactive elements have adequate touch targets */
+  button,
+  a,
+  [role="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger form inputs on mobile */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="search"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    padding: 12px 14px;
+    min-height: 48px;
+  }
+
+  /* Improved spacing for mobile list items */
+  .mobile-list-item {
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+
+  /* Better tap states for mobile */
+  button:active,
+  a:active,
+  [role="button"]:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Touch manipulation for smoother interactions */
+button,
+a,
+[role="button"],
+.clickable {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text selection on buttons during rapid taps */
+button,
+[role="button"] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Image optimization - lazy loading placeholder */
+img {
+  content-visibility: auto;
+}
+
+/* Smooth scrolling for mobile */
+@media (max-width: 768px) {
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Mobile-friendly card spacing */
+@media (max-width: 640px) {
+  .card,
+  .bg-white.rounded-xl {
+    margin-left: -4px;
+    margin-right: -4px;
+    border-radius: 12px;
+  }
+}
