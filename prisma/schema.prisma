@@ -550,6 +550,7 @@ model DocumentDraft {
   dataJson  String   // JSON string containing the full draft data (RenderModel)
   approved  Boolean  @default(false) // Whether user has approved/reviewed the document
   approvedAt DateTime? // When the document was approved
+  approvedByUserId String? // User ID who approved the document (R7 auditability)
   
   // Document lifecycle: DRAFT -> CONFIRMED -> ISSUED
   status          String   @default("DRAFT")  // DRAFT | CONFIRMED | ISSUED
@@ -568,4 +569,38 @@ model DocumentDraft {
   @@index([jobId, docType])
   @@index([status])
   @@map("document_drafts")
+}
+
+// ============================
+// Notification System
+// ============================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   // Recipient user ID
+  
+  // Notification content
+  type      String   // COMMENT | TAG | MENTION | JOB_UPDATE | QUOTE_ACCEPTED | QUOTE_DECLINED
+  title     String   // Short title for the notification
+  message   String   // Detailed message content
+  
+  // Context references
+  jobId     String?  // Related job if applicable
+  documentId String? // Related document if applicable
+  
+  // Notification state
+  read      Boolean  @default(false)
+  readAt    DateTime?
+  
+  // Actor info (who triggered the notification)
+  actorId   String?  // User who triggered the notification (null for system notifications)
+  actorName String?  // Cached actor name for display
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

@@ -5,6 +5,7 @@ import { useState, useEffect, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { featureFlags } from "@/lib/featureFlags";
 import { resetDemoData } from "@/app/api/demo/reset/actions";
+import NotificationBell from "./NotificationBell";
 
 type UserRole = "tradie" | "builder" | "client" | "supplier" | "admin";
 // Support both new and legacy verification statuses for backwards compatibility
@@ -327,6 +328,8 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
               )}
               {isLoggedIn ? (
                 <>
+                  {/* Notification Bell */}
+                  <NotificationBell />
                   <VerificationBadge role={user.role} status={user.verificationStatus} />
                   {user.isAdmin && (
                     <Link
