@@ -1274,34 +1274,9 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
                     {/* Export & Documents Row */}
                     <div className="flex flex-wrap items-center gap-2">
+                      {/* R9, R10: PDF generation now uses server endpoint for proper export gating */}
                       <JobPackPdfButton
                         jobId={job.id}
-                        jobTitle={job.title}
-                        jobCreatedAt={job.createdAt}
-                        tradeType={job.tradeType}
-                        propertyType={job.propertyType}
-                        address={job.address}
-                        clientName={job.clientName}
-                        notes={job.notes}
-                        aiSummary={job.aiSummary}
-                        aiQuote={job.aiQuote}
-                        aiScopeOfWork={job.aiScopeOfWork}
-                        aiInclusions={job.aiInclusions}
-                        aiExclusions={job.aiExclusions}
-                        aiMaterials={job.aiMaterials}
-                        aiClientNotes={job.aiClientNotes}
-                        materialsOverrideText={job.materialsOverrideText}
-                        materialsAreRoughEstimate={job.materialsAreRoughEstimate}
-                        materialsTotal={job.materialsTotal ?? null}
-                        clientSignatureId={job.clientSignatureId}
-                        clientSignedName={job.clientSignedName}
-                        clientSignedEmail={job.clientSignedEmail}
-                        clientAcceptedAt={job.clientAcceptedAt}
-                        clientAcceptedByName={job.clientAcceptedByName}
-                        clientAcceptanceNote={job.clientAcceptanceNote}
-                        clientAcceptedQuoteVer={job.clientAcceptedQuoteVer}
-                        quoteNumber={job.quoteNumber}
-                        businessProfile={businessProfile}
                         aiReviewStatus={job.aiReviewStatus}
                       />
                       <SpecDocButton 

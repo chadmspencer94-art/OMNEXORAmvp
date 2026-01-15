@@ -1,450 +1,129 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Loader2 } from "lucide-react";
-import { PdfDocument, formatCurrency, formatDate, formatDateTime } from "@/lib/pdfGenerator";
-import { calculateEstimateRange } from "@/lib/pricing";
+import { Download, Loader2, AlertCircle, Lock } from "lucide-react";
 
-interface LabourQuote {
-  description?: string;
-  hours?: string;
-  ratePerHour?: string;
-  total?: string;
-}
-
-interface MaterialsQuote {
-  description?: string;
-  totalMaterialsCost?: string;
-}
-
-interface TotalEstimateQuote {
-  description?: string;
-  totalJobEstimate?: string;
-}
-
-interface ParsedQuote {
-  labour?: LabourQuote;
-  materials?: MaterialsQuote;
-  totalEstimate?: TotalEstimateQuote;
-}
-
-interface MaterialItem {
-  item: string;
-  quantity?: string;
-  estimatedCost?: string;
-}
-
-interface BusinessProfile {
-  legalName?: string;
-  tradingName?: string;
-  abn?: string;
-  email?: string;
-  phone?: string;
-  addressLine1?: string;
-  addressLine2?: string;
-  suburb?: string;
-  state?: string;
-  postcode?: string;
-}
+/**
+ * R9, R10: Job Pack PDF Download Button
+ * 
+ * Uses server-side PDF generation for proper export gating:
+ * - R10: Payment gate enforced server-side
+ * - R1: Confirmation required for exports
+ * - R4: Totals reconciliation checked server-side
+ * 
+ * All PDF generation happens server-side to prevent bypass of export gates.
+ */
 
 interface JobPackPdfButtonProps {
   jobId: string;
-  jobTitle: string;
-  jobCreatedAt: string;
-  tradeType: string;
-  propertyType?: string;
-  address?: string;
-  clientName?: string;
-  notes?: string;
-  aiSummary?: string;
-  aiQuote?: string;
-  aiScopeOfWork?: string;
-  aiInclusions?: string;
-  aiExclusions?: string;
-  aiMaterials?: string;
-  aiClientNotes?: string;
-  materialsOverrideText?: string | null;
-  materialsAreRoughEstimate?: boolean;
-  materialsTotal?: number | null;
-  clientSignatureId?: string | null;
-  clientSignedName?: string | null;
-  clientSignedEmail?: string | null;
-  clientAcceptedAt?: string | null;
-  clientAcceptedByName?: string | null;
-  clientAcceptanceNote?: string | null;
-  clientAcceptedQuoteVer?: number | null;
-  quoteNumber?: string | null;
-  // Business profile for header
-  businessProfile?: BusinessProfile | null;
-  // AI review status for warning suppression (R2)
+  // Other props are no longer needed since PDF is generated server-side
+  // Keeping minimal props for potential future client-side preview
   aiReviewStatus?: "pending" | "confirmed";
 }
 
 export default function JobPackPdfButton({
   jobId,
-  jobTitle,
-  jobCreatedAt,
-  tradeType,
-  propertyType,
-  address,
-  clientName,
-  notes,
-  aiSummary,
-  aiQuote,
-  aiScopeOfWork,
-  aiInclusions,
-  aiExclusions,
-  aiMaterials,
-  aiClientNotes,
-  materialsOverrideText,
-  materialsAreRoughEstimate,
-  materialsTotal,
-  clientSignatureId,
-  clientSignedName,
-  clientSignedEmail,
-  clientAcceptedAt,
-  clientAcceptedByName,
-  clientAcceptanceNote,
-  clientAcceptedQuoteVer,
-  quoteNumber,
-  businessProfile,
   aiReviewStatus,
 }: JobPackPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   const handleDownloadPdf = async () => {
     setIsGenerating(true);
+    setError(null);
+    setErrorCode(null);
 
-    // Fetch job materials if they exist
-    let jobMaterials: Array<{
-      name: string;
-      unitLabel: string;
-      quantity: number;
-      lineTotal: number | null;
-    }> = [];
     try {
-      const materialsRes = await fetch(`/api/jobs/${jobId}/materials`);
-      if (materialsRes.ok) {
-        const materialsData = await materialsRes.json();
-        jobMaterials = (materialsData.materials || []).map((m: any) => ({
-          name: m.name,
-          unitLabel: m.unitLabel,
-          quantity: m.quantity,
-          lineTotal: m.lineTotal,
-        }));
+      // R9, R10: Call server endpoint for PDF generation with proper export gates
+      const response = await fetch(`/api/jobs/${jobId}/pack-pdf`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      // Handle error responses
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to generate PDF" }));
+        
+        // Set error code for special handling
+        setErrorCode(errorData.code || null);
+        
+        // Handle specific error cases
+        if (errorData.code === "PAID_PLAN_REQUIRED") {
+          setError("A paid plan is required to download PDFs. Please upgrade to continue.");
+        } else if (errorData.code === "CONFIRMATION_REQUIRED") {
+          setError("Please confirm the AI pack before downloading. Review the content and click 'Mark AI pack as confirmed'.");
+        } else if (errorData.code === "TOTALS_MISMATCH") {
+          setError("Materials totals don't match. Please recalculate in Materials Management before exporting.");
+        } else {
+          setError(errorData.error || "Failed to generate PDF. Please try again.");
+        }
+        return;
       }
+
+      // Success - download the PDF blob
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `job-pack-${jobId.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
     } catch (err) {
-      console.warn("Failed to fetch job materials for PDF:", err);
-    }
-
-    // Fetch client signature if exists
-    let clientSignature: {
-      signedName: string;
-      signedEmail: string;
-      signedAt: string;
-      signatureImage: string | null;
-    } | null = null;
-
-    if (clientSignatureId && clientSignedName && clientAcceptedAt) {
-      try {
-        const sigResponse = await fetch(`/api/jobs/${jobId}/signature/${clientSignatureId}`);
-        if (sigResponse.ok) {
-          const sigData = await sigResponse.json();
-          if (sigData.success) {
-            clientSignature = {
-              signedName: clientSignedName,
-              signedEmail: clientSignedEmail || "",
-              signedAt: clientAcceptedAt,
-              signatureImage: sigData.imageDataUrl || null,
-            };
-          }
-        }
-      } catch (sigError) {
-        console.warn("Failed to load signature for PDF:", sigError);
-        if (clientSignedName && clientAcceptedAt) {
-          clientSignature = {
-            signedName: clientSignedName,
-            signedEmail: clientSignedEmail || "",
-            signedAt: clientAcceptedAt,
-            signatureImage: null,
-          };
-        }
-      }
-    }
-
-    try {
-      const pdf = new PdfDocument();
-
-      // =========================================
-      // BUSINESS HEADER
-      // =========================================
-      if (businessProfile?.legalName) {
-        pdf.addBusinessHeader(businessProfile);
-      } else {
-        pdf.addBrandedHeader("Job Pack");
-      }
-
-      // =========================================
-      // JOB TITLE
-      // =========================================
-      pdf.addTitle(jobTitle);
-      pdf.addText("Job Pack / Quote", { fontSize: 10, color: [100, 116, 139] });
-      pdf.addSpace(4);
-
-      // =========================================
-      // JOB METADATA
-      // =========================================
-      const metaItems: Array<{ label: string; value: string }> = [];
-      if (tradeType) metaItems.push({ label: "Trade", value: tradeType });
-      if (propertyType) metaItems.push({ label: "Property", value: propertyType });
-      if (address) metaItems.push({ label: "Address", value: address });
-      if (clientName) metaItems.push({ label: "Client", value: clientName });
-      metaItems.push({ label: "Date", value: formatDate(jobCreatedAt) });
-      pdf.addMetadata(metaItems);
-
-      // =========================================
-      // AI WARNING - Only show for unconfirmed packs (R2, R4)
-      // Confirmed packs should never have AI warnings in exports
-      // =========================================
-      const isConfirmed = aiReviewStatus === "confirmed";
-      if (!isConfirmed) {
-        pdf.addAiWarning();
-      }
-
-      // =========================================
-      // SUMMARY
-      // =========================================
-      if (aiSummary) {
-        pdf.addSectionHeading("Summary");
-        pdf.addParagraph(aiSummary);
-      }
-
-      // =========================================
-      // PRICING
-      // =========================================
-      if (aiQuote) {
-        try {
-          const quote: ParsedQuote = JSON.parse(aiQuote);
-          pdf.addSectionHeading("Pricing");
-
-          if (quote.labour) {
-            pdf.addSubheading("Labour");
-            if (quote.labour.description) {
-              pdf.addParagraph(quote.labour.description);
-            }
-            const labourDetails: string[] = [];
-            if (quote.labour.hours) labourDetails.push(`Hours: ${quote.labour.hours}`);
-            if (quote.labour.ratePerHour) labourDetails.push(`Rate: ${quote.labour.ratePerHour}`);
-            if (quote.labour.total) labourDetails.push(`Total: ${quote.labour.total}`);
-            if (labourDetails.length > 0) {
-              pdf.addParagraph(labourDetails.join("  |  "));
-            }
-          }
-
-          if (quote.materials) {
-            pdf.addSubheading("Materials");
-            if (quote.materials.description) {
-              pdf.addParagraph(quote.materials.description);
-            }
-            if (quote.materials.totalMaterialsCost) {
-              pdf.addParagraph(`Total: ${quote.materials.totalMaterialsCost}`);
-            }
-          }
-
-          if (quote.totalEstimate) {
-            const estimateRange = calculateEstimateRange(aiQuote);
-            pdf.addHighlightBox({
-              label: "Total Estimate",
-              value: estimateRange.formattedRange,
-            });
-          }
-        } catch {
-          // Skip pricing if JSON parsing fails
-        }
-      }
-
-      // =========================================
-      // SCOPE OF WORK
-      // =========================================
-      if (aiScopeOfWork) {
-        pdf.addSectionHeading("Scope of Work");
-        const scopeItems = aiScopeOfWork.split("\n").filter((line) => line.trim());
-        pdf.addNumberedList(scopeItems);
-      }
-
-      // =========================================
-      // INCLUSIONS
-      // =========================================
-      if (aiInclusions) {
-        pdf.addSectionHeading("What's Included");
-        const inclusionItems = aiInclusions.split("\n").filter((line) => line.trim());
-        pdf.addInclusionsList(inclusionItems);
-      }
-
-      // =========================================
-      // EXCLUSIONS
-      // =========================================
-      if (aiExclusions) {
-        pdf.addSectionHeading("Not Included");
-        const exclusionItems = aiExclusions.split("\n").filter((line) => line.trim());
-        pdf.addExclusionsList(exclusionItems);
-      }
-
-      // =========================================
-      // MATERIALS
-      // =========================================
-      const hasOverride = materialsOverrideText && materialsOverrideText.trim().length > 0;
-      const showMaterialsDisclaimer = materialsAreRoughEstimate || !hasOverride;
-      const hasJobMaterials = jobMaterials && jobMaterials.length > 0;
-
-      if (hasJobMaterials) {
-        pdf.addSectionHeading("Materials");
-        
-        // Build table data
-        const headers = ["Material", "Qty", "Unit", "Total"];
-        const rows = jobMaterials.map((m) => [
-          m.name,
-          m.quantity.toString(),
-          m.unitLabel,
-          formatCurrency(m.lineTotal || 0),
-        ]);
-        
-        pdf.addTable(headers, rows, { colWidths: [80, 25, 30, 35] });
-
-        // Total row
-        const materialsTableTotal = jobMaterials.reduce((sum, m) => sum + (m.lineTotal || 0), 0);
-        const finalTotal = materialsTotal != null ? materialsTotal : materialsTableTotal;
-        pdf.addHighlightBox({
-          label: "Materials Total",
-          value: formatCurrency(finalTotal),
-        });
-      } else if (hasOverride) {
-        pdf.addSectionHeading("Materials");
-        pdf.addText("Final materials notes (overrides AI suggestion)", {
-          fontSize: 9,
-          fontWeight: "normal",
-          color: [59, 130, 246],
-        });
-        pdf.addSpace(4);
-        pdf.addParagraph(materialsOverrideText);
-      } else if (aiMaterials) {
-        try {
-          const materials: MaterialItem[] = JSON.parse(aiMaterials);
-          if (Array.isArray(materials) && materials.length > 0) {
-            pdf.addSectionHeading("Materials");
-            
-            const headers = ["Item", "Qty", "Est. Cost"];
-            const rows = materials.map((m) => [
-              m.item || "",
-              m.quantity || "-",
-              m.estimatedCost || "-",
-            ]);
-            
-            pdf.addTable(headers, rows, { colWidths: [90, 35, 45] });
-          }
-        } catch {
-          // Skip if JSON parsing fails
-        }
-      }
-
-      // Materials disclaimer - Only show for unconfirmed packs (R5)
-      if ((hasOverride || aiMaterials || hasJobMaterials) && showMaterialsDisclaimer && !isConfirmed) {
-        pdf.addText(
-          "Note: Material prices are an estimate only and must be checked against current supplier pricing.",
-          { fontSize: 9, color: [180, 83, 9] }
-        );
-        pdf.addSpace(6);
-      }
-
-      // =========================================
-      // CLIENT NOTES
-      // =========================================
-      if (aiClientNotes) {
-        pdf.addSectionHeading("Notes for Client");
-        pdf.addParagraph(aiClientNotes);
-      }
-
-      // =========================================
-      // JOB DETAILS
-      // =========================================
-      if (notes) {
-        pdf.addSectionHeading("Job Details");
-        pdf.addParagraph(notes);
-      }
-
-      // =========================================
-      // CLIENT ACCEPTANCE
-      // =========================================
-      if (clientAcceptedAt && (clientAcceptedByName || clientSignedName)) {
-        pdf.addSectionHeading("Client Acceptance");
-
-        // Add signature image if available
-        if (clientSignature?.signatureImage) {
-          pdf.addImage(clientSignature.signatureImage, { width: 80, height: 30 });
-        }
-
-        const acceptedByName = clientAcceptedByName || clientSignedName || "Unknown";
-        pdf.addParagraph(`Accepted by: ${acceptedByName}`);
-        
-        if (clientSignedEmail) {
-          pdf.addParagraph(`Email: ${clientSignedEmail}`);
-        }
-        
-        pdf.addParagraph(`Accepted on: ${formatDateTime(clientAcceptedAt)}`);
-        
-        if (quoteNumber && clientAcceptedQuoteVer) {
-          pdf.addParagraph(`Quote: ${quoteNumber} v${clientAcceptedQuoteVer}`);
-        }
-        
-        if (clientAcceptanceNote && clientAcceptanceNote.trim()) {
-          pdf.addSubheading("Client note:");
-          pdf.addParagraph(clientAcceptanceNote);
-        }
-      }
-
-      // =========================================
-      // FOOTER - Confirmed exports use professional footer (R2)
-      // =========================================
-      if (isConfirmed && businessProfile?.legalName) {
-        // Professional footer for confirmed client-facing export
-        pdf.addIssuedFooter(businessProfile.legalName, `JP-${jobId.slice(0, 8).toUpperCase()}`);
-      } else if (isConfirmed) {
-        // Confirmed but no business profile - use standard footer without AI warnings
-        pdf.addStandardFooters({ jobId });
-      } else {
-        // Unconfirmed - standard footer (may include branding)
-        pdf.addStandardFooters({ jobId });
-      }
-
-      // Save the PDF
-      const filename = `job-pack-${jobId.slice(0, 8)}.pdf`;
-      pdf.save(filename);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF. Please try again.");
+      console.error("Error downloading PDF:", err);
+      setError("Failed to download PDF. Please check your connection and try again.");
     } finally {
       setIsGenerating(false);
     }
   };
 
+  // Show confirmation required hint for unconfirmed packs
+  const isUnconfirmed = aiReviewStatus !== "confirmed";
+
   return (
-    <button
-      onClick={handleDownloadPdf}
-      disabled={isGenerating}
-      className="inline-flex items-center px-3 py-1.5 text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      title="Download job pack as PDF"
-    >
-      {isGenerating ? (
-        <>
-          <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-          <span>Generating...</span>
-        </>
-      ) : (
-        <>
-          <Download className="w-4 h-4 mr-1.5" />
-          <span>Download PDF</span>
-        </>
+    <div className="flex flex-col gap-1">
+      <button
+        onClick={handleDownloadPdf}
+        disabled={isGenerating}
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title={isUnconfirmed ? "Confirm the AI pack first to enable PDF download" : "Download job pack as PDF"}
+      >
+        {isGenerating ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            <span>Generating...</span>
+          </>
+        ) : (
+          <>
+            <Download className="w-4 h-4 mr-1.5" />
+            <span>Download PDF</span>
+          </>
+        )}
+      </button>
+
+      {/* Error message display */}
+      {error && (
+        <div className="flex items-start gap-1.5 text-xs text-red-600 mt-1 max-w-xs">
+          {errorCode === "PAID_PLAN_REQUIRED" ? (
+            <Lock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          )}
+          <span>{error}</span>
+        </div>
       )}
-    </button>
+
+      {/* Hint for unconfirmed packs (only show if no error) */}
+      {isUnconfirmed && !error && (
+        <p className="text-xs text-amber-600 mt-0.5">
+          Confirm AI pack to enable export
+        </p>
+      )}
+    </div>
   );
 }
