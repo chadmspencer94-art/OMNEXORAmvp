@@ -5,6 +5,7 @@
  * 
  * Generates a PDF for a Job Pack with proper server-side export gates:
  * - R1: Export vs Draft separation - exports require confirmation
+ * - R4: Totals reconciliation gate - materials total must match line totals
  * - R10: Paid plan export lock - server-side enforced
  * 
  * This endpoint replaces client-side PDF generation to ensure
@@ -15,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
 import { hasDocumentFeatureAccess } from "@/lib/documentAccess";
+import { validateMaterialsTotalsForExport } from "@/lib/materials";
 import { PdfDocument, formatCurrency, formatDate, formatDateTime } from "@/lib/pdfGenerator";
 import { calculateEstimateRange } from "@/lib/pricing";
 import { getPrisma } from "@/lib/prisma";
@@ -198,6 +200,32 @@ export async function POST(
       }));
     } catch (err) {
       console.warn("[pack-pdf] Failed to fetch job materials:", err);
+    }
+
+    // R4: Totals reconciliation gate - ensure materials total matches line totals
+    // Only applies if there are job materials with line totals
+    if (jobMaterials.length > 0) {
+      const reconciliation = await validateMaterialsTotalsForExport(
+        jobId,
+        user.id,
+        job.materialsTotal ?? null
+      );
+
+      if (!reconciliation.isValid) {
+        return NextResponse.json(
+          {
+            error: reconciliation.message || "Materials totals do not reconcile. Please recalculate materials before exporting.",
+            code: "TOTALS_MISMATCH",
+            details: {
+              sumOfLineTotals: reconciliation.sumOfLineTotals,
+              storedMaterialsTotal: reconciliation.storedMaterialsTotal,
+              difference: reconciliation.difference,
+            },
+            hint: "Open the Materials Management section and click 'Recalculate' to fix the totals.",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Fetch client signature if exists

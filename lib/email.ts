@@ -257,13 +257,8 @@ export function buildJobPackEmailHtml({
         `);
       }
     } catch {
-      // If parsing fails, show as plain text
-      sections.push(`
-        <div style="margin-bottom: 24px;">
-          <h3 style="font-size: 14px; font-weight: 600; text-transform: uppercase; color: #64748b; margin: 0 0 8px 0;">Materials</h3>
-          <p style="font-size: 14px; margin: 0; line-height: 1.5; white-space: pre-wrap;">${escapeHtml(aiMaterials)}</p>
-        </div>
-      `);
+      // R3: Skip materials section if JSON parsing fails - never show raw JSON
+      // Materials will be available in the PDF export if structured properly
     }
   }
 

@@ -550,9 +550,12 @@ function MaterialsSection({
             </table>
           </div>
         ) : content ? (
-          <pre className="text-slate-700 text-sm whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-200">
-            {content}
-          </pre>
+          // R3: Show user-friendly message instead of raw JSON when parsing fails
+          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <p className="text-sm text-slate-600 italic">
+              Materials data available but could not be formatted. Please use the Materials Management section to add structured materials.
+            </p>
+          </div>
         ) : null}
 
         {/* Materials disclaimer - Only show for unconfirmed packs (R5) */}
