@@ -744,6 +744,102 @@ export class PdfDocument {
   }
 
   /**
+   * R6: Add signature block with blank lines (not pre-filled)
+   * For documents requiring acceptance/approval like Variations and EOT
+   */
+  addSignatureBlock(options: {
+    title?: string;
+    contractorName?: string;
+    clientName?: string;
+    showContractor?: boolean;
+    showClient?: boolean;
+  }): void {
+    const {
+      title = "Approval and Signatures",
+      contractorName = "",
+      clientName = "",
+      showContractor = true,
+      showClient = true,
+    } = options;
+
+    this.checkNewPage(80);
+
+    // Section heading
+    this.addSectionHeading(title);
+
+    const colWidth = (this.maxWidth - 10) / 2; // Two columns with gap
+    const lineLength = colWidth - 20;
+    const startY = this.y;
+
+    // Contractor signature (left column)
+    if (showContractor) {
+      const leftX = this.config.marginLeft;
+      let yPos = startY;
+
+      // Label
+      this.doc.setFontSize(8);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(100, 116, 139); // slate-500
+      this.doc.text("CONTRACTOR", leftX, yPos);
+      yPos += 8;
+
+      // Name field
+      this.doc.setFontSize(9);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(15, 23, 42); // slate-900
+      this.doc.text("Name:", leftX, yPos);
+      this.doc.text(contractorName || "_________________________", leftX + 15, yPos);
+      yPos += 12;
+
+      // Signature line
+      this.doc.text("Signature:", leftX, yPos);
+      this.doc.setDrawColor(100, 116, 139);
+      this.doc.setLineWidth(0.3);
+      this.doc.line(leftX + 22, yPos, leftX + 22 + lineLength - 22, yPos);
+      yPos += 12;
+
+      // Date line
+      this.doc.text("Date:", leftX, yPos);
+      this.doc.line(leftX + 15, yPos, leftX + 15 + lineLength - 15, yPos);
+    }
+
+    // Client signature (right column)
+    if (showClient) {
+      const rightX = this.config.marginLeft + colWidth + 10;
+      let yPos = startY;
+
+      // Label
+      this.doc.setFontSize(8);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(100, 116, 139); // slate-500
+      this.doc.text("CLIENT / PRINCIPAL", rightX, yPos);
+      yPos += 8;
+
+      // Name field
+      this.doc.setFontSize(9);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(15, 23, 42); // slate-900
+      this.doc.text("Name:", rightX, yPos);
+      this.doc.text(clientName || "_________________________", rightX + 15, yPos);
+      yPos += 12;
+
+      // Signature line
+      this.doc.text("Signature:", rightX, yPos);
+      this.doc.setDrawColor(100, 116, 139);
+      this.doc.setLineWidth(0.3);
+      this.doc.line(rightX + 22, yPos, rightX + 22 + lineLength - 22, yPos);
+      yPos += 12;
+
+      // Date line
+      this.doc.text("Date:", rightX, yPos);
+      this.doc.line(rightX + 15, yPos, rightX + 15 + lineLength - 15, yPos);
+    }
+
+    this.y = startY + 45;
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
    * Add a simple table with improved formatting for Australian standards
    */
   addTable(headers: string[], rows: string[][], options?: { colWidths?: number[] }): void {
