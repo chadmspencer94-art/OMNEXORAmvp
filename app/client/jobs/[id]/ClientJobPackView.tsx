@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * Client Job Pack View
+ * 
+ * NOTE: Client portal is currently DISABLED (redirects to main dashboard).
+ * 
+ * PLANNED: Visual update scheduled for future release to modernize appearance
+ * - Update to contemporary design language
+ * - Improve mobile responsiveness
+ * - Maintain existing functionality
+ * 
+ * See: Master Implementation Prompt - Client Portal Appearance item
+ */
+
 import { calculateEstimateRange } from "@/lib/pricing";
 import JobPackPdfButton from "@/app/jobs/[id]/JobPackPdfButton";
 import type { Job } from "@/lib/jobs";
