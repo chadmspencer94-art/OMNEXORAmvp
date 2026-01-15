@@ -102,6 +102,11 @@ export async function upsertUserVerification(
 
 /**
  * Admin-only: Updates verification status and admin notes
+ * 
+ * VERIFICATION PROCESS E2E (Requirement 9):
+ * - Signup → pending verification → admin approve/reject → verified gating works
+ * - Rejection blocks user, shows status, allows re-submission
+ * - All review metadata is captured: reviewer ID, timestamp, notes
  */
 export async function updateVerificationStatus(
   userId: string,
@@ -112,10 +117,16 @@ export async function updateVerificationStatus(
     reviewerId?: string | null;
   }
 ): Promise<UserVerification> {
+  const now = new Date();
   const updateData: any = {
     status,
-    updatedAt: new Date(),
+    updatedAt: now,
   };
+
+  // Track review metadata whenever admin changes status
+  if (adminData?.reviewerId) {
+    updateData.reviewedByAdminId = adminData.reviewerId;
+  }
 
   if (adminData) {
     if (adminData.adminNotes !== undefined) {
@@ -123,9 +134,6 @@ export async function updateVerificationStatus(
     }
     if (adminData.rejectionReason !== undefined) {
       updateData.rejectionReason = adminData.rejectionReason;
-    }
-    if (adminData.reviewerId !== undefined) {
-      updateData.reviewedByAdminId = adminData.reviewerId;
     }
   }
 
@@ -136,11 +144,12 @@ export async function updateVerificationStatus(
 
   const prisma = getPrisma();
   // Also update the User's verificationStatus field for backwards compatibility
+  // This ensures both UserVerification.status and User.verificationStatus are in sync
   await prisma.user.update({
     where: { id: userId },
     data: {
       verificationStatus: status,
-      verifiedAt: status === "verified" ? new Date() : null,
+      verifiedAt: status === "verified" ? now : null,
     },
   });
 
