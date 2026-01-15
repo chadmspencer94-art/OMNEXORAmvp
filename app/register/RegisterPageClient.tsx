@@ -5,7 +5,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Footer from "@/app/components/Footer";
 
-type UserRole = "tradie" | "client";
+// Client signup is disabled - only tradies can register
+type UserRole = "tradie";
 
 interface RegisterPageClientProps {
   requireInviteCode: boolean;
@@ -17,7 +18,8 @@ export default function RegisterPageClient({ requireInviteCode }: RegisterPageCl
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
-  const [role, setRole] = useState<UserRole>("tradie");
+  // Role is fixed to tradie - client signup is disabled
+  const role: UserRole = "tradie";
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -96,42 +98,8 @@ export default function RegisterPageClient({ requireInviteCode }: RegisterPageCl
               </div>
             )}
 
-            {/* Role Selection */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                I am a...
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setRole("tradie")}
-                  disabled={isLoading}
-                  className={`p-4 border-2 rounded-lg text-center transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
-                    role === "tradie"
-                      ? "border-amber-500 bg-amber-50 text-amber-900"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                  }`}
-                >
-                  <div className="text-2xl mb-1">🔧</div>
-                  <div className="font-semibold">Tradie</div>
-                  <div className="text-xs text-slate-500">Create job packs</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole("client")}
-                  disabled={isLoading}
-                  className={`p-4 border-2 rounded-lg text-center transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
-                    role === "client"
-                      ? "border-amber-500 bg-amber-50 text-amber-900"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                  }`}
-                >
-                  <div className="text-2xl mb-1">🏠</div>
-                  <div className="font-semibold">Client</div>
-                  <div className="text-xs text-slate-500">Request work</div>
-                </button>
-              </div>
-            </div>
+            {/* Role Selection - Disabled: Only tradies can sign up */}
+            {/* Client signup is not available */}
 
             {/* Invite Code Field - shown when invite-only mode */}
             {requireInviteCode && (

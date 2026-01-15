@@ -83,9 +83,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role (if provided)
-    // For self-signup, only allow tradie or client roles for security
+    // CLIENT SIGNUP IS DISABLED - only tradies can self-register
     // Admins can change roles later via the admin users page
-    const validSelfSignupRoles: UserRole[] = ["tradie", "client"];
+    // Block any attempt to register as client
+    if (role === "client") {
+      return NextResponse.json(
+        { error: "Client registration is not available. Only trade businesses can sign up." },
+        { status: 403 }
+      );
+    }
+    const validSelfSignupRoles: UserRole[] = ["tradie"];
     const userRole: UserRole = role && validSelfSignupRoles.includes(role) ? role : "tradie";
 
     // Create the user

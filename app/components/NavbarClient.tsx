@@ -180,25 +180,22 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
   }, [router, mounted]);
 
   const isLoggedIn = !!user;
-  const isClient = user?.role === "client";
+  // CLIENT PORTAL IS DISABLED - treat all users as non-client for nav purposes
+  const isClient = false; // user?.role === "client" - disabled
   const isSuperAdmin = user?.isAdmin === true;
   const [isResetting, startReset] = useTransition();
 
   // Role-aware navigation links
   // Core routes are always shown; experimental features are controlled by feature flags
-  const navLinks = isClient
-    ? [
-        { href: "/client/dashboard", label: "Dashboard" },
-        { href: "/client/jobs/new", label: "Post Job" },
-      ]
-    : [
-        { href: "/dashboard", label: "Dashboard" },
-        { href: "/jobs", label: "Job Packs" },
-        ...(featureFlags.showCalendar ? [{ href: "/calendar", label: "Calendar" }] : []),
-        { href: "/clients", label: "Clients" },
-        ...(featureFlags.showBilling ? [{ href: "/billing", label: "Billing" }] : []),
-        { href: "/settings", label: "Settings" },
-      ];
+  // CLIENT PORTAL IS DISABLED - client links removed
+  const navLinks = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/jobs", label: "Job Packs" },
+    ...(featureFlags.showCalendar ? [{ href: "/calendar", label: "Calendar" }] : []),
+    { href: "/clients", label: "Clients" },
+    ...(featureFlags.showBilling ? [{ href: "/billing", label: "Billing" }] : []),
+    { href: "/settings", label: "Settings" },
+  ];
 
   const handleResetDemoData = async () => {
     if (!confirm("Reset demo data? This will update demo user accounts to their default state.")) {
