@@ -4,6 +4,11 @@
  * POST /api/docs/confirm
  * Sets document status to CONFIRMED (user has reviewed and confirmed content)
  * 
+ * CONFIRMATION BEHAVIOUR:
+ * - Persists approved state with approvedAt and approvedByUserId (R7 auditability)
+ * - Idempotent: if already confirmed, returns success without updating timestamps (R6)
+ * - After confirmation, client-facing exports will have AI warnings removed (R2)
+ * 
  * Requires DOC_ENGINE_V1 feature flag.
  */
 
@@ -19,6 +24,9 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/docs/confirm
  * Confirm document content (sets status to CONFIRMED)
+ * 
+ * Idempotent: calling multiple times on an already-confirmed document
+ * returns success without creating duplicates or updating timestamps.
  */
 export async function POST(request: NextRequest) {
   if (!featureFlags.DOC_ENGINE_V1) {
@@ -81,7 +89,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update to CONFIRMED status
+    // R6 Idempotency: If already confirmed/approved, return success without re-updating
+    if (existingDraft.approved && existingDraft.status !== "DRAFT") {
+      return NextResponse.json({
+        success: true,
+        alreadyConfirmed: true,
+        draft: {
+          id: existingDraft.id,
+          jobId: existingDraft.jobId,
+          docType: existingDraft.docType,
+          status: existingDraft.status,
+          approved: existingDraft.approved,
+          approvedAt: existingDraft.approvedAt?.toISOString() ?? null,
+          approvedByUserId: existingDraft.approvedByUserId ?? null,
+          confirmedAt: existingDraft.confirmedAt?.toISOString() ?? null,
+          updatedAt: existingDraft.updatedAt.toISOString(),
+        },
+      });
+    }
+
+    // Update to CONFIRMED status with audit trail (R2, R7)
+    const now = new Date();
     const draft = await prisma.documentDraft.update({
       where: {
         jobId_docType: {
@@ -91,9 +119,10 @@ export async function POST(request: NextRequest) {
       },
       data: {
         status: "CONFIRMED",
-        confirmedAt: new Date(),
+        confirmedAt: now,
         approved: true,
-        approvedAt: new Date(),
+        approvedAt: now,
+        approvedByUserId: user.id, // R7: Store who approved for audit trail
       },
     });
 
@@ -104,6 +133,9 @@ export async function POST(request: NextRequest) {
         jobId: draft.jobId,
         docType: draft.docType,
         status: draft.status,
+        approved: draft.approved,
+        approvedAt: draft.approvedAt?.toISOString() ?? null,
+        approvedByUserId: draft.approvedByUserId ?? null,
         confirmedAt: draft.confirmedAt?.toISOString() ?? null,
         updatedAt: draft.updatedAt.toISOString(),
       },

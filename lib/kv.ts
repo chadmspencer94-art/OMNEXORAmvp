@@ -60,7 +60,8 @@ if (!kvRestApiUrl || !kvRestApiToken) {
 } else {
   // Try to import @vercel/kv - it may throw if env vars are invalid
   try {
-    // Use require with error handling
+    // Use dynamic import with error handling
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const vercelKv = require("@vercel/kv");
     kvInstance = vercelKv.kv;
   } catch (error) {

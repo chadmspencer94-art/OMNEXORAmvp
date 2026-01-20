@@ -106,7 +106,11 @@ export async function PATCH(
       planStatus?: "TRIAL" | "ACTIVE" | "PAST_DUE" | "CANCELLED";
       planTier?: "FREE" | "TRIAL" | "FOUNDER" | "PRO" | "BUSINESS";
       trialEndsAt?: string | null;
+      emailVerifiedAt?: string | null; // Manual email verification (for admin use)
     } = {};
+    
+    // Track if we need to update email verification in Prisma
+    let updateEmailVerification = false;
 
     // Only include fields that are actually provided (not undefined)
     if (typeof body.isAdmin === "boolean") {
@@ -154,6 +158,24 @@ export async function PATCH(
         }
       }
     }
+    
+    // Handle email verification (admin override)
+    if (body.emailVerifiedAt !== undefined) {
+      updateEmailVerification = true;
+      if (body.emailVerifiedAt === null) {
+        // Unverify email
+        updates.emailVerifiedAt = null;
+      } else if (body.emailVerifiedAt === true || body.emailVerifiedAt === "now") {
+        // Verify email now
+        updates.emailVerifiedAt = new Date().toISOString();
+      } else if (typeof body.emailVerifiedAt === "string") {
+        // Validate it's a valid date
+        const date = new Date(body.emailVerifiedAt);
+        if (!isNaN(date.getTime())) {
+          updates.emailVerifiedAt = date.toISOString();
+        }
+      }
+    }
 
     // If no valid updates, return error
     if (Object.keys(updates).length === 0) {
@@ -176,8 +198,8 @@ export async function PATCH(
     
     console.log(`[Admin API] Successfully updated user in KV store: ${updatedUser.email}, role: ${updatedUser.role}, isAdmin: ${updatedUser.isAdmin}`);
 
-    // Also update Prisma if user exists there (for role and admin status)
-    if (updates.role || updates.isAdmin !== undefined) {
+    // Also update Prisma if user exists there (for role, admin status, and email verification)
+    if (updates.role || updates.isAdmin !== undefined || updateEmailVerification) {
       const prisma = getPrisma();
       try {
         // Find user by email (since KV and Prisma may use different IDs)
@@ -186,18 +208,47 @@ export async function PATCH(
         });
 
         if (prismaUser) {
-          // Update Prisma user - always update role to match KV store
+          // Build Prisma update data
+          const prismaUpdateData: any = {};
+          
+          // Update role if changed
+          if (updates.role || updates.isAdmin !== undefined) {
+            prismaUpdateData.role = updates.role || (updates.isAdmin === false ? "tradie" : prismaUser.role);
+          }
+          
+          // Update email verification if changed
+          if (updateEmailVerification) {
+            prismaUpdateData.emailVerifiedAt = updates.emailVerifiedAt ? new Date(updates.emailVerifiedAt) : null;
+            console.log(`[Admin API] Updating emailVerifiedAt for ${targetUser.email} to:`, updates.emailVerifiedAt);
+          }
+          
+          // Update Prisma user
           await prisma.user.update({
             where: { id: prismaUser.id },
-            data: {
-              role: updates.role || (updates.isAdmin === false ? "tradie" : prismaUser.role),
-              // Note: Prisma User model doesn't have isAdmin field, but role="admin" is sufficient
-            },
+            data: prismaUpdateData,
           });
+          
+          console.log(`[Admin API] Prisma user updated successfully`);
         }
       } catch (prismaError) {
         // Log but don't fail - KV update succeeded
         console.warn("Failed to update Prisma user (non-critical):", prismaError);
+      }
+    }
+    
+    // Also update KV store with emailVerifiedAt if changed
+    if (updateEmailVerification && updates.emailVerifiedAt !== undefined) {
+      try {
+        const { kv } = await import("@/lib/kv");
+        const kvUser = (await kv.get(`user:email:${targetUser.email.toLowerCase()}`)) as any;
+        if (kvUser) {
+          kvUser.emailVerifiedAt = updates.emailVerifiedAt;
+          await kv.set(`user:id:${kvUser.id}`, kvUser);
+          await kv.set(`user:email:${targetUser.email.toLowerCase()}`, kvUser);
+          console.log(`[Admin API] KV user emailVerifiedAt updated successfully`);
+        }
+      } catch (kvError) {
+        console.warn("Failed to update KV store with emailVerifiedAt (non-critical):", kvError);
       }
     }
 
@@ -228,6 +279,7 @@ export async function PATCH(
         role: safeUser.role,
         verificationStatus: safeUser.verificationStatus,
         verifiedAt: safeUser.verifiedAt,
+        emailVerifiedAt: updates.emailVerifiedAt ?? (safeUser as any).emailVerifiedAt ?? null,
         isAdmin: isAdminValue,
         planTier: safeUser.planTier,
         planStatus: safeUser.planStatus,

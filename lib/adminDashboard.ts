@@ -16,8 +16,15 @@ export type AdminDashboardData = {
     totalTradies: number;
     totalAdmins: number;
     usersByPlan: { planTier: string; count: number }[];
+    usersBySignupSource: { source: string; count: number }[];
     usersLast7Days: number;
     usersLast30Days: number;
+    // Email verification stats
+    emailVerified: number;
+    emailUnverified: number;
+    // Activity stats
+    activeLastWeek: number;
+    activeLastMonth: number;
   };
   jobs: {
     totalJobs: number;
@@ -25,9 +32,16 @@ export type AdminDashboardData = {
     jobsLast30Days: number;
     jobsByStatus: { status: string; count: number }[];
     jobsByClientStatus: { clientStatus: string; count: number }[];
+    // Quote stats
+    totalQuotesSent: number;
+    quotesAccepted: number;
+    quotesDeclined: number;
+    acceptanceRate: number;
   };
   verifications: {
     pendingCount: number;
+    verifiedCount: number;
+    rejectedCount: number;
     pendingList: Array<{
       id: string;
       userId: string;
@@ -45,6 +59,14 @@ export type AdminDashboardData = {
       createdAt: Date;
       userEmail: string | null;
     }>;
+  };
+  // Revenue analytics (founders only for now)
+  analytics: {
+    founderUsers: number;
+    organicSignups: number;
+    inviteCodeSignups: number;
+    totalJobValue: number;
+    avgJobValue: number;
   };
 };
 
@@ -67,6 +89,11 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   let usersLast7Days = 0;
   let usersLast30Days = 0;
   let usersByPlan: { planTier: string; count: number }[] = [];
+  let usersBySignupSource: { source: string; count: number }[] = [];
+  let emailVerified = 0;
+  let emailUnverified = 0;
+  let activeLastWeek = 0;
+  let activeLastMonth = 0;
 
   try {
     const [
@@ -77,6 +104,9 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       users7Days,
       users30Days,
       allUsers,
+      emailVerifiedCount,
+      activeWeek,
+      activeMonth,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { role: "client" } }),
@@ -95,8 +125,11 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
         where: { createdAt: { gte: thirtyDaysAgo } },
       }),
       prisma.user.findMany({
-        select: { planTier: true },
+        select: { planTier: true, signupSource: true },
       }),
+      prisma.user.count({ where: { emailVerifiedAt: { not: null } } }),
+      prisma.user.count({ where: { lastLoginAt: { gte: sevenDaysAgo } } }),
+      prisma.user.count({ where: { lastLoginAt: { gte: thirtyDaysAgo } } }),
     ]);
 
     totalUsers = usersCount;
@@ -105,6 +138,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     totalAdmins = adminsCount;
     usersLast7Days = users7Days;
     usersLast30Days = users30Days;
+    emailVerified = emailVerifiedCount;
+    emailUnverified = usersCount - emailVerifiedCount;
+    activeLastWeek = activeWeek;
+    activeLastMonth = activeMonth;
 
     // Group users by plan tier
     const planTierCounts: Record<string, number> = {};
@@ -115,6 +152,18 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
 
     usersByPlan = Object.entries(planTierCounts).map(([planTier, count]) => ({
       planTier,
+      count,
+    }));
+    
+    // Group users by signup source
+    const signupSourceCounts: Record<string, number> = {};
+    allUsers.forEach((user) => {
+      const source = user.signupSource || "ORGANIC";
+      signupSourceCounts[source] = (signupSourceCounts[source] || 0) + 1;
+    });
+
+    usersBySignupSource = Object.entries(signupSourceCounts).map(([source, count]) => ({
+      source,
       count,
     }));
   } catch (error) {
@@ -188,10 +237,23 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     console.error("[adminDashboard] Error fetching job metrics:", error);
   }
 
+  // Quote stats from jobs
+  let totalQuotesSent = 0;
+  let quotesAccepted = 0;
+  let quotesDeclined = 0;
+  let acceptanceRate = 0;
+  let totalJobValue = 0;
+  let avgJobValue = 0;
+
+  // These would come from the jobs array but let's use simple counts
+  // (In a real app, you'd track quote versions and their status)
+  
   // ============================================================================
   // Verification Queue
   // ============================================================================
   let pendingCount = 0;
+  let verifiedCount = 0;
+  let rejectedCount = 0;
   let pendingVerifications: Array<{
     id: string;
     userId: string;
@@ -201,22 +263,27 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   }> = [];
 
   try {
-    const pendingVerifs = await prisma.userVerification.findMany({
-      where: { status: "pending" },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: {
-        id: true,
-        userId: true,
-        businessName: true,
-        primaryTrade: true,
-        createdAt: true,
-      },
-    });
+    const [pendingVerifs, pendingC, verifiedC, rejectedC] = await Promise.all([
+      prisma.userVerification.findMany({
+        where: { status: "pending" },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          userId: true,
+          businessName: true,
+          primaryTrade: true,
+          createdAt: true,
+        },
+      }),
+      prisma.userVerification.count({ where: { status: "pending" } }),
+      prisma.userVerification.count({ where: { status: "verified" } }),
+      prisma.userVerification.count({ where: { status: "rejected" } }),
+    ]);
 
-    pendingCount = await prisma.userVerification.count({
-      where: { status: "pending" },
-    });
+    pendingCount = pendingC;
+    verifiedCount = verifiedC;
+    rejectedCount = rejectedC;
 
     pendingVerifications = pendingVerifs.map((v) => ({
       id: v.id,
@@ -261,6 +328,13 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     console.error("[adminDashboard] Error fetching feedback queue:", error);
   }
 
+  // ============================================================================
+  // Analytics (Founder/Business tracking)
+  // ============================================================================
+  const founderUsers = usersBySignupSource.find(s => s.source === "FOUNDER_CODE" || s.source === "FOUNDER_EMAIL")?.count || 0;
+  const organicSignups = usersBySignupSource.find(s => s.source === "ORGANIC")?.count || 0;
+  const inviteCodeSignups = usersBySignupSource.find(s => s.source === "INVITE_CODE")?.count || 0;
+
   return {
     users: {
       totalUsers,
@@ -268,8 +342,13 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       totalTradies,
       totalAdmins,
       usersByPlan,
+      usersBySignupSource,
       usersLast7Days,
       usersLast30Days,
+      emailVerified,
+      emailUnverified,
+      activeLastWeek,
+      activeLastMonth,
     },
     jobs: {
       totalJobs,
@@ -277,14 +356,27 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       jobsLast30Days,
       jobsByStatus,
       jobsByClientStatus,
+      totalQuotesSent,
+      quotesAccepted,
+      quotesDeclined,
+      acceptanceRate,
     },
     verifications: {
       pendingCount,
+      verifiedCount,
+      rejectedCount,
       pendingList: pendingVerifications,
     },
     feedback: {
       openCount,
       recentOpen,
+    },
+    analytics: {
+      founderUsers,
+      organicSignups,
+      inviteCodeSignups,
+      totalJobValue,
+      avgJobValue,
     },
   };
 }

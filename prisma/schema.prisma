@@ -105,6 +105,10 @@ model User {
   // Email verification
   emailVerifiedAt     DateTime? // When user verified their email address
   
+  // Signup tracking
+  signupSource        String    @default("ORGANIC") // ORGANIC | FOUNDER_CODE | FOUNDER_EMAIL | INVITE_CODE
+  inviteCodeUsed      String?   // The actual invite code used (if any)
+  
   // Password reset tokens
   passwordResetTokens PasswordResetToken[]
   

@@ -3,248 +3,677 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  Building2,
+  MapPin,
+  DollarSign,
+  Shield,
+  FileText,
+  Palette,
+  Wrench,
+  Zap,
+  HardHat,
+  Settings2,
+  ChevronRight,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Mail,
+  User,
+  Briefcase,
+  PenTool,
+  ArrowLeft,
+  Sparkles,
+  LayoutGrid,
+  Package,
+} from "lucide-react";
 import { featureFlags } from "@/lib/featureFlags";
 
-interface UserInfo {
+interface UserData {
   email: string;
   emailVerifiedAt: string | null;
   verificationStatus: string | null;
   role: string | null;
+  primaryTrade: string | null;
+  businessName: string | null;
+  hourlyRate: number | null;
+  serviceRadiusKm: number | null;
+  doesResidential: boolean;
+  doesCommercial: boolean;
+  doesStrata: boolean;
+}
+
+// Trade type icons and colors
+const TRADE_CONFIG: Record<string, { icon: React.ReactNode; color: string; gradient: string; label: string }> = {
+  Painter: {
+    icon: <Palette className="w-5 h-5" />,
+    color: "text-purple-600",
+    gradient: "from-purple-500 to-indigo-600",
+    label: "Painter",
+  },
+  Plasterer: {
+    icon: <HardHat className="w-5 h-5" />,
+    color: "text-orange-600",
+    gradient: "from-orange-500 to-red-600",
+    label: "Plasterer",
+  },
+  Carpenter: {
+    icon: <Wrench className="w-5 h-5" />,
+    color: "text-amber-600",
+    gradient: "from-amber-500 to-orange-600",
+    label: "Carpenter",
+  },
+  Electrician: {
+    icon: <Zap className="w-5 h-5" />,
+    color: "text-yellow-600",
+    gradient: "from-yellow-500 to-amber-600",
+    label: "Electrician",
+  },
+  Other: {
+    icon: <Briefcase className="w-5 h-5" />,
+    color: "text-slate-600",
+    gradient: "from-slate-500 to-slate-700",
+    label: "Trade Professional",
+  },
+};
+
+function getTradeConfig(trade: string | null) {
+  return TRADE_CONFIG[trade || "Other"] || TRADE_CONFIG.Other;
+}
+
+// Quick action cards for each section
+interface QuickActionProps {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  badge?: React.ReactNode;
+  accentColor?: string;
+}
+
+function QuickAction({ href, icon, title, description, badge, accentColor = "amber" }: QuickActionProps) {
+  const colors: Record<string, string> = {
+    amber: "group-hover:bg-amber-50 group-hover:border-amber-200",
+    purple: "group-hover:bg-purple-50 group-hover:border-purple-200",
+    emerald: "group-hover:bg-emerald-50 group-hover:border-emerald-200",
+    blue: "group-hover:bg-blue-50 group-hover:border-blue-200",
+  };
+
+  return (
+    <Link
+      href={href}
+      className={`group block p-4 sm:p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 ${colors[accentColor]}`}
+    >
+      <div className="flex items-start gap-4">
+        <div className={`flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 group-hover:bg-${accentColor}-100 flex items-center justify-center text-slate-600 group-hover:text-${accentColor}-600 transition-colors`}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold text-slate-900 group-hover:text-slate-900">{title}</h3>
+            {badge}
+          </div>
+          <p className="mt-1 text-sm text-slate-500 line-clamp-2">{description}</p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-400 transition-colors flex-shrink-0 mt-0.5" />
+      </div>
+    </Link>
+  );
+}
+
+// Status badge component
+function StatusBadge({ status, type }: { status: string; type: "email" | "business" }) {
+  if (type === "email") {
+    return status ? (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+        <CheckCircle className="w-3 h-3" />
+        Verified
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+        <Clock className="w-3 h-3" />
+        Pending
+      </span>
+    );
+  }
+
+  // Business verification
+  if (status === "verified") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+        <CheckCircle className="w-3 h-3" />
+        Verified
+      </span>
+    );
+  }
+  if (status === "pending" || status === "pending_review") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+        <Clock className="w-3 h-3" />
+        In Review
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+      <AlertCircle className="w-3 h-3" />
+      Not Verified
+    </span>
+  );
 }
 
 export default function SettingsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
 
-  // Fetch current user info on mount
   useEffect(() => {
-    async function fetchSettings() {
+    async function fetchData() {
       try {
-        const response = await fetch("/api/settings");
-        if (response.ok) {
-          const data = await response.json();
-          setUserInfo({
-            email: data.user.email,
-            emailVerifiedAt: data.user.emailVerifiedAt || null,
-            verificationStatus: data.user.verificationStatus || null,
-            role: data.user.role || null,
-          });
-        } else if (response.status === 401) {
+        // Fetch user settings
+        const settingsRes = await fetch("/api/settings");
+        if (settingsRes.status === 401) {
           router.push("/login");
+          return;
         }
+        const settingsData = settingsRes.ok ? await settingsRes.json() : null;
+
+        // Fetch business profile for trade info
+        const profileRes = await fetch("/api/settings/business-profile");
+        const profileData = profileRes.ok ? await profileRes.json() : null;
+
+        setUserData({
+          email: settingsData?.user?.email || "",
+          emailVerifiedAt: settingsData?.user?.emailVerifiedAt || null,
+          verificationStatus: settingsData?.user?.verificationStatus || null,
+          role: settingsData?.user?.role || null,
+          primaryTrade: profileData?.businessProfile?.primaryTrade || null,
+          businessName: profileData?.businessProfile?.businessName || null,
+          hourlyRate: profileData?.businessProfile?.hourlyRate || null,
+          serviceRadiusKm: profileData?.businessProfile?.serviceRadiusKm || null,
+          doesResidential: profileData?.businessProfile?.doesResidential ?? true,
+          doesCommercial: profileData?.businessProfile?.doesCommercial ?? false,
+          doesStrata: profileData?.businessProfile?.doesStrata ?? false,
+        });
       } catch {
-        setError("Failed to load settings");
+        console.error("Failed to load settings");
       } finally {
         setIsLoading(false);
       }
     }
-    fetchSettings();
+    fetchData();
   }, [router]);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="text-slate-500">Loading...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-500 text-sm">Loading settings...</p>
+        </div>
       </div>
     );
   }
 
+  const isClient = userData?.role === "client";
+  const tradeConfig = getTradeConfig(userData?.primaryTrade);
+  const profileComplete = userData?.businessName && userData?.hourlyRate;
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 mb-4"
-        >
-          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Dashboard
-        </Link>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">
-          {userInfo?.role === "client" ? "Client Profile" : "Settings"}
-        </h1>
-        <p className="text-slate-600">
-          {userInfo?.role === "client" 
-            ? "Manage your client profile and account settings."
-            : "Manage your account settings and preferences for the Australian construction industry."}
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Link>
 
-      {/* Navigation Tabs - Different for clients vs tradies */}
-      {userInfo?.role !== "client" && (
-        <div className="mb-6 flex gap-1 border-b border-slate-200 overflow-x-auto">
-          <Link
-            href="/settings/business-profile"
-            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-          >
-            Business Profile
-          </Link>
-          <Link
-            href="/settings"
-            className="px-4 py-2.5 text-sm font-medium text-amber-600 border-b-2 border-amber-500 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-          >
-            Settings
-          </Link>
-          <Link
-            href="/settings/templates"
-            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-          >
-            Job Templates
-          </Link>
-          {featureFlags.showRateTemplates && (
-            <Link
-              href="/settings/rates"
-              className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-            >
-              Rate Templates
-            </Link>
-          )}
-          {featureFlags.showMaterials && (
-            <Link
-              href="/settings/materials"
-              className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-            >
-              Materials
-            </Link>
-          )}
-          <Link
-            href="/settings/verification"
-            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-          >
-            Verification
-          </Link>
-          {featureFlags.showSignature && (
-            <Link
-              href="/settings/signature"
-              className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-t"
-            >
-              Signature
-            </Link>
-          )}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* Account Info Card */}
-      {userInfo && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Account</h2>
-          <div className="space-y-3">
+          {/* Title Section with Trade Badge */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</label>
-              <p className="mt-1 text-sm text-slate-900">{userInfo.email}</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                {isClient ? "Profile Settings" : "Settings"}
+              </h1>
+              <p className="mt-1 text-slate-600">
+                {isClient
+                  ? "Manage your client profile and preferences"
+                  : "Manage your business profile and preferences"}
+              </p>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email Verification</label>
-              <div className="mt-1">
-                {userInfo.emailVerifiedAt ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300">
-                    ✓ Verified
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
-                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                      </svg>
-                      Pending
-                    </span>
-                    <button
-                      onClick={async () => {
-                        try {
-                          const response = await fetch("/api/auth/send-verification-email", {
-                            method: "POST",
-                          });
-                          if (response.ok) {
-                            alert("Verification email sent! Check your inbox.");
-                          } else {
-                            const data = await response.json();
-                            alert(data.error || "Failed to send verification email");
-                          }
-                        } catch (err) {
-                          alert("Failed to send verification email");
-                        }
-                      }}
-                      className="text-xs text-amber-600 hover:text-amber-700 font-medium underline"
-                    >
-                      Resend verification email
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* Admin Verification - Only for tradies */}
-            {userInfo.role !== "client" && (
-              <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Business Verification</label>
-                <div className="mt-1">
-                  {userInfo.verificationStatus === "verified" ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-300">
-                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Verified
-                    </span>
-                  ) : userInfo.verificationStatus === "pending" || userInfo.verificationStatus === "pending_review" ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
-                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                      </svg>
-                      Pending Review
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300">
-                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      Not verified yet
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Verified profiles help clients trust you. Submit your verification documents in the{" "}
-                  <Link href="/settings/verification" className="text-amber-600 hover:text-amber-700 underline">
-                    Verification
-                  </Link>{" "}
-                  section to get verified.
-                </p>
+
+            {/* Trade Badge - Only for tradies */}
+            {!isClient && userData?.primaryTrade && (
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${tradeConfig.gradient} text-white shadow-lg`}>
+                {tradeConfig.icon}
+                <span className="font-medium">{tradeConfig.label}</span>
               </div>
             )}
           </div>
         </div>
-      )}
 
-      {/* Info Card - Only for tradies */}
-      {userInfo?.role !== "client" && (
-        <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-6">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <h3 className="text-sm font-semibold text-amber-900 mb-1">Business Settings</h3>
-              <p className="text-sm text-amber-800">
-                All business profile, pricing, and rates settings for Australian construction trades have been consolidated into the{" "}
-                <Link href="/settings/business-profile" className="font-medium underline hover:text-amber-900">
-                  Business Profile
-                </Link>{" "}
-                page for easier management.
-              </p>
+        {/* Account Overview Card */}
+        <div className="mb-8 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white shadow-lg">
+                <User className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="font-semibold text-slate-900 truncate">
+                  {userData?.businessName || userData?.email}
+                </h2>
+                <p className="text-sm text-slate-500 truncate">{userData?.email}</p>
+              </div>
             </div>
           </div>
+
+          {/* Status Row */}
+          <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Email Status */}
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-slate-400" />
+                <span className="text-sm text-slate-600">Email</span>
+              </div>
+              <StatusBadge status={userData?.emailVerifiedAt || ""} type="email" />
+            </div>
+
+            {/* Business Verification - Only for tradies */}
+            {!isClient && (
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-600">Business</span>
+                </div>
+                <StatusBadge status={userData?.verificationStatus || ""} type="business" />
+              </div>
+            )}
+
+            {/* Profile Completion - Only for tradies */}
+            {!isClient && (
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-600">Profile</span>
+                </div>
+                {profileComplete ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+                    <CheckCircle className="w-3 h-3" />
+                    Complete
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+                    <Sparkles className="w-3 h-3" />
+                    Setup Required
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Resend verification email - if not verified */}
+          {!userData?.emailVerifiedAt && (
+            <div className="px-5 sm:px-6 pb-5 sm:pb-6">
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch("/api/auth/send-verification-email", {
+                      method: "POST",
+                    });
+                    if (response.ok) {
+                      alert("Verification email sent! Check your inbox.");
+                    } else {
+                      const data = await response.json();
+                      alert(data.error || "Failed to send verification email");
+                    }
+                  } catch {
+                    alert("Failed to send verification email");
+                  }
+                }}
+                className="w-full sm:w-auto px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium rounded-lg transition-colors"
+              >
+                Resend Verification Email
+              </button>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Quick Actions Grid - For Tradies */}
+        {!isClient && (
+          <>
+            {/* Primary Settings */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Settings2 className="w-5 h-5 text-slate-400" />
+                Business Settings
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <QuickAction
+                  href="/settings/business-profile"
+                  icon={<Building2 className="w-5 h-5" />}
+                  title="Business Profile"
+                  description="Business name, ABN, trade type, rates, and service area"
+                  badge={!profileComplete ? (
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                      Setup
+                    </span>
+                  ) : undefined}
+                  accentColor="amber"
+                />
+                <QuickAction
+                  href="/settings/verification"
+                  icon={<Shield className="w-5 h-5" />}
+                  title="Verification"
+                  description="Submit documents to verify your business and build trust"
+                  badge={<StatusBadge status={userData?.verificationStatus || ""} type="business" />}
+                  accentColor="emerald"
+                />
+              </div>
+            </div>
+
+            {/* Work Tools */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <LayoutGrid className="w-5 h-5 text-slate-400" />
+                Work Tools
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <QuickAction
+                  href="/settings/templates"
+                  icon={<FileText className="w-5 h-5" />}
+                  title="Job Templates"
+                  description="Create reusable templates for common job types"
+                  accentColor="purple"
+                />
+                {featureFlags.showRateTemplates && (
+                  <QuickAction
+                    href="/settings/rates"
+                    icon={<DollarSign className="w-5 h-5" />}
+                    title="Rate Templates"
+                    description="Save and reuse pricing structures for quotes"
+                    accentColor="blue"
+                  />
+                )}
+                {featureFlags.showMaterials && (
+                  <QuickAction
+                    href="/settings/materials"
+                    icon={<Package className="w-5 h-5" />}
+                    title="Materials Library"
+                    description="Manage your materials and supplier pricing"
+                    accentColor="amber"
+                  />
+                )}
+                {featureFlags.showSignature && (
+                  <QuickAction
+                    href="/settings/signature"
+                    icon={<PenTool className="w-5 h-5" />}
+                    title="Digital Signature"
+                    description="Set up your signature for documents"
+                    accentColor="purple"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Trade-Specific Section */}
+            {userData?.primaryTrade && (
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                  {tradeConfig.icon}
+                  <span className={tradeConfig.color}>{tradeConfig.label} Settings</span>
+                </h2>
+
+                {/* Painter-specific tips */}
+                {userData.primaryTrade === "Painter" && (
+                  <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-100 p-5 sm:p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0">
+                        <Palette className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-purple-900 mb-2">Painter Rate Settings</h3>
+                        <p className="text-sm text-purple-700 mb-3">
+                          Configure your per-square-metre rates for walls, ceilings, and trim work in your Business Profile.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-purple-700">
+                            Walls per m²
+                          </span>
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-purple-700">
+                            Ceilings per m²
+                          </span>
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-purple-700">
+                            Trim per lm
+                          </span>
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-purple-700">
+                            Doors each
+                          </span>
+                        </div>
+                        <Link
+                          href="/settings/business-profile"
+                          className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-purple-700 hover:text-purple-800"
+                        >
+                          Configure painter rates
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Electrician-specific tips */}
+                {userData.primaryTrade === "Electrician" && (
+                  <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl border border-yellow-100 p-5 sm:p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center text-yellow-600 flex-shrink-0">
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-yellow-900 mb-2">Electrician Rate Settings</h3>
+                        <p className="text-sm text-yellow-700 mb-3">
+                          Set up your callout fees, hourly rates, and common job pricing for electrical work.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
+                            Callout fee
+                          </span>
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
+                            Hourly rate
+                          </span>
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
+                            Point install
+                          </span>
+                        </div>
+                        <Link
+                          href="/settings/business-profile"
+                          className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-yellow-700 hover:text-yellow-800"
+                        >
+                          Configure electrician rates
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Carpenter-specific tips */}
+                {userData.primaryTrade === "Carpenter" && (
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100 p-5 sm:p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
+                        <Wrench className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-amber-900 mb-2">Carpenter Rate Settings</h3>
+                        <p className="text-sm text-amber-700 mb-3">
+                          Configure your day rates, hourly rates, and linear metre pricing for carpentry work.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
+                            Day rate
+                          </span>
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
+                            Hourly rate
+                          </span>
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
+                            Trim per lm
+                          </span>
+                        </div>
+                        <Link
+                          href="/settings/business-profile"
+                          className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-amber-700 hover:text-amber-800"
+                        >
+                          Configure carpenter rates
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Plasterer-specific tips */}
+                {userData.primaryTrade === "Plasterer" && (
+                  <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-100 p-5 sm:p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 flex-shrink-0">
+                        <HardHat className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-orange-900 mb-2">Plasterer Rate Settings</h3>
+                        <p className="text-sm text-orange-700 mb-3">
+                          Set up your per-square-metre rates for plastering work and repairs.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
+                            Walls per m²
+                          </span>
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
+                            Ceilings per m²
+                          </span>
+                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
+                            Patch repairs
+                          </span>
+                        </div>
+                        <Link
+                          href="/settings/business-profile"
+                          className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-orange-700 hover:text-orange-800"
+                        >
+                          Configure plasterer rates
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Generic trade tips for "Other" */}
+                {userData.primaryTrade === "Other" && (
+                  <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-xl border border-slate-200 p-5 sm:p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 flex-shrink-0">
+                        <Briefcase className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-900 mb-2">Custom Rate Settings</h3>
+                        <p className="text-sm text-slate-600 mb-3">
+                          Set up your hourly rates, day rates, and custom pricing for your trade.
+                        </p>
+                        <Link
+                          href="/settings/business-profile"
+                          className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-slate-700 hover:text-slate-800"
+                        >
+                          Configure rates
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Service Area Summary */}
+            {(userData?.serviceRadiusKm || userData?.doesResidential || userData?.doesCommercial || userData?.doesStrata) && (
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-slate-400" />
+                  Service Area
+                </h2>
+                <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
+                  <div className="flex flex-wrap gap-3">
+                    {userData.serviceRadiusKm && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg text-sm">
+                        <MapPin className="w-4 h-4 text-blue-600" />
+                        <span className="text-blue-700 font-medium">{userData.serviceRadiusKm}km radius</span>
+                      </div>
+                    )}
+                    {userData.doesResidential && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg text-sm">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <span className="text-emerald-700 font-medium">Residential</span>
+                      </div>
+                    )}
+                    {userData.doesCommercial && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 rounded-lg text-sm">
+                        <CheckCircle className="w-4 h-4 text-purple-600" />
+                        <span className="text-purple-700 font-medium">Commercial</span>
+                      </div>
+                    )}
+                    {userData.doesStrata && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg text-sm">
+                        <CheckCircle className="w-4 h-4 text-amber-600" />
+                        <span className="text-amber-700 font-medium">Strata</span>
+                      </div>
+                    )}
+                  </div>
+                  <Link
+                    href="/settings/business-profile"
+                    className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-slate-600 hover:text-slate-800"
+                  >
+                    Update service area
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Client View */}
+        {isClient && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Client Settings</h2>
+            <p className="text-slate-600 mb-6">
+              As a client, you can manage your account settings and view quotes from tradies.
+            </p>
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-slate-900">Email Address</h3>
+                    <p className="text-sm text-slate-500">{userData?.email}</p>
+                  </div>
+                  <StatusBadge status={userData?.emailVerifiedAt || ""} type="email" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer Help */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-slate-500">
+            Need help?{" "}
+            <a href="mailto:support@omnexora.com.au" className="text-amber-600 hover:text-amber-700 font-medium">
+              Contact Support
+            </a>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
-

@@ -149,16 +149,12 @@ export interface JobData {
 /**
  * Document lifecycle status
  */
-export type DocumentStatus = "DRAFT" | "CONFIRMED" | "ISSUED";
-
-/**
+export type DocumentStatus = "DRAFT" | "CONFIRMED" | "ISSUED";/**
  * Document audience for rendering
  * - INTERNAL: Shows AI/OVIS warnings and disclaimers
  * - CLIENT: Professional client-facing export with business header, no AI warnings
  */
-export type DocumentAudience = "INTERNAL" | "CLIENT";
-
-/**
+export type DocumentAudience = "INTERNAL" | "CLIENT";/**
  * Business issuer profile for document headers
  */
 export interface IssuerProfile {
@@ -174,9 +170,7 @@ export interface IssuerProfile {
   postcode?: string;          // Postal code
   logoUrl?: string;           // Business logo URL
   gstRegistered?: boolean;    // Whether registered for GST
-}
-
-/**
+}/**
  * Validation result for issuer profile
  */
 export interface IssuerValidationResult {
@@ -185,9 +179,7 @@ export interface IssuerValidationResult {
   missingRecommended: string[];   // Fields that should be filled
   warnings: string[];             // Warning messages
   canIssue: boolean;              // Whether document can be issued
-}
-
-/**
+}/**
  * Extended RenderModel with issuer and audience info
  */
 export interface RenderModelExtended extends RenderModel {
@@ -197,4 +189,3 @@ export interface RenderModelExtended extends RenderModel {
   issuedAt?: string;
   issuedRecordId?: string;
 }
-

@@ -1,0 +1,72 @@
+warning: in the working copy of 'app/admin/feedback/FeedbackLogClient.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/admin/pricing/PriceListsClient.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/admin/pricing/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/admin/users/AdminUsersPageContent.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/admin/verification/AdminVerificationPageContent.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/admin/verification/[userId]/VerificationDetailView.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/admin/jobs/[id]/assign/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/docs/draft/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/jobs/[id]/documents/[type]/pdf/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/jobs/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/clients/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/components/NavbarClient.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/dashboard/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/globals.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/jobs/[id]/JobDocumentModal.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/settings/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/docEngine/types.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/pdfGenerator.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prisma/schema.prisma', LF will be replaced by CRLF the next time Git touches it
+ app/admin/dashboard/page.tsx                       |  161 [32m++[m[31m-[m
+ app/admin/feedback/FeedbackLogClient.tsx           |    2 [32m+[m[31m-[m
+ app/admin/feedback/page.tsx                        |   22 [32m+[m[31m-[m
+ app/admin/pricing/PriceListsClient.tsx             |    1 [31m-[m
+ app/admin/pricing/page.tsx                         |   22 [32m+[m[31m-[m
+ app/admin/users/AdminUsersPageContent.tsx          |   84 [32m+[m[31m-[m
+ .../verification/AdminVerificationPageContent.tsx  |   22 [32m+[m[31m-[m
+ .../[userId]/VerificationDetailView.tsx            |    2 [32m+[m[31m-[m
+ app/api/admin/jobs/[id]/assign/route.ts            |    1 [31m-[m
+ app/api/admin/users/[id]/route.ts                  |   66 [32m+[m[31m-[m
+ app/api/admin/users/route.ts                       |   38 [32m+[m
+ app/api/auth/register/route.ts                     |   59 [32m+[m[31m-[m
+ app/api/auth/send-verification-email/route.ts      |   29 [32m+[m[31m-[m
+ app/api/docs/confirm/route.ts                      |   38 [32m+[m[31m-[m
+ app/api/docs/draft/route.ts                        |    1 [32m+[m
+ app/api/jobs/[id]/documents/[type]/pdf/route.ts    |   77 [32m+[m[31m-[m
+ app/api/jobs/route.ts                              |   49 [32m+[m
+ app/api/me/notifications/route.ts                  |  188 [32m++[m[31m--[m
+ app/clients/ClientsListClient.tsx                  |  213 [31m----[m
+ app/clients/page.tsx                               |   39 [32m+[m[31m-[m
+ app/components/EmailVerificationBanner.tsx         |  105 [32m+[m[31m-[m
+ app/components/Footer.tsx                          |   24 [32m+[m[31m-[m
+ app/components/NavbarClient.tsx                    |   49 [32m+[m[31m-[m
+ app/components/NotificationBell.tsx                |   14 [32m+[m[31m-[m
+ app/dashboard/page.tsx                             | 1112 [32m++++++++++++[m[31m--------[m
+ app/globals.css                                    |  188 [32m++++[m
+ app/jobs/JobSearch.tsx                             |   49 [31m-[m
+ app/jobs/JobsList.tsx                              |  423 [31m--------[m
+ app/jobs/[id]/JobDocumentModal.tsx                 |   59 [32m+[m[31m-[m
+ app/jobs/new/page.tsx                              |  940 [32m++++++++++[m[31m-------[m
+ app/jobs/page.tsx                                  |  133 [32m+[m[31m--[m
+ app/page.tsx                                       |  896 [32m++++++++++[m[31m------[m
+ app/register/RegisterPageClient.tsx                |   42 [32m+[m[31m-[m
+ app/settings/page.tsx                              |  813 [32m++++++++++[m[31m----[m
+ app/verify-email/page.tsx                          |   43 [32m+[m[31m-[m
+ lib/adminDashboard.ts                              |  124 [32m++[m[31m-[m
+ lib/auth.ts                                        |   38 [32m+[m[31m-[m
+ lib/docEngine/types.ts                             |   19 [32m+[m[31m-[m
+ lib/docTemplates/extension_of_time_au.json         |    7 [32m+[m[31m-[m
+ .../handover_practical_completion_au.json          |    8 [32m+[m[31m-[m
+ lib/docTemplates/maintenance_care_guide_au.json    |    7 [32m+[m[31m-[m
+ lib/docTemplates/payment_claim_au_wa.json          |    7 [32m+[m[31m-[m
+ .../progress_claim_tax_invoice_au.json             |    8 [32m+[m[31m-[m
+ lib/docTemplates/swms_au_wa.json                   |    8 [32m+[m[31m-[m
+ lib/docTemplates/toolbox_talk_au.json              |    7 [32m+[m[31m-[m
+ lib/docTemplates/variation_change_order_au.json    |    7 [32m+[m[31m-[m
+ lib/kv.ts                                          |    3 [32m+[m[31m-[m
+ lib/pdfGenerator.ts                                |  594 [32m+++++++++++[m
+ lib/signup-config.ts                               |   30 [32m+[m[31m-[m
+ lib/verification.ts                                |   16 [32m+[m
+ prisma/schema.prisma                               |    4 [32m+[m
+ 51 files changed, 4397 insertions(+), 2494 deletions(-)

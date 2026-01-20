@@ -1,7 +1,6 @@
 import { requireTradieUser } from "@/lib/auth";
 import { getClientSummariesForUser, type ClientSummary } from "@/lib/clients";
-import OmnexoraHeader from "@/app/components/OmnexoraHeader";
-import ClientsListClient from "./ClientsListClient";
+import ClientsPageClient from "./ClientsPageClient";
 
 // Authenticated page using requireTradieUser - must be dynamic
 export const dynamic = "force-dynamic";
@@ -17,8 +16,6 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   // This will redirect clients to their dashboard automatically
   const user = await requireTradieUser();
 
-  console.log("[clients] starting page render for user", user?.id);
-
   const params = await searchParams;
   const search = params.search || "";
 
@@ -32,24 +29,22 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     clientSummaries = [];
   }
 
+  // Calculate stats
+  const totalClients = clientSummaries.length;
+  const activeClients = clientSummaries.filter(
+    (c) => c.lastJobStatus && !["completed", "cancelled"].includes(c.lastJobStatus)
+  ).length;
+  const totalJobs = clientSummaries.reduce((acc, c) => acc + c.jobCount, 0);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Brand Header */}
-      <OmnexoraHeader verificationStatus={user.verificationStatus || "unverified"} />
-
-      {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Clients</h1>
-        <p className="mt-2 text-slate-600">
-          All clients you&apos;ve created jobs for in OMNEXORA.
-        </p>
-      </div>
-
-      {/* Clients List - Client-side search handled in ClientsListClient */}
-      <ClientsListClient 
-        initialClientSummaries={clientSummaries}
-        initialSearch={search}
-      />
-    </div>
+    <ClientsPageClient
+      clientSummaries={clientSummaries}
+      initialSearch={search}
+      stats={{
+        totalClients,
+        activeClients,
+        totalJobs,
+      }}
+    />
   );
 }

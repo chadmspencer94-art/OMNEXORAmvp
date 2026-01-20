@@ -84,7 +84,7 @@ export default function Footer({ showOvisModal }: FooterProps) {
             <ul className="space-y-3">
               <li>
                 <a 
-                  href="https://v0-omnexora-marketing-website.vercel.app/about" 
+                  href="https://www.omnexora.com.au/about" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-slate-300 hover:text-white transition-colors text-sm"
@@ -94,7 +94,7 @@ export default function Footer({ showOvisModal }: FooterProps) {
               </li>
               <li>
                 <a 
-                  href="https://v0-omnexora-marketing-website.vercel.app/contact" 
+                  href="https://www.omnexora.com.au/contact" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-slate-300 hover:text-white transition-colors text-sm"
@@ -104,7 +104,7 @@ export default function Footer({ showOvisModal }: FooterProps) {
               </li>
               <li>
                 <a 
-                  href="https://v0-omnexora-marketing-website.vercel.app/contact" 
+                  href="https://www.omnexora.com.au/contact" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-slate-300 hover:text-white transition-colors text-sm"
@@ -126,10 +126,24 @@ export default function Footer({ showOvisModal }: FooterProps) {
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">Legal</h3>
             <ul className="space-y-3">
               <li>
-                <span className="text-slate-500 text-sm">Privacy Policy</span>
+                <a 
+                  href="https://www.omnexora.com.au/privacy" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-slate-300 hover:text-white transition-colors text-sm"
+                >
+                  Privacy Policy
+                </a>
               </li>
               <li>
-                <span className="text-slate-500 text-sm">Terms of Service</span>
+                <a 
+                  href="https://www.omnexora.com.au/terms" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-slate-300 hover:text-white transition-colors text-sm"
+                >
+                  Terms of Service
+                </a>
               </li>
             </ul>
           </div>

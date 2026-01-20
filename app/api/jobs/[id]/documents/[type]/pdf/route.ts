@@ -156,49 +156,76 @@ export async function POST(
       );
     }
 
-    // Generate PDF
+    // Generate PDF with premium layout
     const pdf = new PdfDocument();
     const docLabel = docType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    const documentNumber = `${docType}-${id.slice(0, 8).toUpperCase()}`;
+    const documentDate = new Date().toLocaleDateString("en-AU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
 
-    // Business Header
-    if (businessProfile?.legalName) {
-      pdf.addBusinessHeader(businessProfile);
-    }
+    // Premium Document Header with business identity
+    pdf.addPremiumDocumentHeader({
+      documentType: docLabel,
+      documentNumber,
+      documentDate,
+      issuer: businessProfile ? {
+        legalName: businessProfile.legalName,
+        tradingName: businessProfile.tradingName,
+        abn: businessProfile.abn,
+        email: businessProfile.email,
+        phone: businessProfile.phone,
+        addressLine1: businessProfile.addressLine1,
+        suburb: businessProfile.suburb,
+        state: businessProfile.state,
+        postcode: businessProfile.postcode,
+      } : undefined,
+      recipient: job.clientName ? {
+        name: job.clientName,
+        address: job.address || undefined,
+      } : undefined,
+      jobReference: id.slice(0, 8).toUpperCase(),
+      projectName: job.title || undefined,
+      projectAddress: job.address || undefined,
+    });
 
-    // Document Title
-    pdf.addTitle(docLabel);
-    pdf.addSeparator();
-
-    // Metadata
-    pdf.addMetadata([
-      { label: "Job", value: job.title || "" },
-      { label: "Trade", value: job.tradeType || "" },
-      { label: "Location", value: job.address || "" },
-      { label: "Date", value: new Date().toLocaleDateString("en-AU") },
-    ]);
+    // Australian Compliance Reference (no compliance claims - just references to relevant authority)
+    // Uses business state or defaults to WA
+    pdf.addAustralianComplianceReference(businessProfile?.state || "WA");
 
     // R3: No AI warnings on confirmed document exports (client-facing)
     // AI warnings are only shown in draft/preview mode, not in exported PDFs
 
-    // Document content
-    const sections = content.split("\n\n");
-    for (const section of sections) {
+    // Document content with improved formatting
+    const contentSections = content.split("\n\n");
+    for (const section of contentSections) {
       if (section.trim()) {
         // Check if it's a heading (starts with # or all caps)
         if (section.match(/^#+\s/) || (section.length < 100 && section === section.toUpperCase() && !section.includes("."))) {
           pdf.addSectionHeading(section.replace(/^#+\s/, "").trim());
+        } else if (section.match(/^[-•*]\s/m)) {
+          // It's a bullet list
+          const items = section.split("\n").filter(line => line.trim());
+          pdf.addBulletList(items.map(item => item.replace(/^[-•*]\s+/, "")));
+        } else if (section.match(/^\d+\.\s/m)) {
+          // It's a numbered list
+          const items = section.split("\n").filter(line => line.trim());
+          pdf.addNumberedList(items.map(item => item.replace(/^\d+\.\s+/, "")));
         } else {
           pdf.addParagraph(section.trim());
         }
       }
     }
 
-    // Footer
-    if (businessProfile?.legalName) {
-      pdf.addIssuedFooter(businessProfile.legalName, `${docType}-${id.slice(0, 8).toUpperCase()}`);
-    } else {
-      pdf.addStandardFooters();
-    }
+    // Premium Footer with compliance note
+    pdf.addPremiumFooter({
+      issuerName: businessProfile?.legalName || "OMNEXORA",
+      documentId: documentNumber,
+      stateCode: businessProfile?.state || "WA",
+      includeComplianceNote: true,
+    });
 
     // Return PDF
     const blob = pdf.getBlob();

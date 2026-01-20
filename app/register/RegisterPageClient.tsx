@@ -101,25 +101,29 @@ export default function RegisterPageClient({ requireInviteCode }: RegisterPageCl
             {/* Role Selection - Disabled: Only tradies can sign up */}
             {/* Client signup is not available */}
 
-            {/* Invite Code Field - shown when invite-only mode */}
-            {requireInviteCode && (
-              <div>
-                <label htmlFor="inviteCode" className="block text-sm font-medium text-slate-700 mb-2">
-                  Invite Code <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="inviteCode"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="Enter your invite code"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed"
-                  required={requireInviteCode}
-                  disabled={isLoading}
-                />
-                <p className="mt-1 text-xs text-slate-500">Required for registration</p>
-              </div>
-            )}
+            {/* Invite Code Field - always shown, required in invite-only mode, optional otherwise */}
+            <div>
+              <label htmlFor="inviteCode" className="block text-sm font-medium text-slate-700 mb-2">
+                Invite Code {requireInviteCode && <span className="text-red-500">*</span>}
+                {!requireInviteCode && <span className="text-slate-400 font-normal">(optional)</span>}
+              </label>
+              <input
+                type="text"
+                id="inviteCode"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder={requireInviteCode ? "Enter your invite code" : "Have a founder code? Enter it here"}
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed"
+                required={requireInviteCode}
+                disabled={isLoading}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                {requireInviteCode 
+                  ? "Required for registration" 
+                  : "Founders get early access benefits"
+                }
+              </p>
+            </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">

@@ -183,6 +183,22 @@ export async function getVerificationsByStatus(
 }
 
 /**
+ * Gets the count of pending verification records
+ * Used by dashboard to show admin notification count
+ */
+export async function getPendingVerificationCount(): Promise<number> {
+  try {
+    const prisma = getPrisma();
+    return await prisma.userVerification.count({
+      where: { status: "pending" },
+    });
+  } catch (error) {
+    console.error("[verification] error counting pending verifications:", error);
+    return 0;
+  }
+}
+
+/**
  * Gets all verification records, sorted by status (pending first) then createdAt desc
  */
 export async function getAllVerifications(): Promise<UserVerification[]> {

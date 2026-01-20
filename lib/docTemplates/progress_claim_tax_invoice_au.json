@@ -3,7 +3,13 @@
   "jurisdiction": "AU",
   "docType": "PROGRESS_CLAIM_TAX_INVOICE",
   "title": "Progress Claim / Tax Invoice",
-  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a compliance-ready layout aligned with Australian construction industry best practice. Professional review required before use.",
+  "disclaimer": "DRAFT DOCUMENT - REVIEW REQUIRED. This template is formatted to support alignment with Australian Taxation Office (ATO) tax invoice requirements and Security of Payment legislation (where applicable). Professional review required. ABN must be valid for GST invoicing. OMNEXORA does not assert compliance certification.",
+  "complianceRef": {
+    "authority": "Australian Taxation Office",
+    "legislation": "A New Tax System (Goods and Services Tax) Act 1999",
+    "securityOfPayment": "Building and Construction Industry Security of Payment Acts (State-specific)",
+    "note": "Tax invoices must include ABN, GST amount, and meet ATO requirements. Progress claims may be subject to state Security of Payment legislation - verify requirements for your jurisdiction."
+  },
   "sections": [
     {
       "id": "header",

@@ -44,6 +44,9 @@ interface User {
   onboardingServiceAreaDone?: boolean;
   onboardingVerificationDone?: boolean;
   onboardingFirstJobDone?: boolean;
+  // Signup tracking
+  signupSource?: string;
+  inviteCodeUsed?: string;
 }
 
 export default function AdminUsersPageContent() {
@@ -75,6 +78,9 @@ export default function AdminUsersPageContent() {
   const [accountStatusFilter, setAccountStatusFilter] = useState<string>(
     searchParams.get("accountStatus") || "all"
   );
+  const [signupSourceFilter, setSignupSourceFilter] = useState<string>(
+    searchParams.get("signupSource") || "all"
+  );
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -88,6 +94,7 @@ export default function AdminUsersPageContent() {
       if (verificationFilter !== "all") params.set("verificationStatus", verificationFilter);
       if (planStatusFilter !== "all") params.set("planStatus", planStatusFilter);
       if (accountStatusFilter !== "all") params.set("accountStatus", accountStatusFilter);
+      if (signupSourceFilter !== "all") params.set("signupSource", signupSourceFilter);
 
       const response = await fetch(`/api/admin/users?${params.toString()}`);
       if (response.ok) {
@@ -121,7 +128,7 @@ export default function AdminUsersPageContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [router, searchParams, searchQuery, verificationFilter, planStatusFilter, accountStatusFilter]);
+  }, [router, searchParams, searchQuery, verificationFilter, planStatusFilter, accountStatusFilter, signupSourceFilter]);
 
   // Fetch current user ID on mount
   useEffect(() => {
@@ -310,6 +317,34 @@ export default function AdminUsersPageContent() {
         return "bg-slate-100 text-slate-500 border-slate-300";
     }
   };
+  
+  const getSignupSourceBadgeColor = (source?: string) => {
+    switch (source) {
+      case "FOUNDER_CODE":
+        return "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border-purple-300";
+      case "FOUNDER_EMAIL":
+        return "bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 border-purple-300";
+      case "INVITE_CODE":
+        return "bg-blue-100 text-blue-700 border-blue-300";
+      case "ORGANIC":
+      default:
+        return "bg-slate-100 text-slate-500 border-slate-300";
+    }
+  };
+  
+  const getSignupSourceLabel = (source?: string) => {
+    switch (source) {
+      case "FOUNDER_CODE":
+        return "⭐ Founder Code";
+      case "FOUNDER_EMAIL":
+        return "⭐ Founder Email";
+      case "INVITE_CODE":
+        return "Invite";
+      case "ORGANIC":
+      default:
+        return "Organic";
+    }
+  };
 
   const formatLastLogin = (dateString: string | null | undefined) => {
     if (!dateString) return "Never logged in";
@@ -355,27 +390,39 @@ export default function AdminUsersPageContent() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Admin Navigation */}
-      <div className="mb-6 flex gap-3">
+      <div className="mb-6 flex gap-2 sm:gap-3 flex-wrap overflow-x-auto hide-scrollbar">
         <Link
           href="/admin/dashboard"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Dashboard
         </Link>
-        <span className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg">
+        <span className="px-3 sm:px-4 py-2 bg-purple-600 text-white text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap">
           Users
         </span>
         <Link
           href="/admin/verification"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Verifications
         </Link>
         <Link
           href="/admin/feedback"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Feedback Log
+        </Link>
+        <Link
+          href="/admin/notifications"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+        >
+          Notifications
+        </Link>
+        <Link
+          href="/admin/pricing"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+        >
+          Pricing
         </Link>
       </div>
 
@@ -454,6 +501,23 @@ export default function AdminUsersPageContent() {
             <option value="SUSPENDED">Suspended</option>
             <option value="BANNED">Banned</option>
           </select>
+
+          {/* Signup Source Filter (for separating founders from regular users) */}
+          <select
+            value={signupSourceFilter}
+            onChange={(e) => {
+              setSignupSourceFilter(e.target.value);
+              updateFilters({ signupSource: e.target.value });
+            }}
+            className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          >
+            <option value="all">All Signup Sources</option>
+            <option value="FOUNDER">⭐ Founders Only</option>
+            <option value="FOUNDER_CODE">Founder Code</option>
+            <option value="FOUNDER_EMAIL">Founder Email</option>
+            <option value="INVITE_CODE">Invite Code</option>
+            <option value="ORGANIC">Organic Signup</option>
+          </select>
         </div>
       </div>
 
@@ -508,6 +572,9 @@ export default function AdminUsersPageContent() {
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Verification
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Source
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Actions
@@ -566,6 +633,11 @@ export default function AdminUsersPageContent() {
                       <td className="px-4 py-4">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getStatusBadgeColor(user.verificationStatus)}`}>
                           {user.verificationStatus === "pending" ? "Pending review" : user.verificationStatus === "verified" ? "Verified" : "Not submitted"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getSignupSourceBadgeColor(user.signupSource)}`}>
+                          {getSignupSourceLabel(user.signupSource)}
                         </span>
                       </td>
                       <td className="px-4 py-4">

@@ -114,6 +114,7 @@ export async function GET(request: NextRequest) {
         data: dataJson,
         approved: draft.approved ?? false,
         approvedAt: draft.approvedAt?.toISOString() ?? null,
+        approvedByUserId: draft.approvedByUserId ?? null, // R7: Audit trail
         // Lifecycle status fields
         status: draft.status ?? "DRAFT",
         confirmedAt: draft.confirmedAt?.toISOString() ?? null,

@@ -10,6 +10,8 @@ function VerifyEmailForm() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState("");
   const [isResending, setIsResending] = useState(false);
+  const [devVerifyUrl, setDevVerifyUrl] = useState<string | null>(null);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   const token = searchParams.get("token");
 
@@ -56,18 +58,31 @@ function VerifyEmailForm() {
 
   const handleResend = async () => {
     setIsResending(true);
+    setResendSuccess(false);
+    setDevVerifyUrl(null);
+    
     try {
       const response = await fetch("/api/auth/send-verification-email", {
         method: "POST",
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        setError("Failed to resend verification email. Please try again.");
+        setError(data.error || "Failed to resend verification email. Please try again.");
         return;
       }
 
-      // Show success message
-      alert("Verification email sent. Check your inbox (and spam folder).");
+      // In dev mode, show the verification URL
+      if (data.verifyUrl) {
+        setDevVerifyUrl(data.verifyUrl);
+        setResendSuccess(true);
+      } else if (data.emailSent) {
+        setResendSuccess(true);
+        alert("Verification email sent. Check your inbox (and spam folder).");
+      } else if (data.warning) {
+        setError(data.warning);
+      }
     } catch (err) {
       setError("Failed to resend verification email. Please try again.");
     } finally {
@@ -140,6 +155,28 @@ function VerifyEmailForm() {
                 >
                   {isResending ? "Sending..." : "Resend verification email"}
                 </button>
+                
+                {/* Dev mode: show verification link */}
+                {devVerifyUrl && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-700 font-medium mb-2">
+                      Dev Mode: Click to verify directly
+                    </p>
+                    <a
+                      href={devVerifyUrl}
+                      className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Open verification link →
+                    </a>
+                  </div>
+                )}
+                
+                {resendSuccess && !devVerifyUrl && (
+                  <p className="text-sm text-emerald-600 text-center">
+                    ✓ Verification email sent! Check your inbox.
+                  </p>
+                )}
+                
                 <Link
                   href="/dashboard"
                   className="block w-full text-center px-4 py-2 text-slate-600 hover:text-slate-900 font-medium"

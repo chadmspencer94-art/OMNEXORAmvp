@@ -77,26 +77,44 @@ export default function JobDocumentModal({
 
     try {
       const pdf = new PdfDocument();
+      const documentNumber = `${documentType}-${jobId.slice(0, 8).toUpperCase()}`;
+      const documentDate = new Date().toLocaleDateString("en-AU", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
 
       // =========================================
-      // BUSINESS HEADER
+      // PREMIUM DOCUMENT HEADER
       // =========================================
-      if (businessProfile?.legalName) {
-        pdf.addBusinessHeader(businessProfile);
-      } else {
-        pdf.addBrandedHeader(DOCUMENT_LABELS[documentType]);
-      }
+      pdf.addPremiumDocumentHeader({
+        documentType: DOCUMENT_LABELS[documentType],
+        documentNumber,
+        documentDate,
+        issuer: businessProfile?.legalName ? {
+          legalName: businessProfile.legalName,
+          tradingName: businessProfile.tradingName,
+          abn: businessProfile.abn,
+          email: businessProfile.email,
+          phone: businessProfile.phone,
+          addressLine1: businessProfile.addressLine1,
+          suburb: businessProfile.suburb,
+          state: businessProfile.state,
+          postcode: businessProfile.postcode,
+        } : undefined,
+        recipient: clientName ? {
+          name: clientName,
+          address: address,
+        } : undefined,
+        jobReference: jobId.slice(0, 8).toUpperCase(),
+        projectName: jobTitle,
+        projectAddress: address,
+      });
 
       // =========================================
-      // JOB DETAILS
+      // AUSTRALIAN COMPLIANCE REFERENCE
       // =========================================
-      pdf.addSectionHeading("Job Details");
-      pdf.addMetadata([
-        { label: "Job Title", value: jobTitle },
-        { label: "Trade Type", value: tradeType },
-        { label: "Address", value: address || "" },
-        { label: "Client", value: clientName || "" },
-      ]);
+      pdf.addAustralianComplianceReference(businessProfile?.state || "WA");
 
       // =========================================
       // AI WARNING (only for internal/no business profile)
@@ -128,13 +146,14 @@ export default function JobDocumentModal({
       }
 
       // =========================================
-      // FOOTER
+      // PREMIUM FOOTER
       // =========================================
-      if (businessProfile?.legalName) {
-        pdf.addIssuedFooter(businessProfile.legalName, `${documentType}-${jobId.slice(0, 8).toUpperCase()}`);
-      } else {
-        pdf.addStandardFooters({ jobId });
-      }
+      pdf.addPremiumFooter({
+        issuerName: businessProfile?.legalName || "OMNEXORA",
+        documentId: documentNumber,
+        stateCode: businessProfile?.state || "WA",
+        includeComplianceNote: true,
+      });
 
       // Save the PDF
       const filename = `${documentType.toLowerCase()}-${jobId.slice(0, 8)}.pdf`;

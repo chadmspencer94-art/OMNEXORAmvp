@@ -135,27 +135,39 @@ export default function AdminVerificationPageContent() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Admin Navigation */}
-      <div className="mb-6 flex gap-3">
+      <div className="mb-6 flex gap-2 sm:gap-3 flex-wrap overflow-x-auto hide-scrollbar">
         <Link
           href="/admin/dashboard"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Dashboard
         </Link>
         <Link
           href="/admin/users"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Users
         </Link>
-        <span className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg">
+        <span className="px-3 sm:px-4 py-2 bg-purple-600 text-white text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap">
           Verifications
         </span>
         <Link
           href="/admin/feedback"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Feedback Log
+        </Link>
+        <Link
+          href="/admin/notifications"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+        >
+          Notifications
+        </Link>
+        <Link
+          href="/admin/pricing"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+        >
+          Pricing
         </Link>
       </div>
 

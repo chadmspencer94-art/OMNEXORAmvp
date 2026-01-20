@@ -69,6 +69,9 @@ export interface User {
   totalJobPacks?: number;
   // Admin notes (internal only)
   adminNotes?: string;
+  // Signup tracking
+  signupSource?: "ORGANIC" | "FOUNDER_CODE" | "FOUNDER_EMAIL" | "INVITE_CODE";
+  inviteCodeUsed?: string;
 }
 
 export interface Session {
@@ -263,17 +266,32 @@ function normalizeUser(rawUser: Partial<User> & { id: string; email: string; pas
 }
 
 /**
+ * Signup source options for tracking how users registered
+ */
+export type SignupSource = "ORGANIC" | "FOUNDER_CODE" | "FOUNDER_EMAIL" | "INVITE_CODE";
+
+/**
+ * Options for creating a user
+ */
+export interface CreateUserOptions {
+  signupSource?: SignupSource;
+  inviteCodeUsed?: string;
+}
+
+/**
  * Creates a new user in KV storage
  * @param email - User's email address
  * @param password - Plain text password (will be hashed)
  * @param role - User role (tradie or client), defaults to "tradie"
+ * @param options - Additional options like signupSource and inviteCodeUsed
  * @returns The created user (without password hash)
  * @throws Error if user already exists
  */
 export async function createUser(
   email: string,
   password: string,
-  role: UserRole = "tradie"
+  role: UserRole = "tradie",
+  options?: CreateUserOptions
 ): Promise<SafeUser> {
   // Normalize email to lowercase
   const normalizedEmail = email.toLowerCase().trim();
@@ -286,7 +304,14 @@ export async function createUser(
   // Check if this is the primary admin or a test verified email
   const isPrimaryAdmin = normalizedEmail === PRIMARY_ADMIN_EMAIL;
   const isTestVerified = TEST_VERIFIED_EMAILS.includes(normalizedEmail);
-  const isFounder = FOUNDER_EMAILS.includes(normalizedEmail) || isPrimaryAdmin; // Primary admin is also a founder
+  const isFounderEmail = FOUNDER_EMAILS.includes(normalizedEmail) || isPrimaryAdmin; // Primary admin is also a founder
+  
+  // Check if user registered with founder code
+  const isFounderCode = options?.signupSource === "FOUNDER_CODE";
+  const isFounder = isFounderEmail || isFounderCode;
+  
+  // Determine signup source if not provided
+  const signupSource: SignupSource = options?.signupSource ?? (isFounderEmail ? "FOUNDER_EMAIL" : "ORGANIC");
   
   // FORCE primary admin to always have "admin" role, verified status, and admin flag
   const finalRole: UserRole = isPrimaryAdmin ? "admin" : role;
@@ -296,7 +321,7 @@ export async function createUser(
   const verifiedAt = (isPrimaryAdmin || isTestVerified) ? createdAt : null;
   const isAdminFlag = isPrimaryAdmin || ADMIN_EMAILS.includes(normalizedEmail);
 
-  // Set plan tier: FOUNDER for founder emails (including primary admin), otherwise FREE
+  // Set plan tier: FOUNDER for founder emails OR founder code users, otherwise FREE
   const planTier: PlanTier = isFounder ? "FOUNDER" : "FREE";
   // Founders get ACTIVE status, others get TRIAL
   const planStatus: PlanStatus = isFounder ? "ACTIVE" : "TRIAL";
@@ -310,7 +335,7 @@ export async function createUser(
     verificationStatus,
     verifiedAt,
     isAdmin: isAdminFlag,
-    // Plan for new users: FOUNDER if in founder list, otherwise FREE
+    // Plan for new users: FOUNDER if in founder list or used founder code, otherwise FREE
     planTier,
     planStatus,
     trialEndsAt: null,
@@ -319,7 +344,10 @@ export async function createUser(
     lastActivityAt: null,
     totalJobs: 0,
     totalJobPacks: 0,
-  };
+    // Signup tracking (stored in user object for KV)
+    signupSource,
+    inviteCodeUsed: options?.inviteCodeUsed,
+  } as User;
 
   // Atomically set user by email only if it doesn't exist (prevents race condition)
   // The 'nx' option makes this an atomic check-and-set operation

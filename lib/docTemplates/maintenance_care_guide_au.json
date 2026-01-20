@@ -3,7 +3,12 @@
   "jurisdiction": "AU",
   "docType": "MAINTENANCE_CARE_GUIDE",
   "title": "Maintenance & Care Guide",
-  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a compliance-ready layout aligned with Australian construction industry best practice. Professional review required before use.",
+  "disclaimer": "DRAFT DOCUMENT - REVIEW REQUIRED. This template is formatted to support alignment with Australian building standards and manufacturer recommendations. All maintenance schedules should be verified against specific product warranties. Professional review required. OMNEXORA does not assert compliance certification.",
+  "complianceRef": {
+    "standards": "National Construction Code (NCC), Australian Standards",
+    "warranties": "Refer to specific manufacturer warranties and state Home Building Act requirements",
+    "note": "Maintenance guides should include all relevant product manuals and warranty information. Regular maintenance may be required to maintain warranty coverage."
+  },
   "sections": [
     {
       "id": "header",

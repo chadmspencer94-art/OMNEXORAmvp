@@ -1,27 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireActiveUser, isAdmin } from "@/lib/auth";
-import { getPriceLists } from "./actions";
-import PriceListsClient from "./PriceListsClient";
+import AdminNotificationsClient from "./AdminNotificationsClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPricingPage() {
-  // Demo bypass for development mode
-  const isDemoMode = process.env.NODE_ENV === "development" || process.env.DEMO_MODE === "true";
-  
-  let user;
-  if (isDemoMode) {
-    // In demo mode, allow access without authentication
-    user = null;
-  } else {
-    user = await requireActiveUser("/admin/pricing");
-    if (!isAdmin(user)) {
-      redirect("/dashboard");
-    }
-  }
+export default async function AdminNotificationsPage() {
+  const user = await requireActiveUser("/admin/notifications");
 
-  const lists = await getPriceLists();
+  if (!isAdmin(user)) {
+    redirect("/dashboard");
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -51,27 +40,29 @@ export default async function AdminPricingPage() {
         >
           Feedback Log
         </Link>
+        <span className="px-3 sm:px-4 py-2 bg-purple-600 text-white text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap">
+          Notifications
+        </span>
         <Link
-          href="/admin/notifications"
+          href="/admin/pricing"
           className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
-          Notifications
-        </Link>
-        <span className="px-3 sm:px-4 py-2 bg-purple-600 text-white text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap">
           Pricing
-        </span>
+        </Link>
       </div>
 
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Price Lists</h1>
-        <p className="mt-2 text-slate-600">
-          Manage Trade and Shelf price lists with manual entry and CSV import.
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+          Send Notifications
+        </h1>
+        <p className="mt-1 sm:mt-2 text-sm sm:text-base text-slate-600">
+          Send announcements and notifications to users.
         </p>
       </div>
 
-      <PriceListsClient initialLists={lists} />
+      {/* Client Component */}
+      <AdminNotificationsClient />
     </div>
   );
 }
-

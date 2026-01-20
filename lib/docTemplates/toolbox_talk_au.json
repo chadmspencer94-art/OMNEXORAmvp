@@ -3,7 +3,12 @@
   "jurisdiction": "AU",
   "docType": "TOOLBOX_TALK",
   "title": "Toolbox Talk",
-  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a draft template following best practice structure and requires professional review before use.",
+  "disclaimer": "DRAFT DOCUMENT - REVIEW REQUIRED. This template is formatted to support alignment with WHS consultation requirements under model WHS laws. Toolbox talks are part of worker consultation and must be site-specific. Professional review required. OMNEXORA does not assert compliance certification.",
+  "complianceRef": {
+    "legislation": "Work Health and Safety Act (State-specific)",
+    "regulations": "WHS Regulations - consultation requirements",
+    "note": "Toolbox talks support the duty to consult with workers on WHS matters. Topics should be relevant to current site hazards and activities. Attendance records should be maintained."
+  },
   "sections": [
     {
       "id": "talk-details",

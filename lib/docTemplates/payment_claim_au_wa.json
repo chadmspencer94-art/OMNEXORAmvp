@@ -3,7 +3,12 @@
   "jurisdiction": "AU-WA",
   "docType": "PAYMENT_CLAIM_WA",
   "title": "Payment Claim (Security of Payment - WA)",
-  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a draft template aligned with WA Construction Contracts Act 2004 guidance and requires professional review before use.",
+  "disclaimer": "DRAFT DOCUMENT - REVIEW REQUIRED. This template is formatted to support alignment with the Construction Contracts Act 2004 (WA) requirements for payment claims. Strict timeframes apply. Professional review required. OMNEXORA does not assert compliance certification.",
+  "complianceRef": {
+    "authority": "Building Commission WA",
+    "legislation": "Construction Contracts Act 2004 (WA)",
+    "note": "Payment claims under the CCA must meet specific content requirements. Response timeframes are strictly enforced. Late responses may result in deemed acceptance of the claim."
+  },
   "sections": [
     {
       "id": "claim-details",

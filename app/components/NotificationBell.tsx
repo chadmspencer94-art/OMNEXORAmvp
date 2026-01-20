@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Megaphone } from "lucide-react";
 
 interface Notification {
   id: string;
@@ -104,6 +104,8 @@ export default function NotificationBell() {
   // Get icon color based on notification type
   const getTypeColor = (type: string) => {
     switch (type) {
+      case "ADMIN_ANNOUNCEMENT":
+        return "bg-purple-100 text-purple-600";
       case "COMMENT":
       case "TAG":
       case "MENTION":
@@ -115,6 +117,14 @@ export default function NotificationBell() {
       default:
         return "bg-slate-100 text-slate-600";
     }
+  };
+
+  // Get icon based on notification type
+  const getTypeIcon = (type: string) => {
+    if (type === "ADMIN_ANNOUNCEMENT") {
+      return <Megaphone className="w-4 h-4" />;
+    }
+    return <Bell className="w-4 h-4" />;
   };
 
   return (
@@ -174,7 +184,7 @@ export default function NotificationBell() {
                     <div className="flex gap-3">
                       {/* Type Indicator */}
                       <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${getTypeColor(notification.type)}`}>
-                        <Bell className="w-4 h-4" />
+                        {getTypeIcon(notification.type)}
                       </div>
                       
                       {/* Content */}

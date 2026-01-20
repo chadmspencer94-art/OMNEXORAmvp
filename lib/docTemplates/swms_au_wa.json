@@ -3,7 +3,13 @@
   "jurisdiction": "AU-WA",
   "docType": "SWMS",
   "title": "Safe Work Method Statement (SWMS)",
-  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a draft template aligned with WA WorkSafe guidance and requires professional review before use.",
+  "disclaimer": "DRAFT DOCUMENT - REVIEW REQUIRED. This template is formatted to support alignment with Work Health and Safety Act 2020 (WA) and Work Health and Safety (General) Regulations 2022. Professional review and sign-off required before use. OMNEXORA does not assert compliance certification. All information must be verified by a qualified safety professional.",
+  "complianceRef": {
+    "authority": "WorkSafe WA",
+    "legislation": "Work Health and Safety Act 2020 (WA)",
+    "regulations": "Work Health and Safety (General) Regulations 2022",
+    "note": "WA transitioned to harmonised WHS laws on 31 March 2022. SWMS are required for high risk construction work (HRCW) as defined in the regulations."
+  },
   "sections": [
     {
       "id": "project-info",

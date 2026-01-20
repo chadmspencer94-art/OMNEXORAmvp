@@ -30,6 +30,9 @@ interface UserListItem {
     serviceAreaCity?: string;
     serviceAreaRadiusKm?: number;
   };
+  // Signup tracking
+  signupSource?: string;
+  inviteCodeUsed?: string;
 }
 
 /**
@@ -63,6 +66,7 @@ export async function GET(request: NextRequest) {
     const verificationFilter = searchParams.get("verificationStatus") || "all";
     const planStatusFilter = searchParams.get("planStatus") || "all";
     const accountStatusFilter = searchParams.get("accountStatus") || "all";
+    const signupSourceFilter = searchParams.get("signupSource") || "all";
 
     // Build pagination
     const { page, pageSize, skip, take } = buildPagination(pageParam, 20);
@@ -98,6 +102,26 @@ export async function GET(request: NextRequest) {
       } else {
         where.accountStatus = accountStatusFilter;
         where.isBanned = false;
+      }
+    }
+    
+    // Signup source filter (for separating founders from regular users)
+    // Note: this filter only works after DB migration adds signupSource column
+    // Until then, filtering by signupSource won't work at DB level
+    let signupSourceFilterValue = signupSourceFilter;
+    if (signupSourceFilter !== "all") {
+      try {
+        // Test if signupSource column exists
+        await prisma.$queryRaw`SELECT signupSource FROM users LIMIT 1`;
+        if (signupSourceFilter === "FOUNDER") {
+          // Show both FOUNDER_CODE and FOUNDER_EMAIL users
+          where.signupSource = { in: ["FOUNDER_CODE", "FOUNDER_EMAIL"] };
+        } else {
+          where.signupSource = signupSourceFilterValue;
+        }
+      } catch {
+        // Column doesn't exist yet, skip DB-level filter
+        console.log("[admin-users] signupSource column not available for filtering");
       }
     }
 
@@ -143,6 +167,17 @@ export async function GET(request: NextRequest) {
         onboardingFirstJobDone: true,
       },
     });
+    
+    // Try to get signup tracking fields separately (in case DB schema is out of sync)
+    // These fields may not exist until migration is run
+    let signupTrackingMap: Map<string, { signupSource?: string; inviteCodeUsed?: string }> = new Map();
+    try {
+      const signupData = await prisma.$queryRaw`SELECT id, signupSource, inviteCodeUsed FROM users` as Array<{ id: string; signupSource?: string; inviteCodeUsed?: string }>;
+      signupTrackingMap = new Map(signupData.map(d => [d.id, { signupSource: d.signupSource, inviteCodeUsed: d.inviteCodeUsed }]));
+    } catch {
+      // Fields don't exist yet, that's okay
+      console.log("[admin-users] signupSource fields not available in database yet");
+    }
 
     // Check admin status from KV (since isAdmin might not be in Prisma)
     const { getAllUsers } = await import("@/lib/auth");
@@ -189,6 +224,9 @@ export async function GET(request: NextRequest) {
           serviceAreaRadiusKm: user.serviceRadiusKm || undefined,
         },
         trialEndsAt: user.trialEndsAt?.toISOString() || null,
+        // Signup tracking (from raw query or KV fallback)
+        signupSource: signupTrackingMap.get(user.id)?.signupSource || kvUser?.signupSource || "ORGANIC",
+        inviteCodeUsed: signupTrackingMap.get(user.id)?.inviteCodeUsed || kvUser?.inviteCodeUsed || undefined,
       };
     });
 

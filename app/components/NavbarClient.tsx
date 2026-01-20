@@ -342,23 +342,27 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
                   <span className="text-slate-400 text-sm truncate max-w-[150px]">
                     {user.email}
                   </span>
+                  {/* Prominent Logout Button */}
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/30 hover:border-red-600 rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-900"
                   >
-                    {isLoggingOut ? "..." : "Logout"}
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    {isLoggingOut ? "..." : "Log out"}
                   </button>
                 </>
               ) : (
-                <div className="flex items-center gap-1 sm:gap-1.5">
-                  <Link
+                <div className="flex items-center gap-2 sm:gap-3 relative z-50">
+                  <a
                     href="/register"
-                    className="inline-flex items-center justify-center px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900 active:scale-[0.98] shadow-sm hover:shadow-md cursor-pointer select-none"
                   >
                     Get started
                     <svg
-                      className="w-2 h-2 sm:w-2.5 sm:h-2.5 ml-1"
+                      className="w-4 h-4 ml-1.5 pointer-events-none"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -371,13 +375,13 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
                         d="M13 7l5 5m0 0l-5 5m5-5H6"
                       />
                     </svg>
-                  </Link>
-                  <Link
+                  </a>
+                  <a
                     href="/login"
-                    className="inline-flex items-center justify-center px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 active:scale-[0.98] border border-slate-700 cursor-pointer select-none"
                   >
                     Log in
-                  </Link>
+                  </a>
                 </div>
               )}
             </div>
@@ -414,14 +418,14 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
               </svg>
             </button>
           ) : (
-            <div className="md:hidden flex items-center gap-2">
-              <Link
+            <div className="md:hidden flex items-center gap-2 relative z-50">
+              <a
                 href="/register"
-                className="inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-medium text-slate-900 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-lg transition-colors touch-manipulation"
+                className="inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-lg transition-colors touch-manipulation cursor-pointer select-none"
               >
                 Get started
                 <svg
-                  className="w-3 h-3 ml-1"
+                  className="w-3 h-3 ml-1 pointer-events-none"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -434,13 +438,13 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
                     d="M13 7l5 5m0 0l-5 5m5-5H6"
                   />
                 </svg>
-              </Link>
-              <Link
+              </a>
+              <a
                 href="/login"
-                className="inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors touch-manipulation"
+                className="inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-semibold text-white bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors touch-manipulation cursor-pointer select-none"
               >
                 Log in
-              </Link>
+              </a>
             </div>
           )}
         </div>
@@ -493,12 +497,17 @@ export default function NavbarClient({ user: initialUser, isDemoMode = false }: 
                   <p className="px-4 py-3 text-slate-400 text-sm truncate">
                     {user.email}
                   </p>
+                  {/* Prominent Mobile Logout Button */}
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="w-full text-left px-4 py-4 min-h-[52px] text-slate-300 hover:text-white hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-base font-medium disabled:opacity-50 touch-manipulation active:scale-[0.98]"
+                    className="w-full flex items-center justify-center gap-2 mx-4 my-2 px-4 py-4 min-h-[52px] bg-red-600/10 hover:bg-red-600 active:bg-red-700 text-red-400 hover:text-white border border-red-600/30 rounded-lg transition-all duration-200 text-base font-medium disabled:opacity-50 touch-manipulation active:scale-[0.98]"
+                    style={{ width: "calc(100% - 32px)" }}
                   >
-                    {isLoggingOut ? "Logging out..." : "Logout"}
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    {isLoggingOut ? "Logging out..." : "Log out"}
                   </button>
                 </>
               ) : null}

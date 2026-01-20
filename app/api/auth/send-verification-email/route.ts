@@ -109,6 +109,9 @@ If you didn't create an account, you can safely ignore this email.
     `.trim();
 
     // Send email via Resend
+    let emailSent = false;
+    let emailError: string | null = null;
+    
     if (resend) {
       try {
         const { error } = await resend.emails.send({
@@ -121,22 +124,38 @@ If you didn't create an account, you can safely ignore this email.
 
         if (error) {
           console.error("Failed to send verification email:", error);
-          // Still return success, but log the error
+          emailError = error.message || "Failed to send email";
         } else {
           console.log(`Verification email sent to ${currentUser.email}`);
+          emailSent = true;
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error sending verification email:", err);
-        // Still return success, but log the error
+        emailError = err?.message || "Failed to send email";
       }
     } else {
       console.warn("RESEND_API_KEY not set, verification email not sent");
-      console.log(`Would have sent verification email to ${currentUser.email}`);
+      emailError = "Email service not configured";
+    }
+    
+    // In development, always log the verification URL for easy testing
+    const isDev = process.env.NODE_ENV === "development";
+    if (isDev) {
+      console.log("\n==== DEV MODE: VERIFICATION URL ====");
+      console.log(`Email: ${currentUser.email}`);
       console.log(`Verify URL: ${verifyUrl}`);
+      console.log("=====================================\n");
     }
 
     return NextResponse.json(
-      { success: true },
+      { 
+        success: true,
+        emailSent,
+        // Include verification URL in dev mode for testing
+        ...(isDev && { verifyUrl }),
+        // Include error message if email failed (for user feedback)
+        ...(emailError && !emailSent && { warning: "Email could not be sent. Please try again or contact support." }),
+      },
       { status: 200 }
     );
   } catch (error) {

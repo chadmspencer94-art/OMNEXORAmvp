@@ -52,8 +52,75 @@ export const PDF_CONFIG = {
     border: [226, 232, 240] as [number, number, number],      // slate-200
     bgLight: [241, 245, 249] as [number, number, number],     // slate-100
     white: [255, 255, 255] as [number, number, number],
+    navy: [30, 41, 59] as [number, number, number],           // slate-800 (premium)
+    gold: [202, 138, 4] as [number, number, number],          // yellow-600 (accent)
   },
 };
+
+// ============================================================================
+// AUSTRALIAN STATE COMPLIANCE REFERENCES
+// ============================================================================
+
+export const AU_STATE_COMPLIANCE = {
+  WA: {
+    state: "Western Australia",
+    authority: "WorkSafe WA",
+    legislation: "Work Health and Safety Act 2020 (WA)",
+    regulations: "Work Health and Safety (General) Regulations 2022",
+    notes: "WA transitioned to harmonised WHS laws on 31 March 2022.",
+  },
+  NSW: {
+    state: "New South Wales",
+    authority: "SafeWork NSW",
+    legislation: "Work Health and Safety Act 2011 (NSW)",
+    regulations: "Work Health and Safety Regulation 2017",
+    notes: "NSW operates under the model WHS framework.",
+  },
+  VIC: {
+    state: "Victoria",
+    authority: "WorkSafe Victoria",
+    legislation: "Occupational Health and Safety Act 2004 (Vic)",
+    regulations: "Occupational Health and Safety Regulations 2017",
+    notes: "Victoria has not adopted the model WHS laws.",
+  },
+  QLD: {
+    state: "Queensland",
+    authority: "Workplace Health and Safety Queensland",
+    legislation: "Work Health and Safety Act 2011 (Qld)",
+    regulations: "Work Health and Safety Regulation 2011",
+    notes: "QLD operates under the model WHS framework.",
+  },
+  SA: {
+    state: "South Australia",
+    authority: "SafeWork SA",
+    legislation: "Work Health and Safety Act 2012 (SA)",
+    regulations: "Work Health and Safety Regulations 2012",
+    notes: "SA operates under the model WHS framework.",
+  },
+  TAS: {
+    state: "Tasmania",
+    authority: "WorkSafe Tasmania",
+    legislation: "Work Health and Safety Act 2012 (Tas)",
+    regulations: "Work Health and Safety Regulations 2012",
+    notes: "TAS operates under the model WHS framework.",
+  },
+  NT: {
+    state: "Northern Territory",
+    authority: "NT WorkSafe",
+    legislation: "Work Health and Safety (National Uniform Legislation) Act 2011",
+    regulations: "Work Health and Safety (National Uniform Legislation) Regulations 2011",
+    notes: "NT operates under the model WHS framework.",
+  },
+  ACT: {
+    state: "Australian Capital Territory",
+    authority: "WorkSafe ACT",
+    legislation: "Work Health and Safety Act 2011 (ACT)",
+    regulations: "Work Health and Safety Regulation 2011",
+    notes: "ACT operates under the model WHS framework.",
+  },
+} as const;
+
+export type AustralianState = keyof typeof AU_STATE_COMPLIANCE;
 
 // ============================================================================
 // PDF DOCUMENT CLASS
@@ -741,6 +808,533 @@ export class PdfDocument {
 
     this.y += 22;
     this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
+   * Premium document header with professional styling
+   * Combines business identity with document type and reference
+   */
+  addPremiumDocumentHeader(options: {
+    documentType: string;
+    documentNumber?: string;
+    documentDate?: string;
+    issuer?: {
+      legalName?: string;
+      tradingName?: string;
+      abn?: string;
+      email?: string;
+      phone?: string;
+      addressLine1?: string;
+      suburb?: string;
+      state?: string;
+      postcode?: string;
+      licenseNumber?: string;
+    };
+    recipient?: {
+      name?: string;
+      address?: string;
+      email?: string;
+    };
+    jobReference?: string;
+    projectName?: string;
+    projectAddress?: string;
+  }): void {
+    const { documentType, documentNumber, documentDate, issuer, recipient, jobReference, projectName, projectAddress } = options;
+    
+    // Premium header background - navy gradient effect
+    this.doc.setFillColor(30, 41, 59); // slate-800
+    this.doc.rect(0, 0, this.config.pageWidth, 50, "F");
+    
+    // Gold accent line
+    this.doc.setFillColor(202, 138, 4); // yellow-600
+    this.doc.rect(0, 50, this.config.pageWidth, 2, "F");
+
+    let yPos = 14;
+
+    // Business name (large, white)
+    if (issuer?.legalName) {
+      this.doc.setFontSize(18);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(255, 255, 255);
+      this.doc.text(issuer.legalName.toUpperCase(), this.config.marginLeft, yPos);
+      yPos += 6;
+
+      // Trading name if different
+      if (issuer.tradingName && issuer.tradingName !== issuer.legalName) {
+        this.doc.setFontSize(9);
+        this.doc.setFont("helvetica", "normal");
+        this.doc.setTextColor(148, 163, 184); // slate-400
+        this.doc.text(`Trading as: ${issuer.tradingName}`, this.config.marginLeft, yPos);
+        yPos += 4;
+      }
+
+      // ABN and License
+      const credentialsLine: string[] = [];
+      if (issuer.abn) {
+        const abnClean = issuer.abn.replace(/\s/g, "");
+        const abnFormatted = abnClean.length === 11 
+          ? `ABN: ${abnClean.slice(0, 2)} ${abnClean.slice(2, 5)} ${abnClean.slice(5, 8)} ${abnClean.slice(8, 11)}`
+          : `ABN: ${issuer.abn}`;
+        credentialsLine.push(abnFormatted);
+      }
+      if (issuer.licenseNumber) {
+        credentialsLine.push(`License: ${issuer.licenseNumber}`);
+      }
+      if (credentialsLine.length > 0) {
+        this.doc.setFontSize(8);
+        this.doc.setTextColor(148, 163, 184); // slate-400
+        this.doc.text(credentialsLine.join("  |  "), this.config.marginLeft, yPos);
+      }
+    } else {
+      // Fallback: OMNEXORA branding
+      this.doc.setFontSize(18);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(255, 255, 255);
+      this.doc.text("OMNEXORA", this.config.marginLeft, yPos);
+      yPos += 6;
+      this.doc.setFontSize(9);
+      this.doc.setTextColor(148, 163, 184);
+      this.doc.text("Construction Business Management", this.config.marginLeft, yPos);
+    }
+
+    // Document type and number on right side
+    const rightX = this.config.pageWidth - this.config.marginRight;
+    let rightY = 14;
+
+    this.doc.setFontSize(12);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(202, 138, 4); // gold
+    this.doc.text(documentType.toUpperCase(), rightX, rightY, { align: "right" });
+    rightY += 6;
+
+    if (documentNumber) {
+      this.doc.setFontSize(9);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(255, 255, 255);
+      this.doc.text(`Ref: ${documentNumber}`, rightX, rightY, { align: "right" });
+      rightY += 4;
+    }
+
+    if (documentDate) {
+      this.doc.setFontSize(8);
+      this.doc.setTextColor(148, 163, 184);
+      this.doc.text(`Date: ${documentDate}`, rightX, rightY, { align: "right" });
+    }
+
+    // Contact info below header
+    this.y = 60;
+
+    // Two-column layout for issuer contact and recipient
+    if (issuer?.phone || issuer?.email || issuer?.addressLine1 || recipient?.name) {
+      this.doc.setFillColor(248, 250, 252); // slate-50
+      this.doc.rect(this.config.marginLeft, this.y - 4, this.maxWidth, 28, "F");
+      this.doc.setDrawColor(226, 232, 240); // slate-200
+      this.doc.setLineWidth(0.3);
+      this.doc.rect(this.config.marginLeft, this.y - 4, this.maxWidth, 28, "S");
+
+      // Issuer contact (left)
+      let leftY = this.y;
+      this.doc.setFontSize(7);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(100, 116, 139); // slate-500
+      this.doc.text("FROM:", this.config.marginLeft + 4, leftY);
+      leftY += 4;
+      
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setFontSize(8);
+      this.doc.setTextColor(15, 23, 42); // slate-900
+      
+      if (issuer?.phone) {
+        this.doc.text(issuer.phone, this.config.marginLeft + 4, leftY);
+        leftY += 4;
+      }
+      if (issuer?.email) {
+        this.doc.text(issuer.email, this.config.marginLeft + 4, leftY);
+        leftY += 4;
+      }
+      if (issuer?.addressLine1) {
+        const addressParts = [issuer.addressLine1];
+        if (issuer.suburb || issuer.state || issuer.postcode) {
+          addressParts.push([issuer.suburb, issuer.state, issuer.postcode].filter(Boolean).join(" "));
+        }
+        this.doc.text(addressParts.join(", "), this.config.marginLeft + 4, leftY);
+      }
+
+      // Recipient (right column)
+      if (recipient?.name) {
+        const midX = this.config.marginLeft + this.maxWidth / 2 + 10;
+        let recipientY = this.y;
+        
+        this.doc.setFontSize(7);
+        this.doc.setFont("helvetica", "bold");
+        this.doc.setTextColor(100, 116, 139);
+        this.doc.text("TO:", midX, recipientY);
+        recipientY += 4;
+        
+        this.doc.setFont("helvetica", "normal");
+        this.doc.setFontSize(8);
+        this.doc.setTextColor(15, 23, 42);
+        this.doc.text(recipient.name, midX, recipientY);
+        recipientY += 4;
+        
+        if (recipient.address) {
+          const addressLines = this.doc.splitTextToSize(recipient.address, this.maxWidth / 2 - 14);
+          addressLines.forEach((line: string) => {
+            this.doc.text(line, midX, recipientY);
+            recipientY += 4;
+          });
+        }
+      }
+
+      this.y += 32;
+    }
+
+    // Project details section if provided
+    if (projectName || projectAddress || jobReference) {
+      this.doc.setFillColor(254, 252, 232); // yellow-50
+      this.doc.rect(this.config.marginLeft, this.y - 4, this.maxWidth, 18, "F");
+      this.doc.setDrawColor(253, 224, 71); // yellow-300
+      this.doc.setLineWidth(0.3);
+      this.doc.rect(this.config.marginLeft, this.y - 4, this.maxWidth, 18, "S");
+
+      this.doc.setFontSize(7);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(146, 64, 14); // amber-800
+      this.doc.text("PROJECT DETAILS", this.config.marginLeft + 4, this.y);
+      
+      this.doc.setFontSize(8);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(15, 23, 42);
+      
+      let projectY = this.y + 5;
+      if (projectName) {
+        this.doc.text(`Project: ${projectName}`, this.config.marginLeft + 4, projectY);
+      }
+      if (projectAddress) {
+        this.doc.text(`Location: ${projectAddress}`, this.config.marginLeft + this.maxWidth / 2, projectY);
+      }
+      if (jobReference) {
+        projectY += 4;
+        this.doc.text(`Job Ref: ${jobReference}`, this.config.marginLeft + 4, projectY);
+      }
+
+      this.y += 22;
+    }
+
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
+   * Add Australian state compliance reference box
+   * Links to relevant state authority without making compliance claims
+   */
+  addAustralianComplianceReference(stateCode?: string): void {
+    // Get state compliance info
+    const state = (stateCode?.toUpperCase() || "WA") as AustralianState;
+    const complianceInfo = AU_STATE_COMPLIANCE[state] || AU_STATE_COMPLIANCE.WA;
+
+    this.checkNewPage(35);
+
+    // Compliance reference box
+    this.doc.setFillColor(240, 253, 244); // green-50
+    this.doc.rect(this.config.marginLeft, this.y - 2, this.maxWidth, 28, "F");
+    this.doc.setDrawColor(134, 239, 172); // green-300
+    this.doc.setLineWidth(0.3);
+    this.doc.rect(this.config.marginLeft, this.y - 2, this.maxWidth, 28, "S");
+
+    // Header
+    this.doc.setFontSize(8);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(22, 101, 52); // green-800
+    this.doc.text("AUSTRALIAN COMPLIANCE REFERENCE", this.config.marginLeft + 4, this.y + 3);
+
+    // State info
+    this.doc.setFontSize(7);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setTextColor(21, 128, 61); // green-700
+    this.doc.text(`Jurisdiction: ${complianceInfo.state}  |  Authority: ${complianceInfo.authority}`, this.config.marginLeft + 4, this.y + 9);
+    this.doc.text(`Legislation: ${complianceInfo.legislation}`, this.config.marginLeft + 4, this.y + 14);
+
+    // Disclaimer
+    this.doc.setFontSize(6);
+    this.doc.setTextColor(74, 222, 128); // green-400
+    this.doc.text(
+      "This document is formatted for Australian industry standards. Professional review and verification required. No compliance claims are made.",
+      this.config.marginLeft + 4,
+      this.y + 21
+    );
+
+    this.y += 34;
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
+   * Add a professional summary totals box
+   * Used for invoices, quotes, and variations
+   */
+  addPremiumTotalsBox(items: {
+    subtotal?: number;
+    gst?: number;
+    total: number;
+    currency?: string;
+    additionalLines?: Array<{ label: string; value: string | number; bold?: boolean }>;
+  }): void {
+    this.checkNewPage(50);
+
+    const { subtotal, gst, total, currency = "AUD", additionalLines } = items;
+    const boxWidth = 80;
+    const boxX = this.config.pageWidth - this.config.marginRight - boxWidth;
+    let boxHeight = 30;
+    
+    // Calculate height based on content
+    if (subtotal !== undefined) boxHeight += 8;
+    if (gst !== undefined) boxHeight += 8;
+    if (additionalLines) boxHeight += additionalLines.length * 8;
+
+    // Background
+    this.doc.setFillColor(30, 41, 59); // slate-800
+    this.doc.rect(boxX, this.y - 2, boxWidth, boxHeight, "F");
+    
+    // Gold accent
+    this.doc.setFillColor(202, 138, 4); // yellow-600
+    this.doc.rect(boxX, this.y - 2, 3, boxHeight, "F");
+
+    let lineY = this.y + 5;
+    const formatCurrency = (amount: number) => 
+      new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
+
+    // Additional lines first
+    if (additionalLines) {
+      for (const line of additionalLines) {
+        this.doc.setFontSize(8);
+        this.doc.setFont("helvetica", line.bold ? "bold" : "normal");
+        this.doc.setTextColor(148, 163, 184); // slate-400
+        this.doc.text(line.label, boxX + 8, lineY);
+        this.doc.text(
+          typeof line.value === "number" ? formatCurrency(line.value) : line.value,
+          boxX + boxWidth - 6,
+          lineY,
+          { align: "right" }
+        );
+        lineY += 8;
+      }
+    }
+
+    // Subtotal
+    if (subtotal !== undefined) {
+      this.doc.setFontSize(8);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(148, 163, 184);
+      this.doc.text("Subtotal (ex GST)", boxX + 8, lineY);
+      this.doc.text(formatCurrency(subtotal), boxX + boxWidth - 6, lineY, { align: "right" });
+      lineY += 8;
+    }
+
+    // GST
+    if (gst !== undefined) {
+      this.doc.setFontSize(8);
+      this.doc.setTextColor(148, 163, 184);
+      this.doc.text("GST (10%)", boxX + 8, lineY);
+      this.doc.text(formatCurrency(gst), boxX + boxWidth - 6, lineY, { align: "right" });
+      lineY += 8;
+    }
+
+    // Separator line
+    this.doc.setDrawColor(202, 138, 4); // gold
+    this.doc.setLineWidth(0.5);
+    this.doc.line(boxX + 8, lineY - 2, boxX + boxWidth - 6, lineY - 2);
+    lineY += 4;
+
+    // Total
+    this.doc.setFontSize(12);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(255, 255, 255);
+    this.doc.text("TOTAL", boxX + 8, lineY);
+    this.doc.setTextColor(202, 138, 4); // gold
+    this.doc.text(formatCurrency(total), boxX + boxWidth - 6, lineY, { align: "right" });
+
+    // GST statement
+    lineY += 8;
+    this.doc.setFontSize(6);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setTextColor(148, 163, 184);
+    this.doc.text("GST inclusive. ABN required for tax invoice.", boxX + 8, lineY);
+
+    this.y += boxHeight + 10;
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
+   * Add premium payment terms section
+   */
+  addPaymentTermsSection(options: {
+    bankName?: string;
+    bsb?: string;
+    accountNumber?: string;
+    accountName?: string;
+    paymentTerms?: string;
+    dueDate?: string;
+    paymentReference?: string;
+  }): void {
+    this.checkNewPage(45);
+    
+    this.addSectionHeading("Payment Details");
+
+    // Two-column layout
+    const colWidth = (this.maxWidth - 10) / 2;
+
+    // Bank details (left)
+    this.doc.setFillColor(248, 250, 252); // slate-50
+    this.doc.rect(this.config.marginLeft, this.y - 2, colWidth, 35, "F");
+    this.doc.setDrawColor(226, 232, 240);
+    this.doc.setLineWidth(0.3);
+    this.doc.rect(this.config.marginLeft, this.y - 2, colWidth, 35, "S");
+
+    let leftY = this.y + 3;
+    this.doc.setFontSize(8);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(100, 116, 139);
+    this.doc.text("BANK TRANSFER DETAILS", this.config.marginLeft + 4, leftY);
+    leftY += 6;
+
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(15, 23, 42);
+
+    if (options.bankName) {
+      this.doc.text(`Bank: ${options.bankName}`, this.config.marginLeft + 4, leftY);
+      leftY += 5;
+    }
+    if (options.bsb) {
+      this.doc.text(`BSB: ${options.bsb}`, this.config.marginLeft + 4, leftY);
+      leftY += 5;
+    }
+    if (options.accountNumber) {
+      this.doc.text(`Account: ${options.accountNumber}`, this.config.marginLeft + 4, leftY);
+      leftY += 5;
+    }
+    if (options.accountName) {
+      this.doc.text(`Name: ${options.accountName}`, this.config.marginLeft + 4, leftY);
+    }
+
+    // Payment terms (right)
+    const rightX = this.config.marginLeft + colWidth + 10;
+    this.doc.setFillColor(254, 252, 232); // yellow-50
+    this.doc.rect(rightX, this.y - 2, colWidth, 35, "F");
+    this.doc.setDrawColor(253, 224, 71); // yellow-300
+    this.doc.rect(rightX, this.y - 2, colWidth, 35, "S");
+
+    let rightY = this.y + 3;
+    this.doc.setFontSize(8);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(146, 64, 14);
+    this.doc.text("PAYMENT TERMS", rightX + 4, rightY);
+    rightY += 6;
+
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(15, 23, 42);
+
+    if (options.paymentTerms) {
+      this.doc.text(`Terms: ${options.paymentTerms}`, rightX + 4, rightY);
+      rightY += 5;
+    }
+    if (options.dueDate) {
+      this.doc.setFont("helvetica", "bold");
+      this.doc.text(`Due Date: ${options.dueDate}`, rightX + 4, rightY);
+      rightY += 5;
+    }
+    if (options.paymentReference) {
+      this.doc.setFont("helvetica", "normal");
+      this.doc.text(`Reference: ${options.paymentReference}`, rightX + 4, rightY);
+    }
+
+    this.y += 42;
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
+   * Add premium footer for professional documents
+   * Includes document ID, timestamp, page numbers, and compliance note
+   */
+  addPremiumFooter(options: {
+    issuerName?: string;
+    documentId?: string;
+    stateCode?: string;
+    includeComplianceNote?: boolean;
+  }): void {
+    const totalPages = this.doc.getNumberOfPages();
+    const timestamp = new Date().toLocaleString("en-AU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    
+    for (let i = 1; i <= totalPages; i++) {
+      this.doc.setPage(i);
+      
+      // Footer background
+      this.doc.setFillColor(248, 250, 252); // slate-50
+      this.doc.rect(0, this.config.pageHeight - 22, this.config.pageWidth, 22, "F");
+      
+      // Top border
+      this.doc.setDrawColor(226, 232, 240); // slate-200
+      this.doc.setLineWidth(0.5);
+      this.doc.line(0, this.config.pageHeight - 22, this.config.pageWidth, this.config.pageHeight - 22);
+      
+      // Gold accent line
+      this.doc.setDrawColor(202, 138, 4); // gold
+      this.doc.setLineWidth(1);
+      this.doc.line(0, this.config.pageHeight - 21, this.config.pageWidth, this.config.pageHeight - 21);
+
+      // Issuer name (left)
+      this.doc.setFontSize(7);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(100, 116, 139);
+      if (options.issuerName) {
+        this.doc.text(
+          `Issued by ${options.issuerName}`,
+          this.config.marginLeft,
+          this.config.pageHeight - 14
+        );
+      }
+
+      // Document reference and timestamp (center)
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setFontSize(7);
+      let centerText = timestamp;
+      if (options.documentId) {
+        centerText = `Doc: ${options.documentId}  |  ${timestamp}`;
+      }
+      this.doc.text(
+        centerText,
+        this.config.pageWidth / 2,
+        this.config.pageHeight - 14,
+        { align: "center" }
+      );
+
+      // Page number (right)
+      this.doc.text(
+        `Page ${i} of ${totalPages}`,
+        this.config.pageWidth - this.config.marginRight,
+        this.config.pageHeight - 14,
+        { align: "right" }
+      );
+
+      // Compliance note
+      if (options.includeComplianceNote !== false) {
+        this.doc.setFontSize(6);
+        this.doc.setTextColor(148, 163, 184);
+        this.doc.text(
+          "Document formatted for Australian construction industry standards. Professional review required before reliance. No compliance claims made.",
+          this.config.pageWidth / 2,
+          this.config.pageHeight - 7,
+          { align: "center" }
+        );
+      }
+    }
   }
 
   /**

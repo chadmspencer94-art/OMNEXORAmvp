@@ -99,7 +99,6 @@ export async function POST(
 
     // Perform assignment
     const now = new Date().toISOString();
-    const oldUserId = job.userId; // Store old owner for job list update
     
     // Update job ownership and assignment fields
     job.userId = tradieUserId; // Change ownership to tradie

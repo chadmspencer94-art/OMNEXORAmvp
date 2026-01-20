@@ -1,505 +1,719 @@
-import Link from "next/link";
-import { requireOnboardedUser } from "@/lib/authChecks";
-import { getJobsForUser, type Job } from "@/lib/jobs";
-import { getOnboardingStatus } from "@/lib/onboarding-status";
-import { getUsersByVerificationStatus } from "@/lib/auth";
-import { getUnresolvedFeedbackCount } from "@/lib/feedback";
-import OmnexoraHeader from "@/app/components/OmnexoraHeader";
-import EmailVerificationBanner from "@/app/components/EmailVerificationBanner";
-import DevVerifyButton from "./DevVerifyButton";
-import OnboardingCard from "@/app/components/OnboardingCard";
-import GettingStartedCard from "./GettingStartedCard";
-import VerifiedBadge from "@/app/components/StructuredBadge";
-import FeedbackButton from "@/app/components/FeedbackButton";
-import AnalyticsSection from "./AnalyticsSection";
-import MatchingJobsSection from "./MatchingJobsSection";
-import OnboardingChecklist from "@/app/components/OnboardingChecklist";
-import { getClientSummariesForUser } from "@/lib/clients";
-import MobileDashboardTiles from "./MobileDashboardTiles";
-import OvisBadge from "@/app/components/OvisBadge";
+"use client";
 
-// RecentJobRow component for displaying job rows in the dashboard
-function RecentJobRow({ job }: { job: Job }) {
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Plus,
+  FileText,
+  Users,
+  Calendar,
+  TrendingUp,
+  CheckCircle,
+  Clock,
+  Send,
+  DollarSign,
+  Shield,
+  MessageSquare,
+  Settings,
+  ChevronRight,
+  Sparkles,
+  AlertCircle,
+  Zap,
+  Target,
+  BarChart3,
+  ArrowUpRight,
+  MapPin,
+  Loader2,
+  Bell,
+  Check,
+  Circle,
+  X,
+} from "lucide-react";
+
+// Types
+interface UserData {
+  id: string;
+  email: string;
+  emailVerifiedAt: string | null;
+  verificationStatus: string | null;
+  role: string | null;
+  isAdmin: boolean;
+  businessName: string | null;
+  tradingName: string | null;
+  primaryTrade: string | null;
+  profileCompletedAt: string | null;
+  onboardingDismissed: boolean;
+}
+
+interface JobData {
+  id: string;
+  title: string;
+  status: string;
+  address: string | null;
+  createdAt: string;
+  clientStatus: string | null;
+  jobStatus: string | null;
+  scheduledStartAt: string | null;
+}
+
+interface Analytics {
+  totalJobs: number;
+  jobsLast30Days: number;
+  jobsLast7Days: number;
+  quoteCounts: {
+    draft: number;
+    sent: number;
+    accepted: number;
+    declined: number;
+    cancelled: number;
+  };
+  variationMetrics: {
+    totalVariationCost: number;
+    variationCount: number;
+    jobsWithVariations: number;
+    avgVariationCost: number;
+  };
+}
+
+interface OnboardingStep {
+  key: string;
+  label: string;
+  description: string;
+  href: string;
+  done: boolean;
+}
+
+interface AdminStats {
+  pendingVerifications: number;
+  unresolvedFeedback: number;
+}
+
+// Status badge component
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { bg: string; text: string; label: string }> = {
+    ai_complete: { bg: "bg-emerald-50", text: "text-emerald-700", label: "Complete" },
+    ai_pending: { bg: "bg-amber-50", text: "text-amber-700", label: "Generating..." },
+    draft: { bg: "bg-slate-100", text: "text-slate-600", label: "Draft" },
+  };
+  const c = config[status] || config.draft;
   return (
-    <div className="flex items-center justify-between py-4 border-b border-slate-100 last:border-0">
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.text}`}>
+      {c.label}
+    </span>
+  );
+}
+
+// Stat card component - mobile-first design
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  trend,
+  trendValue,
+  color = "blue",
+  href,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  trend?: "up" | "down" | "flat";
+  trendValue?: string;
+  color?: "blue" | "emerald" | "amber" | "purple" | "slate";
+  href?: string;
+}) {
+  const colors = {
+    blue: { bg: "bg-blue-50", icon: "text-blue-600", border: "hover:border-blue-200" },
+    emerald: { bg: "bg-emerald-50", icon: "text-emerald-600", border: "hover:border-emerald-200" },
+    amber: { bg: "bg-amber-50", icon: "text-amber-600", border: "hover:border-amber-200" },
+    purple: { bg: "bg-purple-50", icon: "text-purple-600", border: "hover:border-purple-200" },
+    slate: { bg: "bg-slate-100", icon: "text-slate-600", border: "hover:border-slate-300" },
+  };
+  const c = colors[color];
+  
+  const content = (
+    <div className={`bg-white rounded-xl border border-slate-200 p-4 shadow-sm transition-all ${href ? `${c.border} cursor-pointer` : ""}`}>
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 ${c.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+          <Icon className={`w-5 h-5 ${c.icon}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-slate-500">{label}</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-xl font-bold text-slate-900">{value}</p>
+            {trend && trendValue && (
+              <span className={`text-xs font-medium ${
+                trend === "up" ? "text-emerald-600" : 
+                trend === "down" ? "text-red-600" : "text-slate-400"
+              }`}>
+                {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"} {trendValue}
+              </span>
+            )}
+          </div>
+        </div>
+        {href && <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0 hidden md:block" />}
+      </div>
+    </div>
+  );
+  
+  return href ? <Link href={href}>{content}</Link> : content;
+}
+
+// Quick action button
+function QuickAction({
+  icon: Icon,
+  label,
+  href,
+  color = "slate",
+}: {
+  icon: React.ElementType;
+  label: string;
+  href: string;
+  color?: "amber" | "slate" | "purple" | "emerald";
+}) {
+  const colors = {
+    amber: "bg-amber-500 hover:bg-amber-400 text-slate-900",
+    slate: "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200",
+    purple: "bg-purple-600 hover:bg-purple-700 text-white",
+    emerald: "bg-emerald-600 hover:bg-emerald-700 text-white",
+  };
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${colors[color]}`}
+    >
+      <Icon className="w-4 h-4" />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+// Job card component
+function JobCard({ job }: { job: JobData }) {
+  return (
+    <Link
+      href={`/jobs/${job.id}`}
+      className="group flex items-center gap-4 p-4 rounded-xl border border-slate-200 bg-white hover:border-amber-300 hover:shadow-md transition-all"
+    >
+      <div className="w-10 h-10 bg-gradient-to-br from-amber-100 to-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+        <FileText className="w-5 h-5 text-amber-600" />
+      </div>
       <div className="flex-1 min-w-0">
-        <Link href={`/jobs/${job.id}`} className="text-slate-900 font-medium hover:text-amber-600 truncate block mb-1">
+        <p className="font-medium text-slate-900 group-hover:text-amber-600 truncate transition-colors">
           {job.title}
-        </Link>
-        <p className="text-slate-500 text-sm">
-          {job.address || "No address provided"} • {new Date(job.createdAt).toLocaleDateString()}
+        </p>
+        <p className="text-sm text-slate-500 truncate">
+          {job.address || "No address"} • {new Date(job.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
         </p>
       </div>
-      <div className="flex items-center gap-4 ml-4">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          job.status === "ai_complete" ? "bg-green-100 text-green-700" :
-          job.status === "ai_pending" ? "bg-amber-100 text-amber-700" :
-          "bg-slate-100 text-slate-700"
-        }`}>
-          {job.status === "ai_complete" ? "Complete" :
-           job.status === "ai_pending" ? "Generating..." :
-           "Draft"}
-        </span>
+      <StatusBadge status={job.status} />
+      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors flex-shrink-0" />
+    </Link>
+  );
+}
+
+// Onboarding progress component
+function OnboardingProgress({ 
+  steps, 
+  onDismiss,
+  isDismissing 
+}: { 
+  steps: OnboardingStep[]; 
+  onDismiss: () => void;
+  isDismissing: boolean;
+}) {
+  const completedSteps = steps.filter((s) => s.done).length;
+  const progress = Math.round((completedSteps / steps.length) * 100);
+  
+  return (
+    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden">
+      {/* Background pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500 rounded-full blur-3xl" />
+      </div>
+      
+      <div className="relative">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              Getting Started
+            </h3>
+            <p className="text-sm text-slate-300 mt-1">
+              {completedSteps === steps.length 
+                ? "All done! You're ready to go." 
+                : `${completedSteps} of ${steps.length} complete`}
+            </p>
+          </div>
+          <button
+            onClick={onDismiss}
+            disabled={isDismissing}
+            className="p-1.5 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        
+        {/* Progress bar */}
+        <div className="h-2 bg-slate-700 rounded-full mb-5 overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        
+        {/* Steps */}
+        <div className="space-y-3">
+          {steps.map((step) => (
+            <div key={step.key} className="flex items-center gap-3">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                step.done ? "bg-emerald-500" : "bg-slate-700"
+              }`}>
+                {step.done ? (
+                  <Check className="w-3.5 h-3.5 text-white" />
+                ) : (
+                  <Circle className="w-3 h-3 text-slate-500" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium ${step.done ? "text-slate-400 line-through" : "text-white"}`}>
+                  {step.label}
+                </p>
+              </div>
+              {!step.done && (
+                <Link
+                  href={step.href}
+                  className="text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors"
+                >
+                  Start →
+                </Link>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-export default async function DashboardPage() {
-  const user = await requireOnboardedUser();
-  
-  // TypeScript: user is guaranteed to be non-client after redirect above
-  const isClient = false;
-
-  // Load user data from Prisma to get business profile fields
-  // Use email to find user since KV and Prisma may use different IDs
-  // Wrap in try-catch to handle database connection issues gracefully
-  let prismaUser = null;
-  try {
-    const { getPrisma } = await import("@/lib/prisma"); const prisma = getPrisma();
-    prismaUser = await prisma.user.findUnique({
-      where: { email: user.email },
-      select: {
-        id: true,
-        role: true,
-        businessName: true,
-        tradingName: true,
-        primaryTrade: true,
-        abn: true,
-        hourlyRate: true,
-        serviceRadiusKm: true,
-        servicePostcodes: true,
-        verificationStatus: true,
-        profileCompletedAt: true,
-        emailVerifiedAt: true,
-        onboardingDismissed: true,
-        onboardingCompletedAt: true,
-        // Fields needed for onboarding status computation
-        calloutFee: true,
-        ratePerM2Interior: true,
-        ratePerM2Exterior: true,
-        ratePerLmTrim: true,
-        serviceAreaCity: true,
-      },
-    });
-  } catch (error) {
-    // Log error but don't crash - dashboard can still function without Prisma data
-    console.error("[dashboard] Failed to load user data from Prisma:", error);
-  }
-
-  // Load jobs with error handling
-  let jobs: Job[] = [];
-  try {
-    jobs = await getJobsForUser(user.id);
-  } catch (error) {
-    // Log error but don't crash - dashboard can still function without jobs
-    console.error("Failed to load jobs:", error);
-  }
-
-  // Load clients for onboarding checklist (only for tradies/businesses, not clients)
-  let clients: any[] = [];
-  if (!isClient && prismaUser && prismaUser.role !== "client") {
-    try {
-      const clientSummaries = await getClientSummariesForUser(user.id);
-      clients = clientSummaries;
-    } catch (error) {
-      // Log error but don't crash - checklist can handle empty clients
-      console.error("Failed to load clients for checklist:", error);
-    }
-  }
-  
-  // Filter for client jobs (assigned via portal)
-  const clientJobs = jobs.filter(
-    (j) => j.leadSource === "CLIENT_PORTAL" && j.assignmentStatus === "ASSIGNED"
-  );
-  const newClientJobs = clientJobs
-    .filter((j) => {
-      // Show jobs that need attention (draft status or no AI pack yet)
-      return j.status === "draft" || j.status === "ai_pending" || !j.aiSummary;
-    })
-    .slice(0, 5);
-  
-  // Calculate stats
-  const totalJobs = jobs.length;
-  const completedJobs = jobs.filter((j) => j.status === "ai_complete").length;
-  const pendingJobs = jobs.filter((j) => j.status === "ai_pending").length;
-  const recentJobs = jobs.slice(0, 5);
-  const lastJob = jobs[0];
-  
-  // Calculate total quotes (jobs with quotes sent/accepted/declined)
-  const totalQuotes = jobs.filter((j) => 
-    j.clientStatus === "sent" || 
-    j.clientStatus === "accepted" || 
-    j.clientStatus === "declined" ||
-    j.clientAcceptedAt || 
-    j.clientDeclinedAt
-  ).length;
-  
-  // Get upcoming scheduled jobs (only for tradie/business users)
-  // Note: Clients are already redirected above, so isClient is always false here
-  const now = new Date();
-  const upcomingJobs = !isClient
-    ? jobs
-        .filter((job) => {
-          // Must have scheduledStartAt
-          if (!job.scheduledStartAt) return false;
-          // Must be in the future
-          const startDate = new Date(job.scheduledStartAt);
-          if (startDate <= now) return false;
-          // Must not be cancelled
-          if (job.jobStatus === "cancelled") return false;
-          // Optionally exclude completed jobs
-          if (job.jobStatus === "completed") return false;
-          return true;
-        })
-        .sort((a, b) => {
-          // Sort by scheduledStartAt ascending
-          const aDate = new Date(a.scheduledStartAt!).getTime();
-          const bDate = new Date(b.scheduledStartAt!).getTime();
-          return aDate - bDate;
-        })
-        .slice(0, 10) // Limit to next 10
-    : [];
-
-  // Get display name from email
-  const displayName = user.email.split("@")[0];
-
-  // Get verification status and role (default values for older users)
-  const verificationStatus = user.verificationStatus || "unverified";
-  const userRole = user.role || "tradie";
-  const isVerified = verificationStatus === "verified";
-  const isTradie = userRole === "tradie";
-  const userIsAdmin = user.isAdmin ?? false;
-  const isDev = process.env.NODE_ENV !== "production";
-
-  // Get onboarding status (only for tradie/business users, not clients or admins)
-  let onboardingStatus = null;
-  if (prismaUser && !isClient && !userIsAdmin && prismaUser.role !== "client") {
-    try {
-      onboardingStatus = await getOnboardingStatus(prismaUser);
-      // Don't show if all done or dismissed
-      if (onboardingStatus.allDone || onboardingStatus.dismissed) {
-        onboardingStatus = null;
-      }
-    } catch (error) {
-      // Log error but don't crash - dashboard can still function without onboarding status
-      console.error("Failed to load onboarding status:", error);
-    }
-  }
-
-  // Get pending verification and feedback counts for admins
-  let pendingVerifications = 0;
-  let unresolvedFeedback = 0;
-  if (userIsAdmin) {
-    try {
-      const pendingReviewUsers = await getUsersByVerificationStatus("pending");
-      pendingVerifications = pendingReviewUsers.length;
-      unresolvedFeedback = await getUnresolvedFeedbackCount();
-    } catch {
-      // Silently fail - don't break dashboard if admin query fails
-    }
-  }
-
-  // Check onboarding checklist state (only for tradies/businesses, not clients or admins)
-  const showOnboardingChecklist = !isClient && !userIsAdmin && prismaUser && prismaUser.role !== "client";
-  const hasBusinessProfile = showOnboardingChecklist && prismaUser
-    ? !!(prismaUser.businessName || prismaUser.tradingName)
-    : true;
-  const hasAnyClients = showOnboardingChecklist ? clients.length > 0 : true;
-  const hasAnyJobs = showOnboardingChecklist ? jobs.length > 0 : true;
-
+// Admin panel component
+function AdminPanel({ stats }: { stats: AdminStats }) {
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Brand Header */}
-      <OmnexoraHeader verificationStatus={verificationStatus} />
-
-      {/* Email Verification Banner */}
-      {prismaUser && !prismaUser.emailVerifiedAt && (
-        <EmailVerificationBanner userEmail={user.email} />
-      )}
-
-      {/* Dev-only verify button */}
-      {isDev && !isVerified && <DevVerifyButton />}
-
-      {/* Verification Banner for unverified tradies (show after onboarding) */}
-      {isTradie && !isVerified && prismaUser?.profileCompletedAt && (
-        <div className="mb-6 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div className="flex-1">
-              <p className="font-medium">Nice work, your profile is set up.</p>
-              <p className="mt-1 text-emerald-700">
-                To build more trust with clients and unlock full OMNEXORA features, complete business verification.
-                {(verificationStatus === "pending" || (verificationStatus as string) === "pending_review") ? (
-                  <span className="ml-1 font-medium">Your verification is currently being reviewed.</span>
-                ) : (
-                  <a href="/settings/verification" className="ml-1 font-medium underline hover:text-emerald-900">
-                    Review verification →
-                  </a>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Legacy verification banner for users who haven't completed onboarding yet */}
-      {isTradie && !isVerified && !prismaUser?.profileCompletedAt && (
-        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <p className="font-medium">Prototype mode</p>
-              <p className="mt-1 text-amber-700">
-                Your account is not fully structured yet. Before public launch, OMNEXORA will confirm your business details (ABN, insurance, ID) so clients know they&apos;re dealing with legitimate trades.
-                {(verificationStatus === "pending" || (verificationStatus as string) === "pending_review") ? (
-                  <span className="ml-1 font-medium">Your verification is currently being reviewed.</span>
-                ) : (
-                  <a href="/settings/verification" className="ml-1 font-medium underline hover:text-amber-900">
-                    Complete business verification →
-                  </a>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* New Onboarding Card */}
-      {onboardingStatus && (
-        <OnboardingCard
-          steps={onboardingStatus.steps}
-          allDone={onboardingStatus.allDone}
-          onDismiss={() => {
-            // This will be handled by the component's router.refresh()
-          }}
-        />
-      )}
-
-      {/* First-time onboarding checklist for tradies/businesses */}
-      {showOnboardingChecklist && (
-        <OnboardingChecklist
-          hasBusinessProfile={hasBusinessProfile}
-          hasAnyClients={hasAnyClients}
-          hasAnyJobs={hasAnyJobs}
-        />
-      )}
-
-      {/* Legacy Getting Started Card (fallback for older logic) */}
-      {!onboardingStatus && prismaUser && (
-        <GettingStartedCard
-          user={prismaUser}
-          hasJobs={totalJobs > 0}
-        />
-      )}
-
-      {/* Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3 flex-wrap">
-            <span>G&apos;day, {displayName}! 👋</span>
-                {isVerified && <VerifiedBadge />}
-          </h1>
-          <p className="mt-2 text-slate-600">
-            {totalJobs === 0
-              ? "Welcome to OMNEXORA! Create your first job pack to get started."
-              : `You have ${totalJobs} job${totalJobs === 1 ? "" : "s"}. ${lastJob ? `Last job: "${lastJob.title}"` : ""}`}
-          </p>
-          {/* OVIS Badge - Subtle line on mobile only */}
-          <div className="mt-3 md:hidden">
-            <OvisBadge variant="card" size="sm" />
-          </div>
-        </div>
-        <div className="flex-shrink-0">
-          <FeedbackButton />
-        </div>
+    <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl p-5 sm:p-6 text-white">
+      <div className="flex items-center gap-2 mb-4">
+        <Shield className="w-5 h-5 text-purple-200" />
+        <h3 className="text-lg font-semibold">Admin Panel</h3>
       </div>
-
-      {/* Quick Actions */}
-      <div className="mb-8">
+      
+      <div className="grid grid-cols-2 gap-3">
         <Link
-          href="/jobs/new"
-          className="inline-flex items-center px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-xl transition-colors shadow-lg shadow-amber-500/25"
+          href="/admin/verification"
+          className="bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Create Job Pack
+          <p className="text-3xl font-bold">{stats.pendingVerifications}</p>
+          <p className="text-sm text-purple-200 mt-1">Pending Reviews</p>
+        </Link>
+        <Link
+          href="/admin/feedback"
+          className="bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-colors"
+        >
+          <p className="text-3xl font-bold">{stats.unresolvedFeedback}</p>
+          <p className="text-sm text-purple-200 mt-1">Feedback Items</p>
         </Link>
       </div>
+      
+      <Link
+        href="/admin/dashboard"
+        className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-medium transition-colors"
+      >
+        <BarChart3 className="w-4 h-4" />
+        View Full Dashboard
+        <ArrowUpRight className="w-3.5 h-3.5" />
+      </Link>
+    </div>
+  );
+}
 
-      {/* Mobile Dashboard Tiles - Only shown on mobile */}
-      <div className="md:hidden">
-        <MobileDashboardTiles
-          totalJobs={totalJobs}
-          totalQuotes={totalQuotes}
-          completedJobs={completedJobs}
-        />
+// Quote breakdown component
+function QuoteBreakdown({ counts }: { counts: Analytics["quoteCounts"] }) {
+  const total = counts.draft + counts.sent + counts.accepted + counts.declined + counts.cancelled;
+  if (total === 0) return null;
+  
+  const items = [
+    { label: "Draft", value: counts.draft, color: "bg-slate-400" },
+    { label: "Sent", value: counts.sent, color: "bg-amber-500" },
+    { label: "Accepted", value: counts.accepted, color: "bg-emerald-500" },
+    { label: "Declined", value: counts.declined, color: "bg-red-500" },
+  ].filter((i) => i.value > 0);
+  
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-900 mb-4">Quote Status</h3>
+      
+      {/* Progress bar */}
+      <div className="h-3 bg-slate-100 rounded-full mb-4 overflow-hidden flex">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            className={`h-full ${item.color} first:rounded-l-full last:rounded-r-full`}
+            style={{ width: `${(item.value / total) * 100}%` }}
+          />
+        ))}
       </div>
+      
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
+            <span className="text-xs text-slate-600">{item.label}</span>
+            <span className="text-xs font-semibold text-slate-900">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      {/* Desktop Dashboard Content - Hidden on mobile, shown on md and up */}
-      <div className="hidden md:block">
-        {/* Analytics Section */}
-        <AnalyticsSection />
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm text-slate-500">Total Jobs</p>
-              <p className="text-2xl font-bold text-slate-900">{totalJobs}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm text-slate-500">Completed</p>
-              <p className="text-2xl font-bold text-slate-900">{completedJobs}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm text-slate-500">Pending</p>
-              <p className="text-2xl font-bold text-slate-900">{pendingJobs}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm text-slate-500">Credits Left</p>
-              <p className="text-2xl font-bold text-slate-900">∞</p>
-            </div>
-          </div>
+export default function DashboardPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Data states
+  const [user, setUser] = useState<UserData | null>(null);
+  const [jobs, setJobs] = useState<JobData[]>([]);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
+  const [isDismissing, setIsDismissing] = useState(false);
+  
+  // Fetch dashboard data
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        // Fetch user data
+        const userRes = await fetch("/api/me");
+        if (!userRes.ok) {
+          if (userRes.status === 401) {
+            router.push("/login");
+            return;
+          }
+          throw new Error("Failed to fetch user data");
+        }
+        const userData = await userRes.json();
+        setUser(userData);
+        
+        // Redirect clients
+        if (userData.role === "client") {
+          router.push("/client/dashboard");
+          return;
+        }
+        
+        // Fetch jobs
+        const jobsRes = await fetch("/api/jobs?limit=5");
+        if (jobsRes.ok) {
+          const jobsData = await jobsRes.json();
+          setJobs(jobsData.jobs || []);
+        }
+        
+        // Fetch analytics
+        const analyticsRes = await fetch("/api/me/analytics");
+        if (analyticsRes.ok) {
+          const analyticsData = await analyticsRes.json();
+          setAnalytics(analyticsData);
+        }
+        
+        // Fetch onboarding status
+        const onboardingRes = await fetch("/api/onboarding/status");
+        if (onboardingRes.ok) {
+          const onboardingData = await onboardingRes.json();
+          if (!onboardingData.allDone && !onboardingData.dismissed) {
+            setOnboardingSteps(onboardingData.steps || []);
+            setShowOnboarding(true);
+          }
+        }
+        
+        // Fetch admin stats if admin
+        if (userData.isAdmin) {
+          const adminRes = await fetch("/api/admin/stats");
+          if (adminRes.ok) {
+            const adminData = await adminRes.json();
+            setAdminStats(adminData);
+          }
+        }
+      } catch (err) {
+        console.error("Dashboard error:", err);
+        setError("Failed to load dashboard data");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchDashboardData();
+  }, [router]);
+  
+  // Dismiss onboarding
+  const handleDismissOnboarding = async () => {
+    setIsDismissing(true);
+    try {
+      await fetch("/api/me/onboarding/dismiss", { method: "POST" });
+      setShowOnboarding(false);
+    } catch (err) {
+      console.error("Failed to dismiss onboarding:", err);
+    } finally {
+      setIsDismissing(false);
+    }
+  };
+  
+  // Calculate stats
+  const totalJobs = analytics?.totalJobs || jobs.length;
+  const completedJobs = jobs.filter((j) => j.status === "ai_complete").length;
+  const pendingJobs = jobs.filter((j) => j.status === "ai_pending").length;
+  const acceptedQuotes = analytics?.quoteCounts.accepted || 0;
+  const sentQuotes = analytics?.quoteCounts.sent || 0;
+  
+  // Display name
+  const displayName = user?.businessName || user?.tradingName || user?.email?.split("@")[0] || "there";
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+          <p className="text-slate-500 text-sm">Loading dashboard...</p>
         </div>
       </div>
-
-        {/* Admin Cards - Only shown for admins */}
-        {userIsAdmin && (
-        <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Link
-            href="/admin/verification"
-            className="block bg-purple-50 rounded-xl border border-purple-200 p-5 shadow-sm hover:bg-purple-100 transition-colors"
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-slate-600">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-purple-600">ADMIN</p>
-                  <p className="text-lg font-bold text-purple-900">
-                    {pendingVerifications} pending
-                  </p>
-                </div>
-              </div>
-              <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-          <Link
-            href="/admin/feedback"
-            className="block bg-amber-50 rounded-xl border border-amber-200 p-5 shadow-sm hover:bg-amber-100 transition-colors"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-amber-600">Feedback</p>
-                  <p className="text-lg font-bold text-amber-900">
-                    {unresolvedFeedback} unresolved
-                  </p>
-                </div>
-              </div>
-              <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
+            Try Again
+          </button>
         </div>
-        )}
-
-        {/* Recent Jobs */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">Recent Jobs</h2>
-            <Link href="/jobs" className="text-sm font-medium text-amber-600 hover:text-amber-500">
-              View all →
+      </div>
+    );
+  }
+  
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      {/* Email verification banner */}
+      {user && !user.emailVerifiedAt && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-amber-800">Please verify your email</p>
+              <p className="text-amber-700 mt-1">
+                Check your inbox for a verification link to activate your account.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+              G'day, {displayName}! 👋
+            </h1>
+            <p className="mt-1 text-slate-500 text-sm sm:text-base">
+              {totalJobs === 0
+                ? "Welcome to OMNEXORA! Create your first job pack to get started."
+                : `You have ${totalJobs} job${totalJobs === 1 ? "" : " packs"}. Let's keep the momentum going.`}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/settings"
+              className="p-2.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label="Settings"
+            >
+              <Settings className="w-5 h-5" />
             </Link>
           </div>
         </div>
-        <div className="p-6">
-          {recentJobs.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+      </div>
+      
+      {/* Quick Actions */}
+      <div className="mb-8 flex flex-wrap gap-3">
+        <QuickAction icon={Plus} label="New Job Pack" href="/jobs/new" color="amber" />
+        <QuickAction icon={FileText} label="All Jobs" href="/jobs" />
+        <QuickAction icon={Users} label="Clients" href="/clients" />
+        <QuickAction icon={Calendar} label="Calendar" href="/calendar" />
+      </div>
+      
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        {/* Left Column - Stats & Jobs */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <StatCard
+              icon={FileText}
+              label="Total Jobs"
+              value={totalJobs}
+              color="blue"
+              href="/jobs"
+            />
+            <StatCard
+              icon={CheckCircle}
+              label="Completed"
+              value={completedJobs}
+              color="emerald"
+            />
+            <StatCard
+              icon={Send}
+              label="Sent"
+              value={sentQuotes}
+              color="amber"
+            />
+            <StatCard
+              icon={Target}
+              label="Accepted"
+              value={acceptedQuotes}
+              color="purple"
+            />
+          </div>
+          
+          {/* Quote breakdown */}
+          {analytics && <QuoteBreakdown counts={analytics.quoteCounts} />}
+          
+          {/* Recent Jobs */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-slate-400" />
+                <h2 className="text-lg font-semibold text-slate-900">Recent Jobs</h2>
               </div>
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No jobs yet</h3>
-              <p className="text-slate-500 mb-6">Create your first AI job pack to get started.</p>
-              <Link
-                href="/jobs/new"
-                className="inline-flex items-center px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors text-sm"
+              <Link 
+                href="/jobs" 
+                className="text-sm font-medium text-amber-600 hover:text-amber-500 flex items-center gap-1"
               >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                New Job
+                View all
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
             </div>
-          ) : (
-            <div>
-              {recentJobs.map((job) => (
-                <RecentJobRow key={job.id} job={job} />
-              ))}
+            <div className="p-4 sm:p-5">
+              {jobs.length === 0 ? (
+                <div className="text-center py-10">
+                  <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">No jobs yet</h3>
+                  <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">
+                    Create your first AI-powered job pack to streamline your quoting process.
+                  </p>
+                  <Link
+                    href="/jobs/new"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-xl transition-colors shadow-lg shadow-amber-500/25"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create Job Pack
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {jobs.slice(0, 5).map((job) => (
+                    <JobCard key={job.id} job={job} />
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        </div>
-
-        {/* Jobs in your service area - Only shown for tradies */}
-        {isTradie && (
-          <div className="mt-8">
-            <MatchingJobsSection />
           </div>
-        )}
+        </div>
+        
+        {/* Right Column - Onboarding & Admin */}
+        <div className="space-y-6">
+          {/* Onboarding */}
+          {showOnboarding && onboardingSteps.length > 0 && (
+            <OnboardingProgress 
+              steps={onboardingSteps} 
+              onDismiss={handleDismissOnboarding}
+              isDismissing={isDismissing}
+            />
+          )}
+          
+          {/* Admin Panel */}
+          {user?.isAdmin && adminStats && (
+            <AdminPanel stats={adminStats} />
+          )}
+          
+          {/* Quick Links Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">Quick Links</h3>
+            <div className="space-y-2">
+              <Link
+                href="/settings/business-profile"
+                className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group"
+              >
+                <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <Settings className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900 group-hover:text-blue-600 transition-colors">Business Profile</p>
+                  <p className="text-xs text-slate-500">Update your details</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </Link>
+              <Link
+                href="/settings/rates"
+                className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group"
+              >
+                <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center">
+                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900 group-hover:text-emerald-600 transition-colors">Pricing & Rates</p>
+                  <p className="text-xs text-slate-500">Configure your rates</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </Link>
+              <Link
+                href="/settings/verification"
+                className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group"
+              >
+                <div className="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900 group-hover:text-purple-600 transition-colors">Verification</p>
+                  <p className="text-xs text-slate-500">Verify your business</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </Link>
+            </div>
+          </div>
+          
+          {/* Pro Tip Card */}
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 bg-amber-400 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Zap className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-amber-900">Pro Tip</h3>
+                <p className="text-sm text-amber-800 mt-1">
+                  Complete your business profile to unlock AI-powered job matching and get connected with clients in your area.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

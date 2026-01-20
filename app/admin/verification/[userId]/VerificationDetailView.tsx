@@ -20,7 +20,7 @@ interface VerificationDetailViewProps {
 export default function VerificationDetailView({
   verification,
   user,
-  adminUserId,
+  adminUserId: _adminUserId,
 }: VerificationDetailViewProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);

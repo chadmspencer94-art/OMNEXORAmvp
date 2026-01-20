@@ -3,7 +3,12 @@
   "jurisdiction": "AU",
   "docType": "VARIATION_CHANGE_ORDER",
   "title": "Variation / Change Order",
-  "disclaimer": "Draft generated from user inputs. Review required. Not certified or verified. This document is a compliance-ready layout aligned with Australian construction industry best practice. Professional review required before use.",
+  "disclaimer": "DRAFT DOCUMENT - REVIEW REQUIRED. This template is formatted to support alignment with Australian construction contract standards (AS 4000, AS 2124, or equivalent). Variations must comply with your specific contract terms. Professional review required. OMNEXORA does not assert compliance certification.",
+  "complianceRef": {
+    "standards": "Australian Standards for construction contracts (AS 4000, AS 2124)",
+    "contractTerms": "Refer to your specific contract for variation procedures and approval requirements",
+    "note": "All variations must be documented in writing and approved by authorised parties. Time and cost impacts should be clearly identified. Verbal variations should be confirmed in writing."
+  },
   "sections": [
     {
       "id": "header",

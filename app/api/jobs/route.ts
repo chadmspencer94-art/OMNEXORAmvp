@@ -392,3 +392,52 @@ function extractSuburbFromAddress(address: string): string | undefined {
   return undefined;
 }
 
+
+/**
+ * GET /api/jobs - Fetch jobs for the current user
+ * Query params:
+ * - limit: number (optional, default 100)
+ * - page: number (optional, default 1)
+ */
+export async function GET(request: Request) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please log in." },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "100"), 100);
+    const page = Math.max(parseInt(searchParams.get("page") || "1"), 1);
+
+    // Import getJobsForUser from jobs lib
+    const { getJobsForUser } = await import("@/lib/jobs");
+    
+    // Fetch all jobs for user
+    const allJobs = await getJobsForUser(user.id);
+    
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const jobs = allJobs.slice(startIndex, endIndex);
+    
+    return NextResponse.json({
+      jobs,
+      pagination: {
+        page,
+        totalPages: Math.ceil(allJobs.length / limit),
+        totalItems: allJobs.length,
+        pageSize: limit,
+      },
+    });
+  } catch (error) {
+    console.error("[jobs] Error fetching jobs:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch jobs" },
+      { status: 500 }
+    );
+  }
+}

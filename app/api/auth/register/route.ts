@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createUser, createSession, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS, type UserRole, FOUNDER_EMAILS } from "@/lib/auth";
+import { createUser, createSession, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS, type UserRole, type SignupSource, FOUNDER_EMAILS } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { createEmailVerificationToken } from "@/lib/email-verification";
 import { Resend } from "resend";
-import { getSignupMode, isValidInviteCode } from "@/lib/signup-config";
+import { getSignupMode, isValidInviteCode, isFounderInviteCode } from "@/lib/signup-config";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -34,20 +34,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Normalize email for checks
+    const normalizedEmail = email.toLowerCase().trim();
+    const isFounderEmail = FOUNDER_EMAILS.includes(normalizedEmail);
+    
+    // Check if user provided the founder invite code
+    const usedFounderCode = inviteCode && typeof inviteCode === "string" && isFounderInviteCode(inviteCode.trim());
+    const usedRegularInviteCode = inviteCode && typeof inviteCode === "string" && !usedFounderCode && isValidInviteCode(inviteCode.trim());
+
     // If signup is invite-only, validate invite code or email
     if (signupMode === "invite-only") {
-      const normalizedEmail = email.toLowerCase().trim();
-      const isFounderEmail = FOUNDER_EMAILS.includes(normalizedEmail);
-      
-      // Allow founder emails or valid invite codes
-      if (!isFounderEmail) {
-        if (!inviteCode || typeof inviteCode !== "string" || !isValidInviteCode(inviteCode.trim())) {
-          return NextResponse.json(
-            { error: "This invite code isn't valid. Check it or contact Chad." },
-            { status: 403 }
-          );
-        }
+      // Allow founder emails, founder code, or valid invite codes
+      if (!isFounderEmail && !usedFounderCode && !usedRegularInviteCode) {
+        return NextResponse.json(
+          { error: "This invite code isn't valid. Check it or contact Chad." },
+          { status: 403 }
+        );
       }
+    }
+    
+    // Determine signup source for tracking
+    let signupSource: SignupSource = "ORGANIC";
+    if (usedFounderCode) {
+      signupSource = "FOUNDER_CODE";
+    } else if (isFounderEmail) {
+      signupSource = "FOUNDER_EMAIL";
+    } else if (usedRegularInviteCode) {
+      signupSource = "INVITE_CODE";
     }
 
     // Validate input
@@ -95,8 +108,11 @@ export async function POST(request: NextRequest) {
     const validSelfSignupRoles: UserRole[] = ["tradie"];
     const userRole: UserRole = role && validSelfSignupRoles.includes(role) ? role : "tradie";
 
-    // Create the user
-    const user = await createUser(email, password, userRole);
+    // Create the user with signup tracking
+    const user = await createUser(email, password, userRole, {
+      signupSource,
+      inviteCodeUsed: inviteCode?.trim() || undefined,
+    });
 
     // Create a session
     const sessionId = await createSession(user.id);
@@ -119,6 +135,10 @@ export async function POST(request: NextRequest) {
             role: user.role,
             verificationStatus: user.verificationStatus,
             verifiedAt: user.verifiedAt ? new Date(user.verifiedAt) : null,
+            planTier: user.planTier || "FREE",
+            planStatus: user.planStatus || "TRIAL",
+            signupSource: signupSource,
+            inviteCodeUsed: inviteCode?.trim() || null,
           },
         });
       }
@@ -196,8 +216,15 @@ If you didn't create an account, you can safely ignore this email.
         }
       } else {
         console.warn("RESEND_API_KEY not set, verification email not sent");
-        console.log(`Would have sent verification email to ${user.email}`);
+      }
+      
+      // In development, always log the verification URL for easy testing
+      const isDev = process.env.NODE_ENV === "development";
+      if (isDev) {
+        console.log("\n==== DEV MODE: VERIFICATION URL ====");
+        console.log(`Email: ${user.email}`);
         console.log(`Verify URL: ${verifyUrl}`);
+        console.log("=====================================\n");
       }
     } catch (emailError) {
       // Log but don't fail registration

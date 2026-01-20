@@ -108,68 +108,132 @@ export default async function AdminDashboardPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Admin Navigation */}
-      <div className="mb-6 flex gap-3 flex-wrap">
-        <span className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg">
+      <div className="mb-6 flex gap-2 sm:gap-3 flex-wrap overflow-x-auto hide-scrollbar">
+        <span className="px-3 sm:px-4 py-2 bg-purple-600 text-white text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap">
           Dashboard
         </span>
         <Link
           href="/admin/users"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Users
         </Link>
         <Link
           href="/admin/verification"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Verifications
         </Link>
         <Link
           href="/admin/feedback"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Feedback Log
         </Link>
         <Link
+          href="/admin/notifications"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+        >
+          Notifications
+        </Link>
+        <Link
           href="/admin/pricing"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
         >
           Pricing
         </Link>
       </div>
 
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
-        <p className="mt-2 text-slate-600">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Admin Dashboard</h1>
+        <p className="mt-1 sm:mt-2 text-sm sm:text-base text-slate-600">
           Overview of OMNEXORA users, jobs, verifications, and feedback.
         </p>
       </div>
 
-      {/* Top Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="text-3xl font-bold text-slate-900">{data.users.totalUsers}</div>
-          <div className="text-sm text-slate-500 mt-1">Total Users</div>
+      {/* Top Stats Grid - Mobile: scrollable row, Desktop: full grid */}
+      <div className="mb-8">
+        {/* Mobile: Horizontal scroll with snap */}
+        <div className="flex gap-3 overflow-x-auto pb-2 sm:hidden hide-scrollbar snap-x snap-mandatory">
+          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-4 text-white flex-shrink-0 w-[140px] snap-start">
+            <div className="text-2xl font-bold">{data.users.totalUsers}</div>
+            <div className="text-xs text-purple-100 mt-1">Total Users</div>
+          </div>
+          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white flex-shrink-0 w-[140px] snap-start">
+            <div className="text-2xl font-bold">{data.analytics.founderUsers}</div>
+            <div className="text-xs text-amber-100 mt-1">⭐ Founders</div>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white flex-shrink-0 w-[140px] snap-start">
+            <div className="text-2xl font-bold">{data.jobs.totalJobs}</div>
+            <div className="text-xs text-emerald-100 mt-1">Total Jobs</div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 flex-shrink-0 w-[140px] snap-start">
+            <div className="text-2xl font-bold text-slate-900">{data.users.activeLastWeek}</div>
+            <div className="text-xs text-slate-500 mt-1">Active (7d)</div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 flex-shrink-0 w-[140px] snap-start">
+            <div className="text-2xl font-bold text-slate-900">{data.users.usersLast30Days}</div>
+            <div className="text-xs text-slate-500 mt-1">New (30d)</div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 flex-shrink-0 w-[140px] snap-start">
+            <div className="text-2xl font-bold text-slate-900">{data.jobs.jobsLast30Days}</div>
+            <div className="text-xs text-slate-500 mt-1">Jobs (30d)</div>
+          </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="text-3xl font-bold text-slate-900">{data.jobs.totalJobs}</div>
-          <div className="text-sm text-slate-500 mt-1">Total Jobs</div>
+        {/* Desktop: Grid layout */}
+        <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 text-white">
+            <div className="text-3xl font-bold">{data.users.totalUsers}</div>
+            <div className="text-sm text-purple-100 mt-1">Total Users</div>
+          </div>
+          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-6 text-white">
+            <div className="text-3xl font-bold">{data.analytics.founderUsers}</div>
+            <div className="text-sm text-amber-100 mt-1">⭐ Founders</div>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 text-white">
+            <div className="text-3xl font-bold">{data.jobs.totalJobs}</div>
+            <div className="text-sm text-emerald-100 mt-1">Total Jobs</div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <div className="text-3xl font-bold text-slate-900">{data.users.activeLastWeek}</div>
+            <div className="text-sm text-slate-500 mt-1">Active (7d)</div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <div className="text-3xl font-bold text-slate-900">{data.users.usersLast30Days}</div>
+            <div className="text-sm text-slate-500 mt-1">New (30d)</div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <div className="text-3xl font-bold text-slate-900">{data.jobs.jobsLast30Days}</div>
+            <div className="text-sm text-slate-500 mt-1">Jobs (30d)</div>
+          </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="text-3xl font-bold text-slate-900">{data.users.usersLast30Days}</div>
-          <div className="text-sm text-slate-500 mt-1">Users (Last 30 Days)</div>
+      </div>
+
+      {/* Email & Verification Stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 mb-8">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 sm:p-4">
+          <div className="text-lg sm:text-xl font-bold text-green-900">{data.users.emailVerified}</div>
+          <div className="text-[10px] sm:text-xs text-green-700">Email Verified</div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="text-3xl font-bold text-slate-900">{data.jobs.jobsLast30Days}</div>
-          <div className="text-sm text-slate-500 mt-1">Jobs (Last 30 Days)</div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4">
+          <div className="text-lg sm:text-xl font-bold text-amber-900">{data.users.emailUnverified}</div>
+          <div className="text-[10px] sm:text-xs text-amber-700">Email Unverified</div>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4">
+          <div className="text-lg sm:text-xl font-bold text-blue-900">{data.verifications.verifiedCount}</div>
+          <div className="text-[10px] sm:text-xs text-blue-700">Biz Verified</div>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-4">
+          <div className="text-lg sm:text-xl font-bold text-red-900">{data.verifications.pendingCount}</div>
+          <div className="text-[10px] sm:text-xs text-red-700">Pending Review</div>
         </div>
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Users Panel */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-900">Users</h2>
             <Link
@@ -221,11 +285,52 @@ export default async function AdminDashboardPage() {
                 <span className="text-sm font-semibold text-slate-900">{data.users.usersLast7Days}</span>
               </div>
             </div>
+
+            <div className="pt-4 border-t border-slate-200">
+              <h3 className="text-sm font-medium text-slate-700 mb-2">Signup Source</h3>
+              <div className="space-y-2">
+                {data.users.usersBySignupSource.length > 0 ? (
+                  data.users.usersBySignupSource.map(({ source, count }) => (
+                    <div key={source} className="flex justify-between items-center">
+                      <span className={`text-xs px-2 py-1 rounded border ${
+                        source.includes("FOUNDER") 
+                          ? "bg-amber-100 text-amber-700 border-amber-300" 
+                          : source === "INVITE_CODE"
+                            ? "bg-purple-100 text-purple-700 border-purple-300"
+                            : "bg-slate-100 text-slate-600 border-slate-300"
+                      }`}>
+                        {source === "FOUNDER_CODE" ? "⭐ Founder Code" :
+                         source === "FOUNDER_EMAIL" ? "⭐ Founder Email" :
+                         source === "INVITE_CODE" ? "Invite Code" :
+                         source === "ORGANIC" ? "Organic" : source}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900">{count}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">No signup source data</p>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-200">
+              <h3 className="text-sm font-medium text-slate-700 mb-2">User Activity</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600">Active (Last 7d)</span>
+                  <span className="text-sm font-semibold text-slate-900">{data.users.activeLastWeek}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600">Active (Last 30d)</span>
+                  <span className="text-sm font-semibold text-slate-900">{data.users.activeLastMonth}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Jobs Panel */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-900">Jobs</h2>
             <Link
@@ -283,7 +388,7 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Verifications Panel */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-900">Verification Queue</h2>
             {data.verifications.pendingCount > 0 && (
@@ -338,7 +443,7 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Feedback Panel */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-900">Feedback & Issues</h2>
             {data.feedback.openCount > 0 && (
