@@ -143,7 +143,7 @@ export default function Footer({ showOvisModal }: FooterProps) {
                 href="https://www.facebook.com/profile.php?id=61586192848393" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-slate-300 hover:text-white transition-colors"
+                className="text-slate-300 hover:text-white transition-colors cursor-pointer"
                 aria-label="Follow us on Facebook"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
