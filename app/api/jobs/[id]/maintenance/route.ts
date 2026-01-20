@@ -54,7 +54,7 @@ export async function POST(
     // Check if OpenAI is available
     if (!isOpenAIAvailable()) {
       return NextResponse.json(
-        { error: "AI service is not available. Please contact support." },
+        { error: "AI service is not configured. Please ensure OPENAI_API_KEY is set in environment variables." },
         { status: 503 }
       );
     }
@@ -182,7 +182,7 @@ Create a comprehensive maintenance guide that is specific to ${tradeInfo} work. 
       console.error("[maintenance] OpenAI API error:", openaiError);
       if (openaiError?.message?.includes("API key") || openaiError?.code === "invalid_api_key") {
         return NextResponse.json(
-          { error: "AI service is not available. Please contact support." },
+          { error: "AI service is not configured. Please ensure OPENAI_API_KEY is set in environment variables." },
           { status: 503 }
         );
       }

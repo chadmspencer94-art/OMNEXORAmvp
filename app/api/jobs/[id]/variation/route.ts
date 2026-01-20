@@ -53,8 +53,9 @@ export async function POST(
 
     // Check if OpenAI is available
     if (!isOpenAIAvailable()) {
+      console.error("[variation] OpenAI API key not configured");
       return NextResponse.json(
-        { error: "AI service is not available. Please contact support." },
+        { error: "AI service is not configured. Please ensure OPENAI_API_KEY is set in environment variables." },
         { status: 503 }
       );
     }
@@ -180,7 +181,7 @@ Create a professional Variation document that clearly outlines the change in sco
       console.error("[variation] OpenAI API error:", openaiError);
       if (openaiError?.message?.includes("API key") || openaiError?.code === "invalid_api_key") {
         return NextResponse.json(
-          { error: "AI service is not available. Please contact support." },
+          { error: "AI service is not configured. Please ensure OPENAI_API_KEY is set in environment variables." },
           { status: 503 }
         );
       }

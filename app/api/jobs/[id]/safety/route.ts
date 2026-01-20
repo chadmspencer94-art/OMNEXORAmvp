@@ -467,7 +467,7 @@ Format the response as clear, structured text with section headings. Use bullet 
     const errorMessage = error instanceof Error ? error.message : "";
     if (errorMessage.includes("API key") || errorMessage.includes("OpenAI")) {
       return NextResponse.json(
-        { error: "AI service is not available. Please contact support." },
+        { error: "AI service is not configured. Please ensure OPENAI_API_KEY is set in environment variables." },
         { status: 503 }
       );
     }

@@ -114,7 +114,8 @@ If you didn't create an account, you can safely ignore this email.
     
     if (resend) {
       try {
-        const { error } = await resend.emails.send({
+        console.log(`[send-verification] Attempting to send email to ${currentUser.email} from ${DEFAULT_FROM}`);
+        const { error, data } = await resend.emails.send({
           from: DEFAULT_FROM,
           to: currentUser.email,
           subject: "Verify your OMNEXORA email",
@@ -123,19 +124,26 @@ If you didn't create an account, you can safely ignore this email.
         });
 
         if (error) {
-          console.error("Failed to send verification email:", error);
-          emailError = error.message || "Failed to send email";
+          console.error("[send-verification] Resend API error:", JSON.stringify(error));
+          // Provide more specific error messages based on common Resend errors
+          if (error.message?.includes("domain")) {
+            emailError = "Email domain not verified. Please contact support.";
+          } else if (error.message?.includes("rate")) {
+            emailError = "Too many emails sent. Please try again later.";
+          } else {
+            emailError = error.message || "Failed to send email";
+          }
         } else {
-          console.log(`Verification email sent to ${currentUser.email}`);
+          console.log(`[send-verification] Email sent successfully to ${currentUser.email}, ID: ${data?.id}`);
           emailSent = true;
         }
       } catch (err: any) {
-        console.error("Error sending verification email:", err);
+        console.error("[send-verification] Exception sending email:", err);
         emailError = err?.message || "Failed to send email";
       }
     } else {
-      console.warn("RESEND_API_KEY not set, verification email not sent");
-      emailError = "Email service not configured";
+      console.error("[send-verification] RESEND_API_KEY not configured - emails cannot be sent");
+      emailError = "Email service not configured. Please contact support.";
     }
     
     // In development, always log the verification URL for easy testing
@@ -147,19 +155,30 @@ If you didn't create an account, you can safely ignore this email.
       console.log("=====================================\n");
     }
 
+    // If email wasn't sent and we're in production, return an error
+    if (!emailSent && !isDev) {
+      return NextResponse.json(
+        { 
+          error: emailError || "Failed to send verification email. Please try again.",
+          emailSent: false,
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { 
         success: true,
         emailSent,
         // Include verification URL in dev mode for testing
         ...(isDev && { verifyUrl }),
-        // Include error message if email failed (for user feedback)
-        ...(emailError && !emailSent && { warning: "Email could not be sent. Please try again or contact support." }),
+        // Include warning if email failed but we're allowing dev mode
+        ...(emailError && !emailSent && { warning: emailError }),
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error in send-verification-email endpoint:", error);
+    console.error("[send-verification] Unexpected error:", error);
     return NextResponse.json(
       { error: "Failed to send verification email. Please try again." },
       { status: 500 }

@@ -4,10 +4,9 @@ import OpenAI from "openai";
 // In development, allow the app to start without API key (will fail when AI features are used)
 const apiKey = process.env.OPENAI_API_KEY;
 
-if (!apiKey && process.env.NODE_ENV === "production") {
-  throw new Error(
-    "Missing OPENAI_API_KEY environment variable. Please add it to your .env.local file."
-  );
+// Log warning at startup if API key is missing
+if (!apiKey) {
+  console.warn("[OpenAI] OPENAI_API_KEY not configured - AI features will be unavailable");
 }
 
 // Create a proxy that throws a helpful error if OpenAI is used without an API key
