@@ -161,7 +161,7 @@ export default async function AdminDashboardPage() {
             <div className="text-xs text-purple-100 mt-1">Total Users</div>
           </div>
           <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white flex-shrink-0 w-[140px] snap-start">
-            <div className="text-2xl font-bold">{data.analytics.founderUsers}</div>
+            <div className="text-2xl font-bold">{data.analytics?.founderUsers ?? 0}</div>
             <div className="text-xs text-amber-100 mt-1">⭐ Founders</div>
           </div>
           <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white flex-shrink-0 w-[140px] snap-start">
@@ -188,7 +188,7 @@ export default async function AdminDashboardPage() {
             <div className="text-sm text-purple-100 mt-1">Total Users</div>
           </div>
           <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-6 text-white">
-            <div className="text-3xl font-bold">{data.analytics.founderUsers}</div>
+            <div className="text-3xl font-bold">{data.analytics?.founderUsers ?? 0}</div>
             <div className="text-sm text-amber-100 mt-1">⭐ Founders</div>
           </div>
           <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 text-white">
