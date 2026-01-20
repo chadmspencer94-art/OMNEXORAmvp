@@ -43,8 +43,13 @@ export default async function AdminDashboardPage() {
         totalTradies: 0,
         totalAdmins: 0,
         usersByPlan: [],
+        usersBySignupSource: [],
         usersLast7Days: 0,
         usersLast30Days: 0,
+        emailVerified: 0,
+        emailUnverified: 0,
+        activeLastWeek: 0,
+        activeLastMonth: 0,
       },
       jobs: {
         totalJobs: 0,
@@ -52,14 +57,27 @@ export default async function AdminDashboardPage() {
         jobsLast30Days: 0,
         jobsByStatus: [],
         jobsByClientStatus: [],
+        totalQuotesSent: 0,
+        quotesAccepted: 0,
+        quotesDeclined: 0,
+        acceptanceRate: 0,
       },
       verifications: {
         pendingCount: 0,
+        verifiedCount: 0,
+        rejectedCount: 0,
         pendingList: [],
       },
       feedback: {
         openCount: 0,
         recentOpen: [],
+      },
+      analytics: {
+        founderUsers: 0,
+        organicSignups: 0,
+        inviteCodeSignups: 0,
+        totalJobValue: 0,
+        avgJobValue: 0,
       },
     };
   }

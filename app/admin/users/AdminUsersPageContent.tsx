@@ -220,6 +220,7 @@ export default function AdminUsersPageContent() {
     verificationStatus?: string;
     planStatus?: string;
     accountStatus?: string;
+    signupSource?: string;
   }) => {
     const params = new URLSearchParams();
     const newSearch = updates.search !== undefined ? updates.search : searchQuery;

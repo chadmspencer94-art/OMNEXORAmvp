@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       }
 
       const now = new Date().toISOString();
-      const actorName = currentUser.name || currentUser.email;
+      const actorName = currentUser.businessDetails?.businessName || currentUser.email;
       
       // Insert notifications for each user one by one
       let insertedCount = 0;

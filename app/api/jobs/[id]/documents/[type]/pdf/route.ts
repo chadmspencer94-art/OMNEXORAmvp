@@ -207,12 +207,12 @@ export async function POST(
           pdf.addSectionHeading(section.replace(/^#+\s/, "").trim());
         } else if (section.match(/^[-•*]\s/m)) {
           // It's a bullet list
-          const items = section.split("\n").filter(line => line.trim());
-          pdf.addBulletList(items.map(item => item.replace(/^[-•*]\s+/, "")));
+          const items = section.split("\n").filter((line: string) => line.trim());
+          pdf.addBulletList(items.map((item: string) => item.replace(/^[-•*]\s+/, "")));
         } else if (section.match(/^\d+\.\s/m)) {
           // It's a numbered list
-          const items = section.split("\n").filter(line => line.trim());
-          pdf.addNumberedList(items.map(item => item.replace(/^\d+\.\s+/, "")));
+          const items = section.split("\n").filter((line: string) => line.trim());
+          pdf.addNumberedList(items.map((item: string) => item.replace(/^\d+\.\s+/, "")));
         } else {
           pdf.addParagraph(section.trim());
         }

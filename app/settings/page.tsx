@@ -216,7 +216,7 @@ export default function SettingsPage() {
   }
 
   const isClient = userData?.role === "client";
-  const tradeConfig = getTradeConfig(userData?.primaryTrade);
+  const tradeConfig = getTradeConfig(userData?.primaryTrade ?? null);
   const profileComplete = userData?.businessName && userData?.hourlyRate;
 
   return (
