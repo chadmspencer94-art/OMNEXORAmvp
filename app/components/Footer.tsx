@@ -138,12 +138,12 @@ export default function Footer({ showOvisModal }: FooterProps) {
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">Join our Community</h3>
             <div className="flex gap-4">
-              {/* Facebook - Active Link */}
+              {/* Facebook */}
               <a 
                 href="https://www.facebook.com/profile.php?id=61586192848393" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                className="text-white hover:text-amber-400 transition-colors cursor-pointer"
                 aria-label="Follow us on Facebook"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -151,12 +151,12 @@ export default function Footer({ showOvisModal }: FooterProps) {
                 </svg>
               </a>
 
-              {/* Instagram - Active Link */}
+              {/* Instagram */}
               <a 
                 href="https://www.instagram.com/omnexora.au?igsh=MW82ejg2bm8xZ3g4Zg==" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                className="text-white hover:text-amber-400 transition-colors cursor-pointer"
                 aria-label="Follow us on Instagram"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -164,12 +164,12 @@ export default function Footer({ showOvisModal }: FooterProps) {
                 </svg>
               </a>
 
-              {/* WhatsApp - Active Link */}
+              {/* WhatsApp */}
               <a 
                 href="https://chat.whatsapp.com/KXAqMNzF2z30crzkW7tAPO" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                className="text-white hover:text-amber-400 transition-colors cursor-pointer"
                 aria-label="Join our WhatsApp group"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -177,12 +177,12 @@ export default function Footer({ showOvisModal }: FooterProps) {
                 </svg>
               </a>
 
-              {/* TikTok - Active Link */}
+              {/* TikTok */}
               <a 
                 href="https://www.tiktok.com/@omnexora" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                className="text-white hover:text-amber-400 transition-colors cursor-pointer"
                 aria-label="Follow us on TikTok"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -190,12 +190,12 @@ export default function Footer({ showOvisModal }: FooterProps) {
                 </svg>
               </a>
 
-              {/* Skool - Active Link */}
+              {/* Skool */}
               <a 
                 href="https://www.skool.com/australian-construction-7759/about?ref=66a1d9e88bdf4bb28efc2edd200e6479" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                className="text-white hover:text-amber-400 transition-colors cursor-pointer"
                 aria-label="Join our Skool community"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
