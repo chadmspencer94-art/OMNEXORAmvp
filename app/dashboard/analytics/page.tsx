@@ -3,9 +3,18 @@ import OmnexoraHeader from "@/app/components/OmnexoraHeader";
 import AdvancedAnalyticsClient from "./AdvancedAnalyticsClient";
 import { ArrowLeft, Crown, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import { getPrisma } from "@/lib/prisma";
 
 export default async function AdvancedAnalyticsPage() {
   const user = await requireOnboardedUser();
+  
+  // Get primaryTrade from Prisma since it's not in the KV user
+  const prisma = getPrisma();
+  const prismaUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { primaryTrade: true },
+  });
+  const primaryTrade = prismaUser?.primaryTrade || user.businessDetails?.tradeTypes?.[0] || null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50/30 to-slate-50">
@@ -61,7 +70,7 @@ export default async function AdvancedAnalyticsPage() {
         </div>
 
         {/* Analytics Content */}
-        <AdvancedAnalyticsClient primaryTrade={user.primaryTrade || null} />
+        <AdvancedAnalyticsClient primaryTrade={primaryTrade} />
       </main>
     </div>
   );
