@@ -13,9 +13,10 @@ export * from "./plasterer";
 export * from "./roofer";
 export * from "./electrician";
 export * from "./plumber";
+export * from "./concreter";
 
 // Trade profile type
-export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Other";
+export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "Other";
 
 // Get trade-specific system prompt context for AI
 export function getTradeSystemPromptContext(tradeType: string | null): string {
@@ -32,6 +33,9 @@ export function getTradeSystemPromptContext(tradeType: string | null): string {
     case "Plumber":
       const { getPlumberSystemPromptContext } = require("./plumber");
       return getPlumberSystemPromptContext();
+    case "Concreter":
+      const { getConcreterSystemPromptContext } = require("./concreter");
+      return getConcreterSystemPromptContext();
     case "Painter":
       return `
 Trade-Specific Context (Painter):
@@ -119,6 +123,18 @@ export function getTradeComplianceNotes(tradeType: string | null): string[] {
         "Compliance certificate for notifiable work",
         "State plumbing licensing requirements",
         "Backflow prevention requirements",
+      ];
+    case "Concreter":
+      return [
+        "AS 3600 - Concrete structures",
+        "AS 2870 - Residential slabs and footings",
+        "AS 1379 - Specification and supply of concrete",
+        "Site classification (A, S, M, H1, H2, E, P)",
+        "Engineer required for H1+ and P class sites",
+        "Reinforcement placement and cover requirements",
+        "Control joint spacing requirements",
+        "Curing requirements (minimum 7 days)",
+        "Silica dust and cement burn safety",
       ];
     default:
       return [
