@@ -272,7 +272,7 @@ export const FLOORING_DEFAULT_MATERIALS: FlooringMaterial[] = [
     supplier: "Quick-Step",
     unitLabel: "m²",
     unitCost: 55.00,
-    notes: "Premium LVP,?"
+    notes: "Premium LVP, waterproof",
     thickness: "5mm",
     wearLayer: "0.55mm",
     warranty: "25 years residential",
