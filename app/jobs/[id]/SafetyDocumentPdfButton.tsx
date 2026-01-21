@@ -29,6 +29,7 @@ interface SafetyDocumentPdfButtonProps {
   address?: string;
   businessName?: string;
   businessProfile?: BusinessProfile | null;
+  compact?: boolean;
 }
 
 export default function SafetyDocumentPdfButton({
@@ -38,6 +39,7 @@ export default function SafetyDocumentPdfButton({
   address,
   businessName,
   businessProfile,
+  compact = false,
 }: SafetyDocumentPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -118,6 +120,23 @@ export default function SafetyDocumentPdfButton({
       setIsGenerating(false);
     }
   };
+
+  if (compact) {
+    return (
+      <button
+        onClick={handleDownloadPdf}
+        disabled={isGenerating}
+        className="p-1 text-slate-400 hover:text-slate-600 rounded transition-colors disabled:opacity-50"
+        title="Download PDF"
+      >
+        {isGenerating ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : (
+          <Download className="w-3 h-3" />
+        )}
+      </button>
+    );
+  }
 
   return (
     <button

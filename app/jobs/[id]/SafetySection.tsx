@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, FileText, Edit2, Download, Shield, AlertTriangle, Users, RefreshCw } from "lucide-react";
+import { 
+  Loader2, FileText, Edit2, Shield, AlertTriangle, Users, RefreshCw,
+  ChevronDown, ChevronUp, X, Check
+} from "lucide-react";
 import SafetyDocumentEditor from "./SafetyDocumentEditor";
 import SafetyDocumentPdfButton from "./SafetyDocumentPdfButton";
-import AIWarningBanner from "@/app/components/AIWarningBanner";
 import OvisBadge from "@/app/components/OvisBadge";
 
-// User-friendly error message for safety document operations
 const FRIENDLY_ERROR_MESSAGE = "Safety documents aren't available right now. Please try again shortly.";
 
 interface BusinessProfile {
@@ -50,6 +51,7 @@ interface SafetyDocument {
 interface DocumentConfig {
   type: SafetyDocumentType;
   label: string;
+  shortLabel: string;
   description: string;
   icon: React.ReactNode;
 }
@@ -57,21 +59,24 @@ interface DocumentConfig {
 const DOCUMENT_CONFIGS: DocumentConfig[] = [
   {
     type: "SWMS",
-    label: "SWMS",
+    label: "Safe Work Method Statement",
+    shortLabel: "SWMS",
     description: "Safe Work Method Statement",
-    icon: <Shield className="w-5 h-5" />,
+    icon: <Shield className="w-4 h-4" />,
   },
   {
     type: "RISK_ASSESSMENT",
     label: "Risk Assessment",
-    description: "Hazard identification and risk controls",
-    icon: <AlertTriangle className="w-5 h-5" />,
+    shortLabel: "Risk Assessment",
+    description: "Hazard identification and controls",
+    icon: <AlertTriangle className="w-4 h-4" />,
   },
   {
     type: "TOOLBOX_TALK",
     label: "Toolbox Talk",
+    shortLabel: "Toolbox Talk",
     description: "Safety briefing outline",
-    icon: <Users className="w-5 h-5" />,
+    icon: <Users className="w-4 h-4" />,
   },
 ];
 
@@ -84,17 +89,30 @@ export default function SafetySection({
   businessProfile,
 }: SafetySectionProps) {
   const router = useRouter();
+  const [isOpen, setIsOpen] = useState(false);
   const [documents, setDocuments] = useState<SafetyDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<SafetyDocumentType | null>(null);
   const [editingDoc, setEditingDoc] = useState<SafetyDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchDocuments();
     checkEmailVerification();
   }, [jobId]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const checkEmailVerification = async () => {
     try {
@@ -116,10 +134,8 @@ export default function SafetySection({
       setError(null);
       const response = await fetch(`/api/jobs/${jobId}/safety`);
       if (!response.ok) {
-        // Try to get error from response, but don't expose raw errors
         try {
           const data = await response.json();
-          // Only use the error if it's a known friendly message
           if (data.error && !data.error.includes("prisma") && !data.error.includes("DATABASE")) {
             throw new Error(data.error);
           }
@@ -132,7 +148,6 @@ export default function SafetySection({
       setDocuments(data.documents || []);
     } catch (err) {
       console.error("Error fetching safety documents:", err);
-      // Always show friendly message to user
       setError(FRIENDLY_ERROR_MESSAGE);
     } finally {
       setLoading(false);
@@ -142,13 +157,12 @@ export default function SafetySection({
   const handleGenerate = async (type: SafetyDocumentType) => {
     setGenerating(type);
     setError(null);
+    setIsOpen(false);
 
     try {
       const response = await fetch(`/api/jobs/${jobId}/safety`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type }),
       });
 
@@ -156,7 +170,6 @@ export default function SafetySection({
         let errorMessage = FRIENDLY_ERROR_MESSAGE;
         try {
           const data = await response.json();
-          // Only use API error if it looks safe (no internal details)
           if (data.error && 
               !data.error.toLowerCase().includes("prisma") && 
               !data.error.toLowerCase().includes("database") &&
@@ -168,21 +181,18 @@ export default function SafetySection({
         } catch {
           // Ignore JSON parse errors
         }
-        // Set error state directly instead of throwing to avoid console errors
         setError(errorMessage);
         setGenerating(null);
         return;
       }
 
       const data = await response.json();
-      await fetchDocuments(); // Refresh list
+      await fetchDocuments();
       
-      // Open editor with the newly generated document
       if (data.document) {
         setEditingDoc(data.document);
       }
     } catch (err) {
-      // Handle unexpected errors (network failures, etc.)
       console.error("Error generating safety document:", err);
       setError(FRIENDLY_ERROR_MESSAGE);
     } finally {
@@ -190,8 +200,15 @@ export default function SafetySection({
     }
   };
 
-  const handleEdit = (doc: SafetyDocument) => {
-    setEditingDoc(doc);
+  const handleSelectDocument = (config: DocumentConfig) => {
+    const existingDoc = documents.find(d => d.type === config.type);
+    setIsOpen(false);
+    
+    if (existingDoc) {
+      setEditingDoc(existingDoc);
+    } else {
+      handleGenerate(config.type);
+    }
   };
 
   const handleSave = async (docId: string, updates: { title?: string; content: string; status?: string }) => {
@@ -200,9 +217,7 @@ export default function SafetySection({
     try {
       const response = await fetch(`/api/jobs/${jobId}/safety/${docId}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
 
@@ -210,7 +225,6 @@ export default function SafetySection({
         let errorMessage = SAVE_ERROR;
         try {
           const data = await response.json();
-          // Only use API error if it looks safe
           if (data.error && 
               !data.error.toLowerCase().includes("prisma") && 
               !data.error.toLowerCase().includes("database") &&
@@ -223,12 +237,11 @@ export default function SafetySection({
         throw new Error(errorMessage);
       }
 
-      await fetchDocuments(); // Refresh list
+      await fetchDocuments();
       setEditingDoc(null);
     } catch (err) {
       console.error("Error saving safety document:", err);
       const errorMessage = err instanceof Error ? err.message : SAVE_ERROR;
-      // Double-check the message doesn't contain sensitive info
       if (errorMessage.toLowerCase().includes("prisma") || 
           errorMessage.toLowerCase().includes("database") ||
           errorMessage.includes("Environment variable")) {
@@ -243,32 +256,18 @@ export default function SafetySection({
     return documents.find((d) => d.type === type);
   };
 
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      draft: "bg-slate-100 text-slate-700 border-slate-300",
-      generated: "bg-amber-100 text-amber-700 border-amber-300",
-      reviewed: "bg-green-100 text-green-700 border-green-300",
-    };
-
-    const labels: Record<string, string> = {
-      draft: "Draft",
-      generated: "Generated",
-      reviewed: "Reviewed",
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${styles[status] || styles.draft}`}>
-        {labels[status] || status}
-      </span>
-    );
-  };
+  const generatedCount = documents.length;
+  const reviewedCount = documents.filter(d => d.status === "reviewed").length;
+  const isDisabled = emailVerified === false;
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
-        <div className="flex items-center justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-          <span className="ml-2 text-slate-600">Loading safety documents...</span>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center">
+            <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+          </div>
+          <span className="text-sm text-slate-600">Loading safety documents...</span>
         </div>
       </div>
     );
@@ -277,133 +276,152 @@ export default function SafetySection({
   return (
     <>
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-200">
-          <div className="flex items-center justify-between gap-4 mb-2">
-            <h2 className="text-lg font-semibold text-slate-900">Safety & SWMS</h2>
-            <OvisBadge variant="inline" size="sm" />
-          </div>
-          <p className="text-xs text-slate-500">
-            Generate and manage safety documents for this job
-          </p>
-        </div>
-        <div className="p-6">
-          {error && (
-            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-800">{error}</p>
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center">
+                <Shield className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-slate-900 text-sm">Safety & SWMS</h3>
+                  <OvisBadge variant="inline" size="sm" />
                 </div>
+                <p className="text-xs text-slate-500">
+                  {generatedCount > 0 ? (
+                    <span>{generatedCount} generated{reviewedCount > 0 && `, ${reviewedCount} reviewed`}</span>
+                  ) : (
+                    "Generate safety documents"
+                  )}
+                </p>
+              </div>
+            </div>
+            
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                disabled={generating !== null || isDisabled}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                title={isDisabled ? "Email verification required" : undefined}
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-4 h-4" />
+                    Safety
+                    {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </>
+                )}
+              </button>
+              
+              {/* Dropdown Menu */}
+              {isOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-slate-200 shadow-xl z-50 overflow-hidden">
+                  <div className="p-2 border-b border-slate-100 bg-slate-50">
+                    <p className="text-xs text-slate-500 font-medium">Select a safety document</p>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {DOCUMENT_CONFIGS.map((config) => {
+                      const doc = getDocument(config.type);
+                      return (
+                        <button
+                          key={config.type}
+                          onClick={() => handleSelectDocument(config)}
+                          className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-0"
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            doc?.status === "reviewed" ? "bg-emerald-100" : doc ? "bg-amber-100" : "bg-slate-100"
+                          }`}>
+                            <span className={
+                              doc?.status === "reviewed" ? "text-emerald-600" : doc ? "text-amber-600" : "text-slate-400"
+                            }>
+                              {config.icon}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-slate-900">{config.shortLabel}</span>
+                              {doc?.status === "reviewed" && <Check className="w-3 h-3 text-emerald-600" />}
+                              {doc && doc.status !== "reviewed" && (
+                                <span className="text-xs text-amber-600 font-medium capitalize">{doc.status}</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 truncate">{config.description}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Email verification warning */}
+          {isDisabled && (
+            <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-amber-800">
+                  <Link href="/settings" className="underline font-medium">Verify your email</Link> to generate safety documents.
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {/* Error display */}
+          {error && (
+            <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+              <p className="text-xs text-red-700">{error}</p>
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => {
                     setError(null);
                     fetchDocuments();
                   }}
-                  className="inline-flex items-center px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded transition-colors"
+                  className="p-1 text-red-400 hover:text-red-600"
                 >
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Retry
+                  <RefreshCw className="w-3 h-3" />
+                </button>
+                <button onClick={() => setError(null)} className="p-1 text-red-400 hover:text-red-600">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
-
-          {/* Email Verification Warning */}
-          {emailVerified === false && (
-            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-amber-900 mb-1">Email Verification Required</h3>
-                  <p className="text-sm text-amber-800 mb-2">
-                    Please verify your email address to generate safety documents. Check your inbox for a verification email or{" "}
-                    <Link href="/settings" className="underline font-medium">
-                      resend verification email
-                    </Link>.
-                  </p>
-                </div>
-              </div>
+          
+          {/* Quick access to generated documents */}
+          {documents.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {documents.map((doc) => {
+                const config = DOCUMENT_CONFIGS.find(c => c.type === doc.type);
+                return (
+                  <div key={doc.id} className="inline-flex items-center gap-1 pl-2 pr-1 py-1 bg-slate-50 rounded-lg border border-slate-200">
+                    <button
+                      onClick={() => setEditingDoc(doc)}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 hover:text-slate-900"
+                    >
+                      {config?.icon}
+                      {config?.shortLabel}
+                    </button>
+                    <SafetyDocumentPdfButton
+                      document={doc}
+                      jobTitle={jobTitle}
+                      tradeType={tradeType}
+                      address={address}
+                      businessName={businessName}
+                      businessProfile={businessProfile}
+                      compact
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
-
-          {/* AI Warning Banner */}
-          <div className="mb-4">
-            <AIWarningBanner variant="compact" />
-          </div>
-
-          <div className="space-y-4">
-            {DOCUMENT_CONFIGS.map((config) => {
-              const doc = getDocument(config.type);
-              const isGenerating = generating === config.type;
-              const isDisabled = emailVerified === false;
-
-              return (
-                <div
-                  key={config.type}
-                  className={`border border-slate-200 rounded-lg p-4 transition-colors ${isDisabled ? "opacity-60" : "hover:border-amber-300"}`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0 text-amber-600">
-                        {config.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-slate-900 mb-1">{config.label}</h3>
-                        <p className="text-xs text-slate-500 mb-2">{config.description}</p>
-                        {doc && (
-                          <div className="mt-2">
-                            {getStatusBadge(doc.status)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      {doc ? (
-                        <>
-                          <button
-                            onClick={() => handleEdit(doc)}
-                            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4 mr-1" />
-                            Edit
-                          </button>
-                          <SafetyDocumentPdfButton
-                            document={doc}
-                            jobTitle={jobTitle}
-                            tradeType={tradeType}
-                            address={address}
-                            businessName={businessName}
-                            businessProfile={businessProfile}
-                          />
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleGenerate(config.type)}
-                          disabled={isGenerating || generating !== null || isDisabled}
-                          className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={isDisabled ? "Email verification required" : undefined}
-                        >
-                          {isGenerating ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                              Generating...
-                            </>
-                          ) : (
-                            <>
-                              <FileText className="w-4 h-4 mr-1" />
-                              Generate {config.type === "SWMS" ? "SWMS" : config.label}
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
 
@@ -417,4 +435,3 @@ export default function SafetySection({
     </>
   );
 }
-

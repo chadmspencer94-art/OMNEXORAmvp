@@ -27,9 +27,85 @@ import {
   Lightbulb,
   Zap,
 } from "lucide-react";
-import type { BusinessScoreBreakdown } from "@/lib/businessScore";
-import { RATING_TIERS } from "@/lib/businessScore";
 import Link from "next/link";
+
+// Rating tiers - duplicated here for client-side use (avoid importing server-side code)
+const RATING_TIERS = {
+  PLATINUM: { min: 90, label: "Platinum", color: "from-slate-400 to-slate-600", textColor: "text-slate-700" },
+  GOLD: { min: 75, label: "Gold", color: "from-amber-400 to-amber-600", textColor: "text-amber-700" },
+  SILVER: { min: 60, label: "Silver", color: "from-slate-300 to-slate-400", textColor: "text-slate-600" },
+  BRONZE: { min: 40, label: "Bronze", color: "from-orange-300 to-orange-500", textColor: "text-orange-700" },
+  STARTER: { min: 0, label: "Starter", color: "from-slate-200 to-slate-300", textColor: "text-slate-500" },
+} as const;
+
+type RatingTier = keyof typeof RATING_TIERS;
+
+// Type for the analytics data returned from API
+interface BusinessScoreBreakdown {
+  totalScore: number;
+  ratingTier: RatingTier;
+  ratingLabel: string;
+  components: {
+    profileCompleteness: { score: number; weight: number; weighted: number };
+    quoteConversion: { score: number; weight: number; weighted: number };
+    jobVolume: { score: number; weight: number; weighted: number };
+    responseTime: { score: number; weight: number; weighted: number };
+    verification: { score: number; weight: number; weighted: number };
+    platformEngagement: { score: number; weight: number; weighted: number };
+    complianceReadiness: { score: number; weight: number; weighted: number };
+  };
+  profileCompleteness: {
+    businessName: boolean;
+    abn: boolean;
+    primaryTrade: boolean;
+    businessAddress: boolean;
+    contactInfo: boolean;
+    rates: boolean;
+    serviceArea: boolean;
+    signature: boolean;
+    percentage: number;
+  };
+  quotePerformance: {
+    totalQuotes: number;
+    acceptedQuotes: number;
+    declinedQuotes: number;
+    pendingQuotes: number;
+    conversionRate: number;
+    avgResponseDays: number;
+  };
+  jobPerformance: {
+    totalJobs: number;
+    completedJobs: number;
+    jobsLast30Days: number;
+    jobsLast90Days: number;
+    variationRate: number;
+    avgVariationValue: number;
+  };
+  engagement: {
+    loginFrequency: number;
+    documentsGenerated: number;
+    materialsLibrarySize: number;
+    templatesCreated: number;
+    clientsManaged: number;
+  };
+  tradeSpecific: {
+    trade: string;
+    complianceChecklist: string[];
+    complianceScore: number;
+    industryBenchmarks: {
+      avgQuoteConversion: number;
+      avgJobsPerMonth: number;
+      avgResponseTime: number;
+    };
+    performanceVsBenchmark: {
+      quoteConversion: "above" | "at" | "below";
+      jobVolume: "above" | "at" | "below";
+      responseTime: "above" | "at" | "below";
+    };
+  } | null;
+  recommendations: string[];
+  lastCalculated: string;
+}
 
 interface AdvancedAnalyticsClientProps {
   primaryTrade: string | null;
