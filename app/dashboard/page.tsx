@@ -728,7 +728,7 @@ export default function DashboardPage() {
               <div>
                 <h3 className="text-sm font-semibold text-amber-900">Pro Tip</h3>
                 <p className="text-sm text-amber-800 mt-1">
-                  Complete your business profile to unlock AI-powered job matching and get connected with clients in your area.
+                  Complete your business profile to enjoy a more streamlined and more precise documentation experience.
                 </p>
               </div>
             </div>
