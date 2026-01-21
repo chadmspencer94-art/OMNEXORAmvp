@@ -62,93 +62,120 @@ export default function SpecDocExportButtons({
     try {
       const pdf = new PdfDocument();
       const scopeLines = job.aiScopeOfWork?.split("\n").filter(line => line.trim()) || [];
+      const documentRef = `SD-${job.id.slice(0, 8).toUpperCase()}`;
+      const documentDate = formatDate(job.updatedAt || job.createdAt);
 
-      // Business Header
-      if (businessProfile?.legalName) {
-        pdf.addBusinessHeader(businessProfile);
-      }
-
-      // Title
-      pdf.addTitle("Detailed Scope of Work & Specifications");
-      pdf.addSeparator();
-
-      // Job Details Metadata
-      pdf.addMetadata([
-        { label: "Project", value: job.title || "" },
-        { label: "Property Address", value: job.address || "" },
-        { label: "Trade Type", value: job.tradeType || "" },
-        { label: "Property Type", value: job.propertyType || "" },
-        { label: "Client", value: job.clientName || "" },
-        { label: "Document Date", value: formatDate(job.updatedAt || job.createdAt) },
-      ]);
-
-      pdf.addSeparator();
-
-      // Scope of Work
-      pdf.addSectionHeading("Scope of Work");
-      scopeLines.forEach((line, index) => {
-        pdf.addText(`${index + 1}. ${line}`, { indent: 4 });
-        pdf.addSpace(4);
+      // =========================================
+      // COMPACT PREMIUM HEADER
+      // =========================================
+      pdf.addCompactPremiumHeader({
+        documentType: "Scope of Work & Specifications",
+        documentRef,
+        documentDate,
+        issuer: businessProfile ? {
+          businessName: businessProfile.legalName,
+          abn: businessProfile.abn,
+          phone: businessProfile.phone,
+          email: businessProfile.email,
+        } : undefined,
+        client: job.clientName ? {
+          name: job.clientName,
+          address: job.address || undefined,
+        } : undefined,
+        projectTitle: job.title || undefined,
+        projectAddress: job.address || undefined,
       });
 
-      pdf.addSpace(8);
-
-      // Specifications
-      if (job.aiInclusions || job.aiMaterials || job.notes) {
-        pdf.addSectionHeading("Specifications");
-        
-        if (job.aiInclusions) {
-          pdf.addSubheading("Included Items");
-          const inclusions = job.aiInclusions.split("\n").filter(line => line.trim());
-          pdf.addBulletList(inclusions);
-          pdf.addSpace(4);
+      // =========================================
+      // SCOPE OF WORK (Compact numbered list)
+      // =========================================
+      if (scopeLines.length > 0) {
+        pdf.addCompactSectionHeading("Scope of Work");
+        const maxItems = Math.min(scopeLines.length, 12);
+        for (let i = 0; i < maxItems; i++) {
+          pdf.addCompactText(`${i + 1}. ${scopeLines[i]}`, { indent: 0 });
         }
-
-        if (job.aiMaterials) {
-          pdf.addSubheading("Materials");
-          pdf.addParagraph(job.materialsOverrideText || job.aiMaterials);
-          pdf.addSpace(4);
+        if (scopeLines.length > maxItems) {
+          pdf.addCompactText(`+ ${scopeLines.length - maxItems} more items (see full specification)`, { 
+            color: [100, 116, 139] 
+          });
         }
-
-        if (job.notes) {
-          pdf.addSubheading("Additional Notes");
-          pdf.addParagraph(job.notes);
-          pdf.addSpace(4);
-        }
+        pdf.addSpace(3);
       }
 
-      // Exclusions
-      if (job.aiExclusions) {
-        pdf.addSectionHeading("Exclusions");
-        const exclusions = job.aiExclusions.split("\n").filter(line => line.trim());
-        pdf.addBulletList(exclusions);
-        pdf.addSpace(8);
-      }
-
-      // Signature Section
-      pdf.addSeparator();
-      pdf.addSpace(8);
-      pdf.addText("Client Signature", { fontSize: 10, fontWeight: "bold" });
-      pdf.addSpace(12);
-      pdf.addText(job.clientName || "Client Name", { fontSize: 9 });
-      pdf.addSpace(4);
-      pdf.addText("Date: ________________", { fontSize: 9 });
-      pdf.addSpace(4);
+      // =========================================
+      // SPECIFICATIONS (Compact two-column layout)
+      // =========================================
+      const hasInclusions = job.aiInclusions && job.aiInclusions.trim();
+      const hasMaterials = job.aiMaterials && job.aiMaterials.trim();
+      const hasNotes = job.notes && job.notes.trim();
       
-      pdf.addSpace(8);
-      pdf.addText("Contractor Signature", { fontSize: 10, fontWeight: "bold" });
-      pdf.addSpace(12);
-      pdf.addText(user?.email?.split("@")[0] || "", { fontSize: 9 });
-      pdf.addSpace(4);
-      pdf.addText("Date: ________________", { fontSize: 9 });
-      pdf.addSpace(4);
+      if (hasInclusions || hasMaterials || hasNotes) {
+        pdf.addCompactSectionHeading("Specifications");
+        
+        if (hasInclusions) {
+          const doc = pdf.getDoc();
+          doc.setFontSize(7);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(22, 163, 74);
+          doc.text("Included Items:", 20, pdf.getY());
+          pdf.addSpace(3);
+          
+          const inclusions = job.aiInclusions!.split("\n").filter(line => line.trim()).slice(0, 6);
+          pdf.addCompactBulletList(inclusions, 6);
+        }
 
-      // Footer
-      if (businessProfile?.legalName) {
-        pdf.addIssuedFooter(businessProfile.legalName, `SD-${job.id.slice(0, 8).toUpperCase()}`);
-      } else {
-        pdf.addStandardFooters({ jobId: job.id });
+        if (hasMaterials) {
+          pdf.addCompactText("Materials:", { bold: true });
+          const materialsText = (job.materialsOverrideText || job.aiMaterials || "").substring(0, 150);
+          pdf.addCompactText(materialsText + (materialsText.length >= 150 ? "..." : ""), { indent: 2 });
+          pdf.addSpace(2);
+        }
+
+        if (hasNotes) {
+          pdf.addCompactText("Additional Notes:", { bold: true });
+          const notesText = job.notes!.substring(0, 100);
+          pdf.addCompactText(notesText + (notesText.length >= 100 ? "..." : ""), { indent: 2 });
+          pdf.addSpace(2);
+        }
       }
+
+      // =========================================
+      // EXCLUSIONS (Compact)
+      // =========================================
+      if (job.aiExclusions) {
+        pdf.addCompactSectionHeading("Exclusions");
+        const exclusions = job.aiExclusions.split("\n").filter(line => line.trim()).slice(0, 5);
+        const doc = pdf.getDoc();
+        exclusions.forEach((item) => {
+          doc.setFontSize(6);
+          doc.setTextColor(220, 38, 38);
+          doc.text("✗", 20, pdf.getY());
+          doc.setTextColor(15, 23, 42);
+          doc.text(item.substring(0, 70), 24, pdf.getY());
+          pdf.addSpace(2.5);
+        });
+        pdf.addSpace(2);
+      }
+
+      // =========================================
+      // SIGNATURE BLOCK (Trade + Client)
+      // =========================================
+      pdf.addSpace(4);
+      pdf.addCompactDualSignatureBlock({
+        tradeLabel: "CONTRACTOR/TRADE",
+        tradeName: businessProfile?.legalName || user?.email?.split("@")[0] || "",
+        clientLabel: "CLIENT/PRINCIPAL",
+        clientName: job.clientName || "",
+      });
+
+      // =========================================
+      // COMPACT FOOTER
+      // =========================================
+      pdf.addCompactFooter({
+        issuerName: businessProfile?.legalName || "OMNEXORA",
+        documentId: documentRef,
+      });
 
       // Save PDF
       const filename = `spec-doc-${job.id.slice(0, 8)}.pdf`;

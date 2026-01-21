@@ -1633,6 +1633,435 @@ export class PdfDocument {
   }
 
   // -------------------------------------------------------------------------
+  // COMPACT ONE-PAGE DOCUMENT METHODS
+  // For premium client-facing documents that must fit on one page
+  // -------------------------------------------------------------------------
+
+  /**
+   * Add compact premium header for one-page client documents
+   * Smaller, more efficient layout while maintaining premium look
+   */
+  addCompactPremiumHeader(options: {
+    documentType: string;
+    documentRef?: string;
+    documentDate?: string;
+    issuer?: {
+      businessName?: string;
+      abn?: string;
+      phone?: string;
+      email?: string;
+      licenseNumber?: string;
+    };
+    client?: {
+      name?: string;
+      address?: string;
+    };
+    projectTitle?: string;
+    projectAddress?: string;
+  }): void {
+    const { documentType, documentRef, documentDate, issuer, client, projectTitle, projectAddress } = options;
+    
+    // Compact navy header - 28mm height
+    this.doc.setFillColor(30, 41, 59); // slate-800
+    this.doc.rect(0, 0, this.config.pageWidth, 28, "F");
+    
+    // Gold accent line
+    this.doc.setFillColor(202, 138, 4); // yellow-600
+    this.doc.rect(0, 28, this.config.pageWidth, 1.5, "F");
+
+    // Business name (left side)
+    this.doc.setFontSize(12);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(255, 255, 255);
+    this.doc.text(issuer?.businessName?.toUpperCase() || "OMNEXORA", this.config.marginLeft, 10);
+    
+    // ABN and License (small, under business name)
+    if (issuer?.abn || issuer?.licenseNumber) {
+      this.doc.setFontSize(6);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(148, 163, 184); // slate-400
+      const credLine = [
+        issuer.abn ? `ABN: ${issuer.abn.replace(/\s/g, "").replace(/(.{2})(.{3})(.{3})(.{3})/, "$1 $2 $3 $4")}` : "",
+        issuer.licenseNumber ? `Lic: ${issuer.licenseNumber}` : ""
+      ].filter(Boolean).join("  |  ");
+      this.doc.text(credLine, this.config.marginLeft, 15);
+    }
+    
+    // Contact info (under credentials)
+    if (issuer?.phone || issuer?.email) {
+      this.doc.setFontSize(6);
+      this.doc.setTextColor(148, 163, 184);
+      const contactLine = [issuer.phone, issuer.email].filter(Boolean).join("  |  ");
+      this.doc.text(contactLine, this.config.marginLeft, 20);
+    }
+
+    // Document type and reference (right side)
+    const rightX = this.config.pageWidth - this.config.marginRight;
+    this.doc.setFontSize(10);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(202, 138, 4); // gold
+    this.doc.text(documentType.toUpperCase(), rightX, 10, { align: "right" });
+    
+    if (documentRef) {
+      this.doc.setFontSize(7);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(255, 255, 255);
+      this.doc.text(`Ref: ${documentRef}`, rightX, 15, { align: "right" });
+    }
+    
+    if (documentDate) {
+      this.doc.setFontSize(6);
+      this.doc.setTextColor(148, 163, 184);
+      this.doc.text(documentDate, rightX, 20, { align: "right" });
+    }
+
+    // Info bar with client/project details (if provided)
+    let barY = 32;
+    if (client?.name || projectTitle || projectAddress) {
+      this.doc.setFillColor(248, 250, 252); // slate-50
+      this.doc.rect(this.config.marginLeft, barY, this.maxWidth, 14, "F");
+      this.doc.setDrawColor(226, 232, 240);
+      this.doc.setLineWidth(0.3);
+      this.doc.rect(this.config.marginLeft, barY, this.maxWidth, 14, "S");
+
+      this.doc.setFontSize(6);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(100, 116, 139);
+      
+      // Left side - client info
+      if (client?.name) {
+        this.doc.text("CLIENT:", this.config.marginLeft + 3, barY + 4);
+        this.doc.setFont("helvetica", "normal");
+        this.doc.setFontSize(7);
+        this.doc.setTextColor(15, 23, 42);
+        this.doc.text(client.name, this.config.marginLeft + 3, barY + 9);
+        if (client.address) {
+          this.doc.setFontSize(6);
+          this.doc.setTextColor(100, 116, 139);
+          this.doc.text(client.address.substring(0, 50), this.config.marginLeft + 3, barY + 12);
+        }
+      }
+
+      // Right side - project info
+      const midX = this.config.marginLeft + this.maxWidth / 2;
+      if (projectTitle || projectAddress) {
+        this.doc.setFontSize(6);
+        this.doc.setFont("helvetica", "bold");
+        this.doc.setTextColor(100, 116, 139);
+        this.doc.text("PROJECT:", midX, barY + 4);
+        this.doc.setFont("helvetica", "normal");
+        this.doc.setFontSize(7);
+        this.doc.setTextColor(15, 23, 42);
+        if (projectTitle) this.doc.text(projectTitle.substring(0, 40), midX, barY + 9);
+        if (projectAddress) {
+          this.doc.setFontSize(6);
+          this.doc.setTextColor(100, 116, 139);
+          this.doc.text(projectAddress.substring(0, 40), midX, barY + 12);
+        }
+      }
+      
+      barY += 16;
+    }
+
+    this.y = barY + 2;
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
+   * Add compact section heading for one-page documents
+   */
+  addCompactSectionHeading(text: string): void {
+    this.doc.setFontSize(9);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(30, 41, 59); // slate-800
+    this.doc.text(this.cleanText(text).toUpperCase(), this.config.marginLeft, this.y);
+    this.y += 3;
+    
+    // Thin gold underline
+    this.doc.setDrawColor(202, 138, 4); // gold
+    this.doc.setLineWidth(0.5);
+    this.doc.line(this.config.marginLeft, this.y, this.config.marginLeft + 40, this.y);
+    this.y += 3;
+  }
+
+  /**
+   * Add compact text for one-page documents (smaller font, tighter spacing)
+   */
+  addCompactText(text: string, options?: { indent?: number; bold?: boolean; color?: [number, number, number] }): void {
+    const cleanedText = this.cleanText(text);
+    if (!cleanedText) return;
+
+    this.doc.setFontSize(7);
+    this.doc.setFont("helvetica", options?.bold ? "bold" : "normal");
+    this.doc.setTextColor(...(options?.color || this.config.colors.text));
+
+    const indent = options?.indent || 0;
+    const lines = this.doc.splitTextToSize(cleanedText, this.maxWidth - indent);
+    
+    for (const line of lines) {
+      this.doc.text(line, this.config.marginLeft + indent, this.y);
+      this.y += 2.8;
+    }
+  }
+
+  /**
+   * Add compact bullet list for one-page documents
+   */
+  addCompactBulletList(items: string[], maxItems: number = 10): void {
+    const displayItems = items.slice(0, maxItems);
+    
+    for (const item of displayItems) {
+      const cleanItem = this.cleanText(item);
+      if (!cleanItem) continue;
+      
+      this.doc.setFontSize(7);
+      this.doc.setTextColor(22, 163, 74); // green
+      this.doc.text("•", this.config.marginLeft, this.y);
+      
+      this.doc.setTextColor(...this.config.colors.text);
+      const lines = this.doc.splitTextToSize(cleanItem, this.maxWidth - 6);
+      this.doc.text(lines[0], this.config.marginLeft + 4, this.y);
+      this.y += 2.8;
+    }
+    
+    if (items.length > maxItems) {
+      this.doc.setFontSize(6);
+      this.doc.setTextColor(100, 116, 139);
+      this.doc.text(`+ ${items.length - maxItems} more items...`, this.config.marginLeft + 4, this.y);
+      this.y += 2.5;
+    }
+  }
+
+  /**
+   * Add compact table for one-page documents (minimal rows, small fonts)
+   */
+  addCompactTable(headers: string[], rows: string[][], options?: { colWidths?: number[]; maxRows?: number }): void {
+    const colWidths = options?.colWidths || headers.map(() => this.maxWidth / headers.length);
+    const maxRows = options?.maxRows || 8;
+    const displayRows = rows.slice(0, maxRows);
+    const rowHeight = 5;
+    const cellPadding = 1.5;
+
+    // Header row
+    const headerY = this.y;
+    this.doc.setFillColor(30, 41, 59); // slate-800
+    this.doc.rect(this.config.marginLeft, headerY - 1, this.maxWidth, rowHeight + 1, "F");
+    
+    this.doc.setFontSize(6);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(255, 255, 255);
+    
+    let xPos = this.config.marginLeft + cellPadding;
+    for (let i = 0; i < headers.length; i++) {
+      this.doc.text(this.cleanText(headers[i]).substring(0, 15), xPos, headerY + 3);
+      xPos += colWidths[i];
+    }
+    this.y = headerY + rowHeight + 1;
+
+    // Data rows
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setFontSize(6);
+    
+    for (let rowIndex = 0; rowIndex < displayRows.length; rowIndex++) {
+      const row = displayRows[rowIndex];
+      
+      if (rowIndex % 2 === 0) {
+        this.doc.setFillColor(248, 250, 252);
+        this.doc.rect(this.config.marginLeft, this.y - 1, this.maxWidth, rowHeight, "F");
+      }
+      
+      this.doc.setDrawColor(226, 232, 240);
+      this.doc.setLineWidth(0.2);
+      this.doc.line(this.config.marginLeft, this.y + rowHeight - 1, this.config.marginLeft + this.maxWidth, this.y + rowHeight - 1);
+      
+      this.doc.setTextColor(...this.config.colors.text);
+      xPos = this.config.marginLeft + cellPadding;
+      for (let i = 0; i < row.length; i++) {
+        this.doc.text(this.cleanText(row[i] || "").substring(0, 20), xPos, this.y + 2.5);
+        xPos += colWidths[i];
+      }
+      this.y += rowHeight;
+    }
+    
+    if (rows.length > maxRows) {
+      this.doc.setFontSize(5);
+      this.doc.setTextColor(100, 116, 139);
+      this.doc.text(`+ ${rows.length - maxRows} more rows (see attached schedule)`, this.config.marginLeft, this.y + 2);
+      this.y += 3;
+    }
+    
+    this.y += 2;
+  }
+
+  /**
+   * Add compact totals box for invoices/quotes (one-page friendly)
+   */
+  addCompactTotalsBox(items: { subtotal?: number; gst?: number; total: number }): void {
+    const boxWidth = 60;
+    const boxX = this.config.pageWidth - this.config.marginRight - boxWidth;
+    const boxHeight = 22;
+    
+    // Background
+    this.doc.setFillColor(30, 41, 59);
+    this.doc.rect(boxX, this.y, boxWidth, boxHeight, "F");
+    
+    // Gold accent
+    this.doc.setFillColor(202, 138, 4);
+    this.doc.rect(boxX, this.y, 2, boxHeight, "F");
+
+    const formatCurrency = (amount: number) => 
+      new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
+
+    let lineY = this.y + 5;
+    
+    if (items.subtotal !== undefined) {
+      this.doc.setFontSize(6);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(148, 163, 184);
+      this.doc.text("Subtotal (ex GST)", boxX + 5, lineY);
+      this.doc.text(formatCurrency(items.subtotal), boxX + boxWidth - 4, lineY, { align: "right" });
+      lineY += 4;
+    }
+    
+    if (items.gst !== undefined) {
+      this.doc.setTextColor(148, 163, 184);
+      this.doc.text("GST (10%)", boxX + 5, lineY);
+      this.doc.text(formatCurrency(items.gst), boxX + boxWidth - 4, lineY, { align: "right" });
+      lineY += 4;
+    }
+    
+    // Separator
+    this.doc.setDrawColor(202, 138, 4);
+    this.doc.setLineWidth(0.3);
+    this.doc.line(boxX + 5, lineY - 1, boxX + boxWidth - 4, lineY - 1);
+    lineY += 3;
+    
+    // Total
+    this.doc.setFontSize(8);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(255, 255, 255);
+    this.doc.text("TOTAL", boxX + 5, lineY);
+    this.doc.setTextColor(202, 138, 4);
+    this.doc.text(formatCurrency(items.total), boxX + boxWidth - 4, lineY, { align: "right" });
+    
+    this.y += boxHeight + 3;
+  }
+
+  /**
+   * Add compact dual signature block for client-facing documents
+   * Fits trade and client signatures side by side
+   */
+  addCompactDualSignatureBlock(options: {
+    tradeLabel?: string;
+    tradeName?: string;
+    clientLabel?: string;
+    clientName?: string;
+  }): void {
+    const { 
+      tradeLabel = "CONTRACTOR/TRADE", 
+      tradeName = "", 
+      clientLabel = "CLIENT/PRINCIPAL", 
+      clientName = "" 
+    } = options;
+
+    // Signature section header
+    this.doc.setDrawColor(202, 138, 4); // gold
+    this.doc.setLineWidth(0.5);
+    this.doc.line(this.config.marginLeft, this.y, this.config.marginLeft + this.maxWidth, this.y);
+    this.y += 4;
+    
+    this.doc.setFontSize(7);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(30, 41, 59);
+    this.doc.text("ACCEPTANCE & SIGNATURES", this.config.marginLeft, this.y);
+    this.y += 5;
+
+    const colWidth = (this.maxWidth - 10) / 2;
+    const leftX = this.config.marginLeft;
+    const rightX = this.config.marginLeft + colWidth + 10;
+    const startY = this.y;
+
+    // Trade/Contractor signature (left)
+    this.doc.setFontSize(6);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(100, 116, 139);
+    this.doc.text(tradeLabel, leftX, startY);
+    
+    this.doc.setFontSize(7);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setTextColor(15, 23, 42);
+    this.doc.text(`Name: ${tradeName || "________________________"}`, leftX, startY + 5);
+    
+    this.doc.text("Signature:", leftX, startY + 12);
+    this.doc.setDrawColor(100, 116, 139);
+    this.doc.setLineWidth(0.2);
+    this.doc.line(leftX + 18, startY + 12, leftX + colWidth - 5, startY + 12);
+    
+    this.doc.text("Date:", leftX, startY + 19);
+    this.doc.line(leftX + 12, startY + 19, leftX + colWidth - 5, startY + 19);
+
+    // Client signature (right)
+    this.doc.setFontSize(6);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(100, 116, 139);
+    this.doc.text(clientLabel, rightX, startY);
+    
+    this.doc.setFontSize(7);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setTextColor(15, 23, 42);
+    this.doc.text(`Name: ${clientName || "________________________"}`, rightX, startY + 5);
+    
+    this.doc.text("Signature:", rightX, startY + 12);
+    this.doc.line(rightX + 18, startY + 12, rightX + colWidth - 5, startY + 12);
+    
+    this.doc.text("Date:", rightX, startY + 19);
+    this.doc.line(rightX + 12, startY + 19, rightX + colWidth - 5, startY + 19);
+
+    this.y = startY + 24;
+    this.doc.setTextColor(...this.config.colors.text);
+  }
+
+  /**
+   * Add compact footer for one-page documents
+   */
+  addCompactFooter(options: { issuerName?: string; documentId?: string }): void {
+    const doc = this.doc;
+    const pageHeight = this.config.pageHeight;
+    const pageWidth = this.config.pageWidth;
+    
+    // Footer line
+    doc.setDrawColor(202, 138, 4); // gold
+    doc.setLineWidth(0.5);
+    doc.line(this.config.marginLeft, pageHeight - 10, pageWidth - this.config.marginRight, pageHeight - 10);
+
+    doc.setFontSize(5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    
+    const timestamp = new Date().toLocaleString("en-AU", {
+      day: "numeric", month: "short", year: "numeric"
+    });
+    
+    // Left: Issuer
+    if (options.issuerName) {
+      doc.text(`Issued by ${options.issuerName}`, this.config.marginLeft, pageHeight - 6);
+    }
+    
+    // Center: Compliance note
+    doc.text(
+      "Document formatted for Australian standards. Review required.",
+      pageWidth / 2,
+      pageHeight - 6,
+      { align: "center" }
+    );
+    
+    // Right: Date and ref
+    let rightText = timestamp;
+    if (options.documentId) rightText = `${options.documentId} | ${rightText}`;
+    doc.text(rightText, pageWidth - this.config.marginRight, pageHeight - 6, { align: "right" });
+  }
+
+  // -------------------------------------------------------------------------
   // Document Output
   // -------------------------------------------------------------------------
 

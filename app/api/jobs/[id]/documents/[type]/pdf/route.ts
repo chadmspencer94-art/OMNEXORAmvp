@@ -156,7 +156,7 @@ export async function POST(
       );
     }
 
-    // Generate PDF with premium layout
+    // Generate PDF - Compact one-page premium layout for client-facing documents
     const pdf = new PdfDocument();
     const docLabel = docType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
     const documentNumber = `${docType}-${id.slice(0, 8).toUpperCase()}`;
@@ -166,65 +166,105 @@ export async function POST(
       year: "numeric",
     });
 
-    // Premium Document Header with business identity
-    pdf.addPremiumDocumentHeader({
+    // =========================================
+    // COMPACT PREMIUM HEADER
+    // =========================================
+    pdf.addCompactPremiumHeader({
       documentType: docLabel,
-      documentNumber,
+      documentRef: documentNumber,
       documentDate,
       issuer: businessProfile ? {
-        legalName: businessProfile.legalName,
-        tradingName: businessProfile.tradingName,
+        businessName: businessProfile.legalName,
         abn: businessProfile.abn,
-        email: businessProfile.email,
         phone: businessProfile.phone,
-        addressLine1: businessProfile.addressLine1,
-        suburb: businessProfile.suburb,
-        state: businessProfile.state,
-        postcode: businessProfile.postcode,
+        email: businessProfile.email,
       } : undefined,
-      recipient: job.clientName ? {
+      client: job.clientName ? {
         name: job.clientName,
         address: job.address || undefined,
       } : undefined,
-      jobReference: id.slice(0, 8).toUpperCase(),
-      projectName: job.title || undefined,
+      projectTitle: job.title || undefined,
       projectAddress: job.address || undefined,
     });
 
-    // Australian Compliance Reference (no compliance claims - just references to relevant authority)
-    // Uses business state or defaults to WA
-    pdf.addAustralianComplianceReference(businessProfile?.state || "WA");
-
-    // R3: No AI warnings on confirmed document exports (client-facing)
-    // AI warnings are only shown in draft/preview mode, not in exported PDFs
-
-    // Document content with improved formatting
+    // =========================================
+    // DOCUMENT CONTENT (Compact formatting)
+    // =========================================
     const contentSections = content.split("\n\n");
+    let sectionCount = 0;
+    const maxSections = 8; // Limit sections for one-page fit
+    
     for (const section of contentSections) {
-      if (section.trim()) {
+      if (section.trim() && sectionCount < maxSections) {
+        sectionCount++;
+        
         // Check if it's a heading (starts with # or all caps)
         if (section.match(/^#+\s/) || (section.length < 100 && section === section.toUpperCase() && !section.includes("."))) {
-          pdf.addSectionHeading(section.replace(/^#+\s/, "").trim());
+          pdf.addCompactSectionHeading(section.replace(/^#+\s/, "").trim());
         } else if (section.match(/^[-•*]\s/m)) {
-          // It's a bullet list
+          // It's a bullet list - use compact version
           const items = section.split("\n").filter((line: string) => line.trim());
-          pdf.addBulletList(items.map((item: string) => item.replace(/^[-•*]\s+/, "")));
+          pdf.addCompactBulletList(
+            items.map((item: string) => item.replace(/^[-•*]\s+/, "")),
+            6 // Max 6 items per list for compact fit
+          );
+          pdf.addSpace(2);
         } else if (section.match(/^\d+\.\s/m)) {
-          // It's a numbered list
-          const items = section.split("\n").filter((line: string) => line.trim());
-          pdf.addNumberedList(items.map((item: string) => item.replace(/^\d+\.\s+/, "")));
+          // It's a numbered list - render compactly
+          const items = section.split("\n").filter((line: string) => line.trim()).slice(0, 6);
+          items.forEach((item: string, idx: number) => {
+            pdf.addCompactText(`${idx + 1}. ${item.replace(/^\d+\.\s+/, "")}`, { indent: 0 });
+          });
+          pdf.addSpace(2);
         } else {
-          pdf.addParagraph(section.trim());
+          // Regular text - truncate if too long
+          const text = section.trim();
+          const truncatedText = text.length > 250 ? text.substring(0, 250) + "..." : text;
+          pdf.addCompactText(truncatedText);
+          pdf.addSpace(2);
         }
       }
     }
 
-    // Premium Footer with compliance note
-    pdf.addPremiumFooter({
+    // =========================================
+    // TOTALS BOX FOR PROGRESS CLAIM / INVOICE TYPES
+    // =========================================
+    if (docType === "PROGRESS_CLAIM") {
+      // Extract totals from content if available
+      const totalMatch = content.match(/total[:\s]*\$?([\d,]+\.?\d*)/i);
+      const gstMatch = content.match(/gst[:\s]*\$?([\d,]+\.?\d*)/i);
+      const subtotalMatch = content.match(/subtotal[:\s]*\$?([\d,]+\.?\d*)/i);
+      
+      const total = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, "")) : 0;
+      const gst = gstMatch ? parseFloat(gstMatch[1].replace(/,/g, "")) : (total ? total * 0.091 : 0);
+      const subtotal = subtotalMatch ? parseFloat(subtotalMatch[1].replace(/,/g, "")) : (total ? total * 0.909 : 0);
+      
+      if (total > 0) {
+        pdf.addCompactTotalsBox({
+          subtotal: Math.round(subtotal),
+          gst: Math.round(gst),
+          total: Math.round(total),
+        });
+      }
+    }
+
+    // =========================================
+    // SIGNATURE BLOCK (Trade + Client)
+    // =========================================
+    pdf.addSpace(4);
+    pdf.addCompactDualSignatureBlock({
+      tradeLabel: "CONTRACTOR/TRADE",
+      tradeName: businessProfile?.legalName || "",
+      clientLabel: "CLIENT/PRINCIPAL",
+      clientName: job.clientName || "",
+    });
+
+    // =========================================
+    // COMPACT FOOTER
+    // =========================================
+    pdf.addCompactFooter({
       issuerName: businessProfile?.legalName || "OMNEXORA",
       documentId: documentNumber,
-      stateCode: businessProfile?.state || "WA",
-      includeComplianceNote: true,
     });
 
     // Return PDF

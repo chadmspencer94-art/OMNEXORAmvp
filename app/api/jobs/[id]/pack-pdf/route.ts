@@ -259,114 +259,90 @@ export async function POST(
       }
     }
 
-    // Generate PDF
+    // Generate PDF - Compact one-page premium layout
     const pdf = new PdfDocument();
+    const documentRef = `JP-${jobId.slice(0, 8).toUpperCase()}`;
+    const documentDate = formatDate(job.createdAt);
 
     // =========================================
-    // BUSINESS HEADER
+    // COMPACT PREMIUM HEADER
     // =========================================
-    if (businessProfile?.legalName) {
-      pdf.addBusinessHeader(businessProfile);
-    } else {
-      pdf.addBrandedHeader("Job Pack");
-    }
-
-    // =========================================
-    // JOB TITLE
-    // =========================================
-    pdf.addTitle(job.title || "Job Pack");
-    pdf.addText("Job Pack / Quote", { fontSize: 10, color: [100, 116, 139] });
-    pdf.addSpace(4);
-
-    // =========================================
-    // JOB METADATA
-    // =========================================
-    const metaItems: Array<{ label: string; value: string }> = [];
-    if (job.tradeType) metaItems.push({ label: "Trade", value: job.tradeType });
-    if (job.propertyType) metaItems.push({ label: "Property", value: job.propertyType });
-    if (job.address) metaItems.push({ label: "Address", value: job.address });
-    if (job.clientName) metaItems.push({ label: "Client", value: job.clientName });
-    metaItems.push({ label: "Date", value: formatDate(job.createdAt) });
-    pdf.addMetadata(metaItems);
-
-    // =========================================
-    // R5: EXPORT IDENTIFIERS - Client-ready baseline
-    // =========================================
-    pdf.addExportIdentifiers({
+    pdf.addCompactPremiumHeader({
       documentType: "Job Pack / Quote",
-      documentId: `JP-${jobId.slice(0, 8).toUpperCase()}`,
-      jobId: jobId.slice(0, 12),
-      generatedAt: new Date().toISOString(),
-      revision: job.quoteVersion || 1,
-      contractorName: businessProfile?.legalName,
+      documentRef,
+      documentDate,
+      issuer: businessProfile ? {
+        businessName: businessProfile.legalName,
+        abn: businessProfile.abn,
+        phone: businessProfile.phone,
+        email: businessProfile.email,
+      } : undefined,
+      client: job.clientName ? {
+        name: job.clientName,
+        address: job.address || undefined,
+      } : undefined,
+      projectTitle: job.title || undefined,
+      projectAddress: job.address || undefined,
     });
 
     // =========================================
-    // R11: JURISDICTION LABEL - From user's businessState
-    // =========================================
-    // Map state codes to full names for readability
-    const stateToJurisdiction: Record<string, string> = {
-      WA: "Western Australia",
-      NSW: "New South Wales",
-      VIC: "Victoria",
-      QLD: "Queensland",
-      SA: "South Australia",
-      TAS: "Tasmania",
-      NT: "Northern Territory",
-      ACT: "Australian Capital Territory",
-    };
-    const jurisdiction = businessProfile?.state
-      ? stateToJurisdiction[businessProfile.state.toUpperCase()] || businessProfile.state
-      : "Western Australia";
-    pdf.addJurisdictionLabel(jurisdiction);
-
-    // R1: No AI warnings on confirmed exports (already gated above)
-
-    // =========================================
-    // SUMMARY
+    // SUMMARY (Compact)
     // =========================================
     if (job.aiSummary) {
-      pdf.addSectionHeading("Summary");
-      pdf.addParagraph(job.aiSummary);
+      pdf.addCompactSectionHeading("Summary");
+      // Truncate to fit one page
+      const summaryText = job.aiSummary.length > 200 
+        ? job.aiSummary.substring(0, 200) + "..." 
+        : job.aiSummary;
+      pdf.addCompactText(summaryText);
+      pdf.addSpace(2);
     }
 
     // =========================================
-    // PRICING
+    // SCOPE OF WORK (Compact bullet list)
+    // =========================================
+    if (job.aiScopeOfWork) {
+      pdf.addCompactSectionHeading("Scope of Work");
+      const scopeItems = job.aiScopeOfWork.split("\n").filter((line) => line.trim());
+      pdf.addCompactBulletList(scopeItems, 8); // Max 8 items
+      pdf.addSpace(2);
+    }
+
+    // =========================================
+    // PRICING/ESTIMATE (Compact totals)
     // =========================================
     if (job.aiQuote) {
       try {
-        const quote: ParsedQuote = JSON.parse(job.aiQuote);
-        pdf.addSectionHeading("Pricing");
-
-        if (quote.labour) {
-          pdf.addSubheading("Labour");
-          if (quote.labour.description) {
-            pdf.addParagraph(quote.labour.description);
+        const estimateRange = calculateEstimateRange(job.aiQuote);
+        const totalEstimate = estimateRange.highEstimate || estimateRange.baseTotal || 0;
+        
+        if (totalEstimate > 0) {
+          pdf.addCompactSectionHeading("Pricing");
+          
+          // Labour info if available
+          const quote: ParsedQuote = JSON.parse(job.aiQuote);
+          if (quote.labour?.hours || quote.labour?.ratePerHour) {
+            const labourLine = [
+              quote.labour.hours ? `${quote.labour.hours} hrs` : "",
+              quote.labour.ratePerHour ? `@ ${quote.labour.ratePerHour}/hr` : "",
+            ].filter(Boolean).join(" ");
+            if (labourLine) {
+              pdf.addCompactText(`Labour: ${labourLine}`, { indent: 2 });
+            }
           }
-          const labourDetails: string[] = [];
-          if (quote.labour.hours) labourDetails.push(`Hours: ${quote.labour.hours}`);
-          if (quote.labour.ratePerHour) labourDetails.push(`Rate: ${quote.labour.ratePerHour}`);
-          if (quote.labour.total) labourDetails.push(`Total: ${quote.labour.total}`);
-          if (labourDetails.length > 0) {
-            pdf.addParagraph(labourDetails.join("  |  "));
+          
+          // Materials total if we have it
+          const materialsTotal = job.materialsTotal || 
+            (jobMaterials.length > 0 ? jobMaterials.reduce((sum, m) => sum + (m.lineTotal || 0), 0) : 0);
+          if (materialsTotal > 0) {
+            pdf.addCompactText(`Materials: ${formatCurrency(materialsTotal)}`, { indent: 2 });
           }
-        }
-
-        if (quote.materials) {
-          pdf.addSubheading("Materials");
-          if (quote.materials.description) {
-            pdf.addParagraph(quote.materials.description);
-          }
-          if (quote.materials.totalMaterialsCost) {
-            pdf.addParagraph(`Total: ${quote.materials.totalMaterialsCost}`);
-          }
-        }
-
-        if (quote.totalEstimate) {
-          const estimateRange = calculateEstimateRange(job.aiQuote);
-          pdf.addHighlightBox({
-            label: "Total Estimate",
-            value: estimateRange.formattedRange,
+          
+          pdf.addSpace(2);
+          pdf.addCompactTotalsBox({
+            subtotal: Math.round(totalEstimate * 0.909), // ex GST
+            gst: Math.round(totalEstimate * 0.091),
+            total: totalEstimate,
           });
         }
       } catch {
@@ -375,42 +351,66 @@ export async function POST(
     }
 
     // =========================================
-    // SCOPE OF WORK
+    // INCLUSIONS & EXCLUSIONS (Side by side, compact)
     // =========================================
-    if (job.aiScopeOfWork) {
-      pdf.addSectionHeading("Scope of Work");
-      const scopeItems = job.aiScopeOfWork.split("\n").filter((line) => line.trim());
-      pdf.addNumberedList(scopeItems);
+    const hasInclusions = job.aiInclusions && job.aiInclusions.trim();
+    const hasExclusions = job.aiExclusions && job.aiExclusions.trim();
+    
+    if (hasInclusions || hasExclusions) {
+      const doc = pdf.getDoc();
+      const startY = pdf.getY();
+      const colWidth = (pdf.getDoc().internal.pageSize.width - 40 - 5) / 2;
+      
+      // Inclusions (left column)
+      if (hasInclusions) {
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(22, 163, 74);
+        doc.text("INCLUDED", 20, startY);
+        
+        const inclusionItems = job.aiInclusions!.split("\n").filter((line) => line.trim()).slice(0, 5);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6);
+        doc.setTextColor(15, 23, 42);
+        inclusionItems.forEach((item, i) => {
+          doc.setTextColor(22, 163, 74);
+          doc.text("✓", 20, startY + 4 + (i * 3));
+          doc.setTextColor(15, 23, 42);
+          doc.text(item.substring(0, 45), 24, startY + 4 + (i * 3));
+        });
+      }
+      
+      // Exclusions (right column)
+      if (hasExclusions) {
+        const rightX = 20 + colWidth + 5;
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(220, 38, 38);
+        doc.text("NOT INCLUDED", rightX, startY);
+        
+        const exclusionItems = job.aiExclusions!.split("\n").filter((line) => line.trim()).slice(0, 5);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6);
+        exclusionItems.forEach((item, i) => {
+          doc.setTextColor(220, 38, 38);
+          doc.text("✗", rightX, startY + 4 + (i * 3));
+          doc.setTextColor(15, 23, 42);
+          doc.text(item.substring(0, 45), rightX + 4, startY + 4 + (i * 3));
+        });
+      }
+      
+      const maxItems = Math.max(
+        hasInclusions ? job.aiInclusions!.split("\n").filter((line) => line.trim()).slice(0, 5).length : 0,
+        hasExclusions ? job.aiExclusions!.split("\n").filter((line) => line.trim()).slice(0, 5).length : 0
+      );
+      pdf.setY(startY + 5 + (maxItems * 3) + 3);
     }
 
     // =========================================
-    // INCLUSIONS
+    // MATERIALS TABLE (Compact, if we have detailed materials)
     // =========================================
-    if (job.aiInclusions) {
-      pdf.addSectionHeading("What's Included");
-      const inclusionItems = job.aiInclusions.split("\n").filter((line) => line.trim());
-      pdf.addInclusionsList(inclusionItems);
-    }
-
-    // =========================================
-    // EXCLUSIONS
-    // =========================================
-    if (job.aiExclusions) {
-      pdf.addSectionHeading("Not Included");
-      const exclusionItems = job.aiExclusions.split("\n").filter((line) => line.trim());
-      pdf.addExclusionsList(exclusionItems);
-    }
-
-    // =========================================
-    // MATERIALS
-    // =========================================
-    const hasOverride = job.materialsOverrideText && job.materialsOverrideText.trim().length > 0;
-    const hasJobMaterials = jobMaterials && jobMaterials.length > 0;
-
-    if (hasJobMaterials) {
-      pdf.addSectionHeading("Materials");
-
-      // Build table data
+    if (jobMaterials && jobMaterials.length > 0) {
+      pdf.addCompactSectionHeading("Materials");
       const headers = ["Material", "Qty", "Unit", "Total"];
       const rows = jobMaterials.map((m) => [
         m.name,
@@ -418,101 +418,30 @@ export async function POST(
         m.unitLabel,
         formatCurrency(m.lineTotal || 0),
       ]);
-
-      pdf.addTable(headers, rows, { colWidths: [80, 25, 30, 35] });
-
-      // Total row
-      const materialsTableTotal = jobMaterials.reduce((sum, m) => sum + (m.lineTotal || 0), 0);
-      const finalTotal = job.materialsTotal != null ? job.materialsTotal : materialsTableTotal;
-      pdf.addHighlightBox({
-        label: "Materials Total",
-        value: formatCurrency(finalTotal),
+      pdf.addCompactTable(headers, rows, { 
+        colWidths: [75, 20, 25, 30], 
+        maxRows: 6 
       });
-    } else if (hasOverride) {
-      pdf.addSectionHeading("Materials");
-      pdf.addText("Final materials notes (overrides AI suggestion)", {
-        fontSize: 9,
-        fontWeight: "normal",
-        color: [59, 130, 246],
-      });
-      pdf.addSpace(4);
-      pdf.addParagraph(job.materialsOverrideText!);
-    } else if (job.aiMaterials) {
-      try {
-        const materials: MaterialItem[] = JSON.parse(job.aiMaterials);
-        if (Array.isArray(materials) && materials.length > 0) {
-          pdf.addSectionHeading("Materials");
-
-          const headers = ["Item", "Qty", "Est. Cost"];
-          const rows = materials.map((m) => [
-            m.item || "",
-            m.quantity || "-",
-            m.estimatedCost || "-",
-          ]);
-
-          pdf.addTable(headers, rows, { colWidths: [90, 35, 45] });
-        }
-      } catch {
-        // Skip if JSON parsing fails - R3 will handle this better
-      }
-    }
-
-    // R1: No materials disclaimer on confirmed exports
-
-    // =========================================
-    // CLIENT NOTES
-    // =========================================
-    if (job.aiClientNotes) {
-      pdf.addSectionHeading("Notes for Client");
-      pdf.addParagraph(job.aiClientNotes);
     }
 
     // =========================================
-    // JOB DETAILS
+    // SIGNATURE BLOCK (Trade + Client)
     // =========================================
-    if (job.notes) {
-      pdf.addSectionHeading("Job Details");
-      pdf.addParagraph(job.notes);
-    }
-
-    // =========================================
-    // CLIENT ACCEPTANCE
-    // =========================================
-    if (job.clientAcceptedAt && (job.clientAcceptedByName || job.clientSignedName)) {
-      pdf.addSectionHeading("Client Acceptance");
-
-      // Add signature image if available
-      if (clientSignature?.signatureImage) {
-        pdf.addImage(clientSignature.signatureImage, { width: 80, height: 30 });
-      }
-
-      const acceptedByName = job.clientAcceptedByName || job.clientSignedName || "Unknown";
-      pdf.addParagraph(`Accepted by: ${acceptedByName}`);
-
-      if (job.clientSignedEmail) {
-        pdf.addParagraph(`Email: ${job.clientSignedEmail}`);
-      }
-
-      pdf.addParagraph(`Accepted on: ${formatDateTime(job.clientAcceptedAt)}`);
-
-      if (job.quoteNumber && job.clientAcceptedQuoteVer) {
-        pdf.addParagraph(`Quote: ${job.quoteNumber} v${job.clientAcceptedQuoteVer}`);
-      }
-
-      if (job.clientAcceptanceNote && job.clientAcceptanceNote.trim()) {
-        pdf.addSubheading("Client note:");
-        pdf.addParagraph(job.clientAcceptanceNote);
-      }
-    }
+    pdf.addSpace(3);
+    pdf.addCompactDualSignatureBlock({
+      tradeLabel: "CONTRACTOR/TRADE",
+      tradeName: businessProfile?.legalName || "",
+      clientLabel: "CLIENT/PRINCIPAL",
+      clientName: job.clientName || "",
+    });
 
     // =========================================
-    // FOOTER - Professional footer for confirmed exports
+    // COMPACT FOOTER
     // =========================================
-    if (businessProfile?.legalName) {
-      pdf.addIssuedFooter(businessProfile.legalName, `JP-${jobId.slice(0, 8).toUpperCase()}`);
-    } else {
-      pdf.addStandardFooters({ jobId });
-    }
+    pdf.addCompactFooter({
+      issuerName: businessProfile?.legalName || "OMNEXORA",
+      documentId: documentRef,
+    });
 
     // Return PDF as response
     const blob = pdf.getBlob();
