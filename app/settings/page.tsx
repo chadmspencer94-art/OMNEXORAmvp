@@ -30,6 +30,7 @@ import {
   Droplet,
   Hammer,
   Wind,
+  Layers,
 } from "lucide-react";
 import { featureFlags } from "@/lib/featureFlags";
 
@@ -96,6 +97,12 @@ const TRADE_CONFIG: Record<string, { icon: React.ReactNode; color: string; gradi
     color: "text-indigo-600",
     gradient: "from-indigo-500 to-violet-600",
     label: "HVAC Technician",
+  },
+  Flooring: {
+    icon: <Layers className="w-5 h-5" />,
+    color: "text-teal-600",
+    gradient: "from-teal-500 to-emerald-600",
+    label: "Flooring Installer",
   },
   Other: {
     icon: <Briefcase className="w-5 h-5" />,
@@ -971,6 +978,75 @@ export default function SettingsPage() {
                       </div>
                       <p className="mt-3 text-xs text-slate-500">
                         OMNEXORA includes ARC license details on all documentation and refrigerant usage tracking.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Flooring-specific tips */}
+                {userData.primaryTrade === "Flooring" && (
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-xl border border-teal-100 p-5 sm:p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600 flex-shrink-0">
+                          <Layers className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-teal-900 mb-2">Flooring Rate Settings</h3>
+                          <p className="text-sm text-teal-700 mb-3">
+                            Configure your per-m² rates for timber, laminate, vinyl, carpet, and tiles.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-teal-700">
+                              Timber/m²
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-teal-700">
+                              LVP/m²
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-teal-700">
+                              Carpet/m²
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-teal-700">
+                              Sand &amp; polish
+                            </span>
+                          </div>
+                          <Link
+                            href="/settings/business-profile"
+                            className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-teal-700 hover:text-teal-800"
+                          >
+                            Configure flooring rates
+                            <ChevronRight className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Flooring standards & compliance info */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
+                      <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-teal-600" />
+                        Standards & Compliance
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <span className="font-medium text-slate-700">AS 1884 / AS 2455</span>
+                          <p className="text-slate-500 text-xs mt-0.5">Flooring installation standards</p>
+                        </div>
+                        <div className="p-3 bg-teal-50 rounded-lg">
+                          <span className="font-medium text-teal-700">AS 4586 Slip Rating</span>
+                          <p className="text-teal-600 text-xs mt-0.5">P/R ratings for wet areas</p>
+                        </div>
+                        <div className="p-3 bg-amber-50 rounded-lg">
+                          <span className="font-medium text-amber-700">Moisture Testing</span>
+                          <p className="text-amber-600 text-xs mt-0.5">Required before concrete install</p>
+                        </div>
+                        <div className="p-3 bg-rose-50 rounded-lg border border-rose-200">
+                          <span className="font-medium text-rose-700">Asbestos Check</span>
+                          <p className="text-rose-600 text-xs mt-0.5">Test old flooring pre-1990</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-slate-500">
+                        OMNEXORA includes slip ratings, expansion gap requirements, and subfloor prep notes for all flooring documentation.
                       </p>
                     </div>
                   </div>

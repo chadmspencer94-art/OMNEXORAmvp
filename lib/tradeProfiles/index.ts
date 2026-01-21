@@ -16,9 +16,10 @@ export * from "./plumber";
 export * from "./concreter";
 export * from "./carpenter";
 export * from "./hvac";
+export * from "./flooring";
 
 // Trade profile type
-export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "HVAC" | "Other";
+export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "HVAC" | "Flooring" | "Other";
 
 // Get trade-specific system prompt context for AI
 export function getTradeSystemPromptContext(tradeType: string | null): string {
@@ -55,6 +56,9 @@ Trade-Specific Context (Painter):
     case "HVAC":
       const { getHVACSystemPromptContext } = require("./hvac");
       return getHVACSystemPromptContext();
+    case "Flooring":
+      const { getFlooringSystemPromptContext } = require("./flooring");
+      return getFlooringSystemPromptContext();
     case "Electrician":
       const { getElectricianSystemPromptContext: getElecContext } = require("./electrician");
       return getElecContext();
@@ -150,6 +154,17 @@ export function getTradeComplianceNotes(tradeType: string | null): string[] {
         "GEMS energy efficiency registration",
         "Electrical work may require electrician license",
         "Annual refrigerant reporting to ARC",
+      ];
+    case "Flooring":
+      return [
+        "AS 1884 - Resilient flooring installation",
+        "AS/NZS 2455 - Carpet installation",
+        "AS 4586 - Slip resistance classification",
+        "AS 3958.1 - Tile installation",
+        "Moisture testing required (concrete slabs)",
+        "Expansion gaps mandatory (10mm min)",
+        "Asbestos check before old floor removal",
+        "Acclimatisation 48-72hrs before install",
       ];
     default:
       return [
