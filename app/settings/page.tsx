@@ -537,35 +537,69 @@ export default function SettingsPage() {
 
                 {/* Plasterer-specific tips */}
                 {userData.primaryTrade === "Plasterer" && (
-                  <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-100 p-5 sm:p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 flex-shrink-0">
-                        <HardHat className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-orange-900 mb-2">Plasterer Rate Settings</h3>
-                        <p className="text-sm text-orange-700 mb-3">
-                          Set up your per-square-metre rates for plastering work and repairs.
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
-                            Walls per m²
-                          </span>
-                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
-                            Ceilings per m²
-                          </span>
-                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
-                            Patch repairs
-                          </span>
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-100 p-5 sm:p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 flex-shrink-0">
+                          <HardHat className="w-5 h-5" />
                         </div>
-                        <Link
-                          href="/settings/business-profile"
-                          className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-orange-700 hover:text-orange-800"
-                        >
-                          Configure plasterer rates
-                          <ChevronRight className="w-4 h-4" />
-                        </Link>
+                        <div>
+                          <h3 className="font-semibold text-orange-900 mb-2">Plasterer Rate Settings</h3>
+                          <p className="text-sm text-orange-700 mb-3">
+                            Configure your rates for plasterboard installation, repairs, and finishing work.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
+                              Walls per m²
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
+                              Ceilings per m²
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
+                              Cornice per lm
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-orange-700">
+                              Patch repairs
+                            </span>
+                          </div>
+                          <Link
+                            href="/settings/business-profile"
+                            className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-orange-700 hover:text-orange-800"
+                          >
+                            Configure plasterer rates
+                            <ChevronRight className="w-4 h-4" />
+                          </Link>
+                        </div>
                       </div>
+                    </div>
+                    
+                    {/* Plastering compliance info */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
+                      <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-orange-600" />
+                        Australian Standards & Compliance
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <span className="font-medium text-slate-700">AS/NZS 2589</span>
+                          <p className="text-slate-500 text-xs mt-0.5">Gypsum linings - Application & finishing</p>
+                        </div>
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <span className="font-medium text-slate-700">AS 3740</span>
+                          <p className="text-slate-500 text-xs mt-0.5">Waterproofing wet areas</p>
+                        </div>
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <span className="font-medium text-blue-700">Moisture-Resistant</span>
+                          <p className="text-blue-600 text-xs mt-0.5">Required in bathrooms & wet areas</p>
+                        </div>
+                        <div className="p-3 bg-rose-50 rounded-lg">
+                          <span className="font-medium text-rose-700">Fire-Rated</span>
+                          <p className="text-rose-600 text-xs mt-0.5">Required where FRL specified</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-slate-500">
+                        OMNEXORA automatically includes compliance notes in your documents based on job requirements.
+                      </p>
                     </div>
                   </div>
                 )}

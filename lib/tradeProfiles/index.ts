@@ -1,0 +1,101 @@
+/**
+ * Trade Profiles Index
+ * 
+ * Central export for all trade-specific configurations.
+ * Each trade has its own profile with:
+ * - Default rates and pricing
+ * - Common materials
+ * - Compliance information
+ * - AI prompt enhancements
+ */
+
+export * from "./plasterer";
+
+// Trade profile type
+export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Other";
+
+// Get trade-specific system prompt context for AI
+export function getTradeSystemPromptContext(tradeType: string | null): string {
+  switch (tradeType) {
+    case "Plasterer":
+      const { getPlastererSystemPromptContext } = require("./plasterer");
+      return getPlastererSystemPromptContext();
+    case "Painter":
+      return `
+Trade-Specific Context (Painter):
+- This is a painting job in Australia
+- Common work includes: interior painting, exterior painting, preparation, repairs
+- Surface types: plasterboard, timber, metal, rendered surfaces
+- Paint types: water-based (most common), oil-based (trim work)
+- Finishes: Flat/Matt, Low Sheen, Semi-Gloss, Gloss
+- Must follow AS 2311 (Guide to painting of buildings)
+- Safety: lead paint testing (pre-1970 buildings), working at heights, respiratory protection
+`;
+    case "Carpenter":
+      return `
+Trade-Specific Context (Carpenter):
+- This is a carpentry job in Australia
+- Common work includes: framing, doors, windows, decking, cabinetry, trim
+- Materials: timber (hardwood/softwood), engineered wood, MDF
+- Must comply with Building Code of Australia structural requirements
+- Safety: power tool safety, manual handling, working at heights
+`;
+    case "Electrician":
+      return `
+Trade-Specific Context (Electrician):
+- This is an electrical job in Australia
+- Must be performed by licensed electrician
+- Must comply with AS/NZS 3000 (Wiring Rules)
+- Certificate of Compliance required for notifiable work
+- Safety: electrical isolation, live work procedures, testing
+`;
+    default:
+      return `
+Trade-Specific Context:
+- Australian construction/trades job
+- Must comply with relevant Building Code of Australia provisions
+- Follow applicable Australian Standards
+- Safety: general construction site safety requirements
+`;
+  }
+}
+
+// Trade-specific compliance notes
+export function getTradeComplianceNotes(tradeType: string | null): string[] {
+  switch (tradeType) {
+    case "Plasterer":
+      return [
+        "AS/NZS 2589 - Gypsum linings application and finishing",
+        "AS/NZS 2588 - Gypsum plasterboard product standard",
+        "AS 3740 - Waterproofing of wet areas (moisture-resistant board)",
+        "Building Code of Australia fire-rating requirements",
+      ];
+    case "Painter":
+      return [
+        "AS 2311 - Guide to the painting of buildings",
+        "Lead paint regulations (pre-1970 buildings)",
+        "VOC emissions compliance",
+        "Surface preparation standards",
+      ];
+    case "Carpenter":
+      return [
+        "Building Code of Australia structural requirements",
+        "AS 1684 - Residential timber-framed construction",
+        "AS 1720 - Timber structures",
+        "Termite management requirements (varies by region)",
+      ];
+    case "Electrician":
+      return [
+        "AS/NZS 3000 - Electrical installations (Wiring Rules)",
+        "AS/NZS 3008 - Electrical installations - Selection of cables",
+        "State electrical licensing requirements",
+        "Certificate of Compliance requirements",
+      ];
+    default:
+      return [
+        "Building Code of Australia",
+        "Relevant Australian Standards",
+        "State SafeWork requirements",
+      ];
+  }
+}
