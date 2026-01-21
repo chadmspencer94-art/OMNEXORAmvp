@@ -35,6 +35,7 @@ import {
   Grid3X3,
 } from "lucide-react";
 import { featureFlags } from "@/lib/featureFlags";
+import { TrendingUp, Star, Award, BarChart3 } from "lucide-react";
 
 interface UserData {
   email: string;
@@ -165,6 +166,128 @@ function QuickAction({ href, icon, title, description, badge, accentColor = "amb
           <p className="mt-1 text-sm text-slate-500 line-clamp-2">{description}</p>
         </div>
         <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-400 transition-colors flex-shrink-0 mt-0.5" />
+      </div>
+    </Link>
+  );
+}
+
+// Business Score Card Component
+function BusinessScoreCard() {
+  const [score, setScore] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchScore() {
+      try {
+        const response = await fetch("/api/me/advanced-analytics");
+        if (response.ok) {
+          const data = await response.json();
+          setScore(data.totalScore);
+        }
+      } catch (error) {
+        console.error("Failed to fetch business score:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchScore();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="animate-pulse flex items-center gap-4">
+          <div className="w-16 h-16 bg-slate-200 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-slate-200 rounded w-24" />
+            <div className="h-6 bg-slate-200 rounded w-16" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (score === null) {
+    return null;
+  }
+
+  // Determine tier
+  const tier = score >= 90 ? "PLATINUM" : score >= 75 ? "GOLD" : score >= 60 ? "SILVER" : score >= 40 ? "BRONZE" : "STARTER";
+  const tierInfo = {
+    PLATINUM: { label: "Platinum", color: "from-slate-400 to-slate-600", bg: "bg-slate-100", text: "text-slate-700" },
+    GOLD: { label: "Gold", color: "from-amber-400 to-amber-600", bg: "bg-amber-100", text: "text-amber-700" },
+    SILVER: { label: "Silver", color: "from-slate-300 to-slate-400", bg: "bg-slate-100", text: "text-slate-600" },
+    BRONZE: { label: "Bronze", color: "from-orange-300 to-orange-500", bg: "bg-orange-100", text: "text-orange-700" },
+    STARTER: { label: "Starter", color: "from-slate-200 to-slate-300", bg: "bg-slate-50", text: "text-slate-500" },
+  }[tier];
+
+  const stars = score >= 90 ? 5 : score >= 75 ? 4 : score >= 60 ? 3 : score >= 40 ? 2 : 1;
+
+  return (
+    <Link href="/dashboard/analytics">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow cursor-pointer group">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tierInfo.color} flex items-center justify-center shadow-lg`}>
+              <Award className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900">Business Score</h3>
+              <p className="text-sm text-slate-500">Your public rating</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-amber-600 group-hover:translate-x-1 transition-transform">
+            <BarChart3 className="w-5 h-5" />
+            <span className="text-sm font-medium">View Analytics</span>
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-6">
+          {/* Score Circle */}
+          <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${tierInfo.color} p-1`}>
+            <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+              <div className="text-center">
+                <span className="text-2xl font-bold text-slate-900">{score}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Stars & Tier */}
+          <div className="flex-1">
+            <div className="flex items-center gap-1 mb-2">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  className={`w-5 h-5 ${s <= stars ? "text-amber-400 fill-amber-400" : "text-slate-200"}`}
+                />
+              ))}
+              <span className="ml-2 text-sm font-medium text-slate-700">{stars}.0</span>
+            </div>
+            <span className={`inline-flex items-center px-3 py-1 rounded-full ${tierInfo.bg} ${tierInfo.text} text-sm font-medium`}>
+              {tierInfo.label} Tier
+            </span>
+          </div>
+          
+          {/* Next Tier Progress */}
+          <div className="hidden sm:block">
+            <p className="text-xs text-slate-500 mb-1">
+              {score < 40 ? `${40 - score} pts to Bronze` :
+               score < 60 ? `${60 - score} pts to Silver` :
+               score < 75 ? `${75 - score} pts to Gold` :
+               score < 90 ? `${90 - score} pts to Platinum` :
+               "Max Tier!"}
+            </p>
+            <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full bg-gradient-to-r ${tierInfo.color}`}
+                style={{
+                  width: `${Math.min(100, (score / (score < 40 ? 40 : score < 60 ? 60 : score < 75 ? 75 : score < 90 ? 90 : 100)) * 100)}%`
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </Link>
   );
@@ -390,6 +513,13 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+
+        {/* Business Score Card - Only for tradies */}
+        {!isClient && (
+          <div className="mb-8">
+            <BusinessScoreCard />
+          </div>
+        )}
 
         {/* Quick Actions Grid - For Tradies */}
         {!isClient && (

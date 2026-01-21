@@ -109,6 +109,11 @@ model User {
   signupSource        String    @default("ORGANIC") // ORGANIC | FOUNDER_CODE | FOUNDER_EMAIL | INVITE_CODE
   inviteCodeUsed      String?   // The actual invite code used (if any)
   
+  // Business Score & Public Rating System
+  businessScore          Int?       // Overall business score (0-100)
+  businessScoreUpdatedAt DateTime?  // Last time score was calculated
+  publicRatingEnabled    Boolean    @default(true) // Whether to show rating publicly
+  
   // Password reset tokens
   passwordResetTokens PasswordResetToken[]
   

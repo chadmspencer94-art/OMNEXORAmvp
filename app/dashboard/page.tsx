@@ -574,6 +574,7 @@ export default function DashboardPage() {
         <QuickAction icon={Plus} label="New Job Pack" href="/jobs/new" color="amber" />
         <QuickAction icon={FileText} label="All Jobs" href="/jobs" />
         <QuickAction icon={Users} label="Clients" href="/clients" />
+        <QuickAction icon={BarChart3} label="Analytics" href="/dashboard/analytics" color="purple" />
         <QuickAction icon={Calendar} label="Calendar" href="/calendar" />
       </div>
       
