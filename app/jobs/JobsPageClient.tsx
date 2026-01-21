@@ -107,7 +107,7 @@ function AIStatusBadge({ status }: { status: JobStatus }) {
   );
 }
 
-// Stat card component - premium design
+// Stat card component - premium design with visible icons
 function StatCard({ 
   icon, 
   label, 
@@ -121,20 +121,44 @@ function StatCard({
   trend?: { value: number; positive: boolean };
   accentColor?: "amber" | "emerald" | "blue" | "purple" | "slate";
 }) {
-  const colors = {
-    amber: "from-amber-500 to-orange-500 text-amber-600",
-    emerald: "from-emerald-500 to-teal-500 text-emerald-600",
-    blue: "from-blue-500 to-indigo-500 text-blue-600",
-    purple: "from-purple-500 to-violet-500 text-purple-600",
-    slate: "from-slate-500 to-slate-600 text-slate-600",
+  const colorConfig = {
+    amber: { 
+      bg: "bg-gradient-to-br from-amber-500 to-orange-500", 
+      iconText: "text-white",
+      accent: "from-amber-400 to-orange-400",
+    },
+    emerald: { 
+      bg: "bg-gradient-to-br from-emerald-500 to-teal-500", 
+      iconText: "text-white",
+      accent: "from-emerald-400 to-teal-400",
+    },
+    blue: { 
+      bg: "bg-gradient-to-br from-blue-500 to-indigo-500", 
+      iconText: "text-white",
+      accent: "from-blue-400 to-indigo-400",
+    },
+    purple: { 
+      bg: "bg-gradient-to-br from-purple-500 to-violet-500", 
+      iconText: "text-white",
+      accent: "from-purple-400 to-violet-400",
+    },
+    slate: { 
+      bg: "bg-gradient-to-br from-slate-600 to-slate-700", 
+      iconText: "text-white",
+      accent: "from-slate-500 to-slate-600",
+    },
   };
+
+  const config = colorConfig[accentColor];
 
   return (
     <div className="relative bg-white rounded-2xl border border-slate-200 p-4 overflow-hidden group hover:shadow-lg hover:border-slate-300 transition-all duration-200">
-      <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${colors[accentColor].split(" ")[0]} ${colors[accentColor].split(" ")[1]} opacity-5 rounded-full -translate-y-8 translate-x-8 group-hover:opacity-10 transition-opacity`} />
+      {/* Background accent circle */}
+      <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${config.accent} opacity-10 rounded-full -translate-y-8 translate-x-8 group-hover:opacity-15 transition-opacity`} />
       <div className="relative">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colors[accentColor].split(" ")[0]} ${colors[accentColor].split(" ")[1]} bg-opacity-10 flex items-center justify-center mb-3`}>
-          <div className={colors[accentColor].split(" ")[2]}>{icon}</div>
+        {/* Icon container with solid gradient background */}
+        <div className={`w-12 h-12 rounded-xl ${config.bg} shadow-lg flex items-center justify-center mb-3`}>
+          <div className={`${config.iconText} [&>svg]:w-6 [&>svg]:h-6`}>{icon}</div>
         </div>
         <p className="text-3xl font-bold text-slate-900">{value}</p>
         <p className="text-sm text-slate-500 mt-1">{label}</p>

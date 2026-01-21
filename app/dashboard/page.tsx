@@ -104,7 +104,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// Stat card component - mobile-first design
+// Stat card component - mobile-first design with visible icons
 function StatCard({
   icon: Icon,
   label,
@@ -122,19 +122,39 @@ function StatCard({
   color?: "blue" | "emerald" | "amber" | "purple" | "slate";
   href?: string;
 }) {
-  const colors = {
-    blue: { bg: "bg-blue-50", icon: "text-blue-600", border: "hover:border-blue-200" },
-    emerald: { bg: "bg-emerald-50", icon: "text-emerald-600", border: "hover:border-emerald-200" },
-    amber: { bg: "bg-amber-50", icon: "text-amber-600", border: "hover:border-amber-200" },
-    purple: { bg: "bg-purple-50", icon: "text-purple-600", border: "hover:border-purple-200" },
-    slate: { bg: "bg-slate-100", icon: "text-slate-600", border: "hover:border-slate-300" },
+  const colorConfig = {
+    blue: { 
+      bg: "bg-gradient-to-br from-blue-500 to-indigo-500", 
+      icon: "text-white", 
+      border: "hover:border-blue-300" 
+    },
+    emerald: { 
+      bg: "bg-gradient-to-br from-emerald-500 to-teal-500", 
+      icon: "text-white", 
+      border: "hover:border-emerald-300" 
+    },
+    amber: { 
+      bg: "bg-gradient-to-br from-amber-500 to-orange-500", 
+      icon: "text-white", 
+      border: "hover:border-amber-300" 
+    },
+    purple: { 
+      bg: "bg-gradient-to-br from-purple-500 to-violet-500", 
+      icon: "text-white", 
+      border: "hover:border-purple-300" 
+    },
+    slate: { 
+      bg: "bg-gradient-to-br from-slate-600 to-slate-700", 
+      icon: "text-white", 
+      border: "hover:border-slate-400" 
+    },
   };
-  const c = colors[color];
+  const c = colorConfig[color];
   
   const content = (
-    <div className={`bg-white rounded-xl border border-slate-200 p-4 shadow-sm transition-all ${href ? `${c.border} cursor-pointer` : ""}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 p-4 shadow-sm transition-all ${href ? `${c.border} cursor-pointer hover:shadow-md` : ""}`}>
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 ${c.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+        <div className={`w-11 h-11 ${c.bg} rounded-xl shadow-lg flex items-center justify-center flex-shrink-0`}>
           <Icon className={`w-5 h-5 ${c.icon}`} />
         </div>
         <div className="flex-1 min-w-0">
