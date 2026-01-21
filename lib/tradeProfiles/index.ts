@@ -18,9 +18,10 @@ export * from "./carpenter";
 export * from "./hvac";
 export * from "./flooring";
 export * from "./landscaper";
+export * from "./tiler";
 
 // Trade profile type
-export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "HVAC" | "Flooring" | "Landscaper" | "Other";
+export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "HVAC" | "Flooring" | "Landscaper" | "Tiler" | "Other";
 
 // Get trade-specific system prompt context for AI
 export function getTradeSystemPromptContext(tradeType: string | null): string {
@@ -63,6 +64,9 @@ Trade-Specific Context (Painter):
     case "Landscaper":
       const { getLandscaperSystemPromptContext } = require("./landscaper");
       return getLandscaperSystemPromptContext();
+    case "Tiler":
+      const { getTilerSystemPromptContext } = require("./tiler");
+      return getTilerSystemPromptContext();
     case "Electrician":
       const { getElectricianSystemPromptContext: getElecContext } = require("./electrician");
       return getElecContext();
@@ -180,6 +184,17 @@ export function getTradeComplianceNotes(tradeType: string | null): string[] {
         "AS 3959 - Bushfire zone landscaping",
         "Pool fence inspection certificate",
         "Council approval for significant structures",
+      ];
+    case "Tiler":
+      return [
+        "AS 3958.1 - Tile installation standard",
+        "AS 3740 - Waterproofing wet areas (critical)",
+        "AS 4586 - Slip resistance (P3/P4/P5 ratings)",
+        "Waterproofing inspection before tiling",
+        "100% adhesive coverage in wet areas",
+        "Licensed waterproofer may be required",
+        "WET CUTTING ONLY - silica dust hazard",
+        "Movement joints at perimeters required",
       ];
     default:
       return [
