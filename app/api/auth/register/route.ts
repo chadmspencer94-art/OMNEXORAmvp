@@ -11,17 +11,28 @@ const resend = process.env.RESEND_API_KEY
 
 const DEFAULT_FROM = process.env.EMAIL_FROM || "OMNEXORA <onboarding@resend.dev>";
 
+// Valid trade types
+const VALID_TRADE_TYPES = [
+  "Painter", "Plasterer", "Carpenter", "Electrician", "Plumber", 
+  "Roofer", "Tiler", "Concreter", "HVAC", "Flooring", "Landscaper", "Other"
+];
+
+// Valid Australian states
+const VALID_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
+
 interface RegisterRequestBody {
   email: string;
   password: string;
   role?: UserRole;
   inviteCode?: string;
+  tradeType?: string;
+  state?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as RegisterRequestBody;
-    const { email, password, role, inviteCode } = body;
+    const { email, password, role, inviteCode, tradeType, state } = body;
 
     // Check signup mode
     const signupMode = getSignupMode();
@@ -78,6 +89,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate trade type
+    if (!tradeType || !VALID_TRADE_TYPES.includes(tradeType)) {
+      return NextResponse.json(
+        { error: "Please select a valid trade type" },
+        { status: 400 }
+      );
+    }
+
+    // Validate state
+    if (!state || !VALID_STATES.includes(state)) {
+      return NextResponse.json(
+        { error: "Please select a valid Australian state or territory" },
+        { status: 400 }
+      );
+    }
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -117,10 +144,9 @@ export async function POST(request: NextRequest) {
     // Create a session
     const sessionId = await createSession(user.id);
 
-    // Send verification email (non-blocking - don't fail registration if email fails)
+    // Store trade type and state in Prisma user profile
+    const prisma = getPrisma();
     try {
-      // Ensure user exists in Prisma (for email verification token)
-      const prisma = getPrisma();
       let prismaUser = await prisma.user.findUnique({
         where: { email: user.email },
       });
@@ -139,8 +165,33 @@ export async function POST(request: NextRequest) {
             planStatus: user.planStatus || "TRIAL",
             signupSource: signupSource,
             inviteCodeUsed: inviteCode?.trim() || null,
+            primaryTrade: tradeType,
+            businessState: state,
           },
         });
+      } else {
+        // Update existing user with trade type and state
+        prismaUser = await prisma.user.update({
+          where: { id: prismaUser.id },
+          data: {
+            primaryTrade: tradeType,
+            businessState: state,
+          },
+        });
+      }
+
+      // Also update KV store with trade type and state
+      try {
+        const { kv } = await import("@/lib/kv");
+        const kvUser = (await kv.get(`user:email:${normalizedEmail}`)) as any;
+        if (kvUser) {
+          kvUser.primaryTrade = tradeType;
+          kvUser.businessState = state;
+          await kv.set(`user:id:${kvUser.id}`, kvUser);
+          await kv.set(`user:email:${normalizedEmail}`, kvUser);
+        }
+      } catch (kvError) {
+        console.warn("Failed to update KV store with trade/state (non-critical):", kvError);
       }
 
       // Create verification token
@@ -169,9 +220,9 @@ export async function POST(request: NextRequest) {
               <h1 style="color: white; margin: 0; font-size: 24px;">OMNEXORA</h1>
             </div>
             <div style="background: white; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-              <h2 style="color: #1e293b; margin-top: 0;">Verify Your Email</h2>
-              <p>Welcome to OMNEXORA! Please verify your email address to unlock all features.</p>
-              <p>Click the button below to verify your email. This link will expire in 24 hours.</p>
+              <h2 style="color: #1e293b; margin-top: 0;">Welcome, ${tradeType}!</h2>
+              <p>Your OMNEXORA account is set up for <strong>${tradeType}</strong> work in <strong>${state}</strong>.</p>
+              <p>Please verify your email address to unlock all features and start creating professional job documents.</p>
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${verifyUrl}" style="display: inline-block; background: #f59e0b; color: #1e293b; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">Verify Email</a>
               </div>
@@ -184,9 +235,11 @@ export async function POST(request: NextRequest) {
       `;
 
       const emailText = `
-Verify Your Email
+Welcome, ${tradeType}!
 
-Welcome to OMNEXORA! Please verify your email address to unlock all features.
+Your OMNEXORA account is set up for ${tradeType} work in ${state}.
+
+Please verify your email address to unlock all features and start creating professional job documents.
 
 Click the link below to verify your email. This link will expire in 24 hours.
 
@@ -223,12 +276,14 @@ If you didn't create an account, you can safely ignore this email.
       if (isDev) {
         console.log("\n==== DEV MODE: VERIFICATION URL ====");
         console.log(`Email: ${user.email}`);
+        console.log(`Trade: ${tradeType}`);
+        console.log(`State: ${state}`);
         console.log(`Verify URL: ${verifyUrl}`);
         console.log("=====================================\n");
       }
     } catch (emailError) {
       // Log but don't fail registration
-      console.error("Error sending verification email during registration:", emailError);
+      console.error("Error during registration setup:", emailError);
     }
 
     // Create response and set the session cookie directly on it
@@ -241,6 +296,8 @@ If you didn't create an account, you can safely ignore this email.
         verificationStatus: user.verificationStatus,
         verifiedAt: user.verifiedAt,
         isAdmin: user.isAdmin,
+        primaryTrade: tradeType,
+        businessState: state,
       },
     });
 
