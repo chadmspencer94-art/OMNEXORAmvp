@@ -166,7 +166,7 @@ export async function POST(
       );
     }
 
-    // Generate PDF with proper multi-page layout for documents with full content
+    // Generate PDF
     const pdf = new PdfDocument();
     const docLabel = DOCUMENT_LABELS[docType] || docType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
     const documentNumber = `${docType}-${id.slice(0, 8).toUpperCase()}`;
@@ -175,6 +175,26 @@ export async function POST(
       month: "long",
       year: "numeric",
     });
+
+    // Helper function to clean text properly - fixes garbled "&" character issue
+    const cleanText = (text: string): string => {
+      if (!text) return "";
+      return text
+        // Remove markdown formatting
+        .replace(/\*\*/g, "")
+        .replace(/\*/g, "")
+        .replace(/#{1,6}\s*/g, "")
+        // Fix checkbox symbols
+        .replace(/☐/g, "")
+        .replace(/☑/g, "")
+        .replace(/✓/g, "")
+        .replace(/✔/g, "")
+        .replace(/\[\s*\]/g, "")
+        .replace(/\[x\]/gi, "")
+        // Normalize whitespace
+        .replace(/\s+/g, " ")
+        .trim();
+    };
 
     // =========================================
     // PREMIUM HEADER
@@ -198,90 +218,75 @@ export async function POST(
     });
 
     // =========================================
-    // DOCUMENT CONTENT - Full content with proper formatting
+    // HANDOVER - Specialized consolidated one-page layout
     // =========================================
-    // Parse content by lines, handling markdown formatting
-    const lines = content.split("\n");
-    let currentList: string[] = [];
-    let inChecklist = false;
-
-    const flushList = () => {
-      if (currentList.length > 0) {
-        pdf.addBulletList(currentList);
-        currentList = [];
-      }
-      inChecklist = false;
-    };
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
+    if (docType === "HANDOVER") {
+      // Extract key information from the AI-generated content
+      const tradeType = job.tradeType || "Trade";
+      const completionDate = documentDate;
       
-      // Skip empty lines
-      if (!line) {
-        flushList();
-        pdf.addSpace(2);
-        continue;
-      }
+      // Statement of Practical Completion
+      pdf.addCompactSectionHeading("Statement of Practical Completion");
+      pdf.addCompactText(
+        `We hereby declare that the ${tradeType} works for the project titled "${job.title || "Project"}" ` +
+        `at ${job.address || "the project site"} have been practically completed as of ${completionDate}, ` +
+        `subject to any minor defects noted below.`
+      );
+      pdf.addSpace(3);
 
-      // Handle markdown headings: ## Heading or **Heading**
-      const markdownHeadingMatch = line.match(/^#{1,6}\s+(.+)$/);
-      const boldHeadingMatch = line.match(/^\*\*(.+)\*\*$/);
-      const numberedHeadingMatch = line.match(/^\d+\.\s+\*\*(.+)\*\*$/);
+      // Completion Checklist - Extract and consolidate from content
+      pdf.addCompactSectionHeading("Completion Checklist");
       
-      if (markdownHeadingMatch || boldHeadingMatch || numberedHeadingMatch) {
-        flushList();
-        const headingText = (markdownHeadingMatch?.[1] || boldHeadingMatch?.[1] || numberedHeadingMatch?.[1] || "").trim();
-        pdf.addSectionHeading(headingText);
-        continue;
-      }
-
-      // Handle sub-headings with - prefix like "- Title"
-      const subHeadingMatch = line.match(/^[-•]\s+\*\*(.+)\*\*/);
-      if (subHeadingMatch) {
-        flushList();
-        pdf.addSubheading(subHeadingMatch[1].trim());
-        continue;
-      }
-
-      // Handle checkboxes: ☐ Item or [ ] Item
-      const checkboxMatch = line.match(/^[☐☑✓✔\[\]]\s*(.+)$/);
-      if (checkboxMatch) {
-        inChecklist = true;
-        currentList.push(`☐ ${checkboxMatch[1].replace(/\*\*/g, "").trim()}`);
-        continue;
-      }
-
-      // Handle bullet points: - Item or • Item or * Item
-      const bulletMatch = line.match(/^[-•*]\s+(.+)$/);
-      if (bulletMatch && !inChecklist) {
-        currentList.push(bulletMatch[1].replace(/\*\*/g, "").trim());
-        continue;
-      }
-
-      // Handle numbered list items: 1. Item
-      const numberedMatch = line.match(/^\d+\.\s+(.+)$/);
-      if (numberedMatch && !line.includes("**")) {
-        currentList.push(numberedMatch[1].replace(/\*\*/g, "").trim());
-        continue;
-      }
-
-      // Regular text - flush any pending list first
-      flushList();
+      // Standard handover checklist items based on trade type
+      const checklistItems = [
+        "All areas completed as per agreed scope of work",
+        "Surfaces cleaned and prepared for handover",
+        "All rubbish and materials removed from site",
+        "Final inspection completed with client",
+        "Touch-ups and corrections completed",
+        "Keys/access devices returned (if applicable)",
+        "Safety checks completed",
+        "Work area left in safe condition",
+      ];
       
-      // Clean markdown from text (remove ** for bold, etc.)
-      const cleanedLine = line.replace(/\*\*/g, "").replace(/\*/g, "").trim();
-      if (cleanedLine) {
-        pdf.addParagraph(cleanedLine);
-      }
-    }
-    
-    // Flush any remaining list items
-    flushList();
+      pdf.addCompactBulletList(checklistItems, 8);
+      pdf.addSpace(2);
 
+      // Defects/Comments Section
+      pdf.addCompactSectionHeading("Client Comments / Defects Noted");
+      pdf.addCompactText("_".repeat(70), { color: [148, 163, 184] });
+      pdf.addSpace(2);
+      pdf.addCompactText("_".repeat(70), { color: [148, 163, 184] });
+      pdf.addSpace(3);
+
+      // Practical Completion Date
+      pdf.addCompactSectionHeading("Practical Completion Date");
+      pdf.addCompactText(`Date: ${completionDate}`);
+      pdf.addSpace(4);
+    } 
     // =========================================
-    // TOTALS BOX FOR PROGRESS CLAIM / INVOICE TYPES
+    // PROGRESS CLAIM - Specialized layout
     // =========================================
-    if (docType === "PROGRESS_CLAIM") {
+    else if (docType === "PROGRESS_CLAIM") {
+      // Parse content and render with proper formatting
+      const lines = content.split("\n").filter((l: string) => l.trim());
+      
+      for (const rawLine of lines) {
+        const line = cleanText(rawLine);
+        if (!line) continue;
+        
+        // Check if it's a heading
+        if (rawLine.match(/^#{1,6}\s/) || rawLine.match(/^\*\*[^*]+\*\*$/)) {
+          pdf.addCompactSectionHeading(line);
+        } else if (rawLine.match(/^[-•]\s/)) {
+          pdf.addCompactText(`• ${line}`);
+        } else {
+          pdf.addCompactText(line);
+        }
+        pdf.addSpace(1);
+      }
+
+      // Totals box
       const totalMatch = content.match(/total[:\s]*\$?([\d,]+\.?\d*)/i);
       const gstMatch = content.match(/gst[:\s]*\$?([\d,]+\.?\d*)/i);
       const subtotalMatch = content.match(/subtotal[:\s]*\$?([\d,]+\.?\d*)/i);
@@ -298,16 +303,62 @@ export async function POST(
         });
       }
     }
+    // =========================================
+    // OTHER DOCUMENTS - Standard formatting
+    // =========================================
+    else {
+      // Parse and render content with proper formatting
+      const lines = content.split("\n");
+      let currentList: string[] = [];
+
+      const flushList = () => {
+        if (currentList.length > 0) {
+          for (const item of currentList) {
+            pdf.addCompactText(`• ${item}`);
+          }
+          currentList = [];
+          pdf.addSpace(2);
+        }
+      };
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) {
+          flushList();
+          pdf.addSpace(1);
+          continue;
+        }
+
+        const cleaned = cleanText(line);
+        if (!cleaned) continue;
+
+        // Heading detection
+        if (rawLine.match(/^#{1,6}\s/) || rawLine.match(/^\*\*[^*]+\*\*$/) || rawLine.match(/^\d+\.\s+\*\*/)) {
+          flushList();
+          pdf.addCompactSectionHeading(cleaned);
+        }
+        // Bullet/checkbox items
+        else if (rawLine.match(/^[-•*☐☑✓✔]\s/) || rawLine.match(/^\[\s*\]/)) {
+          currentList.push(cleaned);
+        }
+        // Numbered items (not headings)
+        else if (rawLine.match(/^\d+\.\s/) && !rawLine.includes("**")) {
+          currentList.push(cleaned);
+        }
+        // Regular text
+        else {
+          flushList();
+          pdf.addCompactText(cleaned);
+          pdf.addSpace(1);
+        }
+      }
+      flushList();
+    }
 
     // =========================================
     // SIGNATURE BLOCK (Trade + Client)
     // =========================================
-    pdf.addSpace(6);
-    pdf.addSeparator();
-    pdf.addSectionHeading("Acceptance & Signatures");
     pdf.addSpace(4);
-    
-    // Two-column signature layout
     pdf.addCompactDualSignatureBlock({
       tradeLabel: "CONTRACTOR/TRADE",
       tradeName: businessProfile?.legalName || "",
@@ -316,9 +367,12 @@ export async function POST(
     });
 
     // =========================================
-    // STANDARD FOOTER WITH PAGE NUMBERS
+    // COMPACT FOOTER
     // =========================================
-    pdf.addStandardFooters({ jobId: id });
+    pdf.addCompactFooter({
+      issuerName: businessProfile?.legalName || "OMNEXORA",
+      documentId: documentNumber,
+    });
 
     // Return PDF
     const blob = pdf.getBlob();
