@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
             email: currentUser.email,
             passwordHash: "", // KV store has the real password hash
             role: currentUser.role || "tradie",
-            verificationStatus: currentUser.verificationStatus || "PENDING",
+            verificationStatus: currentUser.verificationStatus || "unverified",
             planTier: currentUser.planTier || "FREE",
             planStatus: currentUser.planStatus || "TRIAL",
           },

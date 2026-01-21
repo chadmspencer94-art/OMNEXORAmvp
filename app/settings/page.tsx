@@ -496,14 +496,26 @@ export default function SettingsPage() {
                     const response = await fetch("/api/auth/send-verification-email", {
                       method: "POST",
                     });
-                    if (response.ok) {
-                      alert("Verification email sent! Check your inbox.");
-                    } else {
-                      const data = await response.json();
-                      alert(data.error || "Failed to send verification email");
+                    const data = await response.json().catch(() => ({}));
+                    
+                    if (data.alreadyVerified) {
+                      alert("Your email is already verified! Refreshing page...");
+                      window.location.reload();
+                      return;
                     }
-                  } catch {
-                    alert("Failed to send verification email");
+                    
+                    if (response.ok) {
+                      if (data.warning) {
+                        alert(`Verification email sent with warning: ${data.warning}\n\nCheck your inbox.`);
+                      } else {
+                        alert("Verification email sent! Check your inbox.");
+                      }
+                    } else {
+                      alert(data.error || "Failed to send verification email. Please try again.");
+                    }
+                  } catch (err) {
+                    console.error("Email verification error:", err);
+                    alert("An unexpected error occurred. Please try again.");
                   }
                 }}
                 className="w-full sm:w-auto px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium rounded-lg transition-colors"
