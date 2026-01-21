@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Loader2, CheckCircle, XCircle, Mail, ExternalLink, AlertCircle } from "lucide-react";
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -12,13 +13,14 @@ function VerifyEmailForm() {
   const [isResending, setIsResending] = useState(false);
   const [devVerifyUrl, setDevVerifyUrl] = useState<string | null>(null);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
 
   const token = searchParams.get("token");
 
   useEffect(() => {
     if (!token) {
       setStatus("error");
-      setError("Verification link is invalid.");
+      setError("Verification link is invalid or missing.");
       return;
     }
 
@@ -34,6 +36,15 @@ function VerifyEmailForm() {
         });
 
         const data = await response.json();
+
+        // Handle already verified
+        if (data.alreadyVerified) {
+          setStatus("success");
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 2000);
+          return;
+        }
 
         if (!response.ok) {
           setStatus("error");
@@ -59,17 +70,30 @@ function VerifyEmailForm() {
   const handleResend = async () => {
     setIsResending(true);
     setResendSuccess(false);
+    setResendError(null);
     setDevVerifyUrl(null);
     
     try {
       const response = await fetch("/api/auth/send-verification-email", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
       const data = await response.json();
       
+      // Handle already verified
+      if (data.alreadyVerified) {
+        setStatus("success");
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 2000);
+        return;
+      }
+      
       if (!response.ok) {
-        setError(data.error || "Failed to resend verification email. Please try again.");
+        setResendError(data.error || "Failed to resend verification email. Please try again.");
         return;
       }
 
@@ -79,12 +103,11 @@ function VerifyEmailForm() {
         setResendSuccess(true);
       } else if (data.emailSent) {
         setResendSuccess(true);
-        alert("Verification email sent. Check your inbox (and spam folder).");
       } else if (data.warning) {
-        setError(data.warning);
+        setResendError(data.warning);
       }
     } catch (err) {
-      setError("Failed to resend verification email. Please try again.");
+      setResendError("Network error. Please check your connection and try again.");
     } finally {
       setIsResending(false);
     }
@@ -97,19 +120,13 @@ function VerifyEmailForm() {
           <div className="text-center mb-6">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
               {status === "loading" && (
-                <svg className="w-8 h-8 text-amber-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+                <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
               )}
               {status === "success" && (
-                <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+                <CheckCircle className="w-8 h-8 text-emerald-500" />
               )}
               {status === "error" && (
-                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <XCircle className="w-8 h-8 text-red-500" />
               )}
             </div>
             <h1 className="text-2xl font-bold text-slate-900 mb-2">
@@ -128,7 +145,7 @@ function VerifyEmailForm() {
           {status === "success" && (
             <div className="text-center space-y-4">
               <p className="text-slate-600">
-                Email verified. You can now use all features of OMNEXORA.
+                Your email has been verified. You can now use all features of OMNEXORA.
               </p>
               <p className="text-sm text-slate-500">
                 Redirecting to your dashboard...
@@ -147,14 +164,25 @@ function VerifyEmailForm() {
               <p className="text-slate-600 text-center">
                 {error}
               </p>
+              
               <div className="pt-4 border-t border-slate-200 space-y-3">
-                <button
-                  onClick={handleResend}
-                  disabled={isResending}
-                  className="w-full px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isResending ? "Sending..." : "Resend verification email"}
-                </button>
+                {/* Resend Error */}
+                {resendError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-red-700">{resendError}</span>
+                  </div>
+                )}
+                
+                {/* Resend Success */}
+                {resendSuccess && !devVerifyUrl && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <span className="text-sm text-emerald-700">
+                      Verification email sent! Check your inbox (and spam folder).
+                    </span>
+                  </div>
+                )}
                 
                 {/* Dev mode: show verification link */}
                 {devVerifyUrl && (
@@ -166,16 +194,29 @@ function VerifyEmailForm() {
                       href={devVerifyUrl}
                       className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 underline"
                     >
-                      Open verification link →
+                      <ExternalLink className="w-4 h-4" />
+                      Open verification link
                     </a>
                   </div>
                 )}
                 
-                {resendSuccess && !devVerifyUrl && (
-                  <p className="text-sm text-emerald-600 text-center">
-                    ✓ Verification email sent! Check your inbox.
-                  </p>
-                )}
+                <button
+                  onClick={handleResend}
+                  disabled={isResending}
+                  className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isResending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" />
+                      {resendSuccess ? "Resend again" : "Resend verification email"}
+                    </>
+                  )}
+                </button>
                 
                 <Link
                   href="/dashboard"
@@ -199,6 +240,7 @@ export default function VerifyEmailPage() {
         <div className="w-full max-w-md">
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
             <div className="text-center">
+              <Loader2 className="w-8 h-8 text-amber-500 animate-spin mx-auto mb-4" />
               <p className="text-slate-600">Loading...</p>
             </div>
           </div>
@@ -209,4 +251,3 @@ export default function VerifyEmailPage() {
     </Suspense>
   );
 }
-
