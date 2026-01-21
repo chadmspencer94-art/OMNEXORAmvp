@@ -20,44 +20,96 @@ export async function POST(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json(
-        { error: "Not authenticated" },
+        { error: "Not authenticated. Please log in first." },
         { status: 401 }
       );
     }
 
-    // Check if user is already verified
     const prisma = getPrisma();
-    const prismaUser = await prisma.user.findUnique({
+    
+    // Check if user exists in Prisma, create if not
+    let prismaUser = await prisma.user.findUnique({
       where: { email: currentUser.email },
       select: { id: true, emailVerifiedAt: true },
     });
 
-    if (prismaUser?.emailVerifiedAt) {
+    // If user doesn't exist in Prisma, create them
+    if (!prismaUser) {
+      try {
+        prismaUser = await prisma.user.create({
+          data: {
+            id: currentUser.id,
+            email: currentUser.email,
+            passwordHash: "", // KV store has the real password hash
+            role: currentUser.role || "tradie",
+            verificationStatus: currentUser.verificationStatus || "PENDING",
+            planTier: currentUser.planTier || "FREE",
+            planStatus: currentUser.planStatus || "TRIAL",
+          },
+          select: { id: true, emailVerifiedAt: true },
+        });
+        console.log(`[send-verification] Created Prisma user for ${currentUser.email}`);
+      } catch (createError: any) {
+        // If unique constraint violation, try to find the user again
+        if (createError.code === "P2002") {
+          prismaUser = await prisma.user.findUnique({
+            where: { email: currentUser.email },
+            select: { id: true, emailVerifiedAt: true },
+          });
+        }
+        
+        if (!prismaUser) {
+          console.error("[send-verification] Failed to create/find Prisma user:", createError);
+          return NextResponse.json(
+            { error: "Failed to initialize user. Please try again." },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    // Check if user is already verified
+    if (prismaUser.emailVerifiedAt) {
       return NextResponse.json(
         { success: true, alreadyVerified: true },
         { status: 200 }
       );
     }
 
-    // Rate limiting: Check if a token was created recently (within last 5 minutes)
-    const recentToken = await prisma.emailVerificationToken.findFirst({
-      where: {
-        userId: prismaUser!.id,
-        createdAt: {
-          gte: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
+    // Rate limiting: Check if a token was created recently (within last 2 minutes)
+    // Reduced from 5 minutes to be more user-friendly while still preventing abuse
+    try {
+      const recentToken = await prisma.emailVerificationToken.findFirst({
+        where: {
+          userId: prismaUser.id,
+          createdAt: {
+            gte: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
+          },
         },
-      },
-    });
+      });
 
-    if (recentToken) {
-      return NextResponse.json(
-        { error: "Please wait a few minutes before requesting another verification email." },
-        { status: 429 }
-      );
+      if (recentToken) {
+        return NextResponse.json(
+          { error: "Please wait 2 minutes before requesting another verification email." },
+          { status: 429 }
+        );
+      }
+    } catch (tokenCheckError) {
+      // If token check fails, continue anyway - better UX than blocking
+      console.warn("[send-verification] Rate limit check failed:", tokenCheckError);
     }
 
     // Create email verification token
-    const rawToken = await createEmailVerificationToken(prismaUser!.id);
+    let rawToken: string;
+    try {
+      rawToken = await createEmailVerificationToken(prismaUser.id);
+    } catch (tokenError) {
+      console.error("[send-verification] Failed to create verification token:", tokenError);
+      return NextResponse.json(
+        { error: "Failed to create verification link. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Build base URL
     const baseUrl =
@@ -126,12 +178,14 @@ If you didn't create an account, you can safely ignore this email.
         if (error) {
           console.error("[send-verification] Resend API error:", JSON.stringify(error));
           // Provide more specific error messages based on common Resend errors
-          if (error.message?.includes("domain")) {
-            emailError = "Email domain not verified. Please contact support.";
-          } else if (error.message?.includes("rate")) {
-            emailError = "Too many emails sent. Please try again later.";
+          if (error.message?.includes("domain") || error.message?.includes("not verified")) {
+            emailError = "Email domain not verified. Please contact support or use a different email.";
+          } else if (error.message?.includes("rate") || error.message?.includes("limit")) {
+            emailError = "Too many emails sent. Please try again in a few minutes.";
+          } else if (error.message?.includes("invalid") || error.message?.includes("recipient")) {
+            emailError = "Invalid email address. Please check your email and try again.";
           } else {
-            emailError = error.message || "Failed to send email";
+            emailError = error.message || "Failed to send email. Please try again.";
           }
         } else {
           console.log(`[send-verification] Email sent successfully to ${currentUser.email}, ID: ${data?.id}`);
@@ -139,10 +193,10 @@ If you didn't create an account, you can safely ignore this email.
         }
       } catch (err: any) {
         console.error("[send-verification] Exception sending email:", err);
-        emailError = err?.message || "Failed to send email";
+        emailError = err?.message || "Failed to send email. Please try again.";
       }
     } else {
-      console.error("[send-verification] RESEND_API_KEY not configured - emails cannot be sent");
+      console.warn("[send-verification] RESEND_API_KEY not configured - emails cannot be sent");
       emailError = "Email service not configured. Please contact support.";
     }
     
@@ -180,9 +234,8 @@ If you didn't create an account, you can safely ignore this email.
   } catch (error) {
     console.error("[send-verification] Unexpected error:", error);
     return NextResponse.json(
-      { error: "Failed to send verification email. Please try again." },
+      { error: "An unexpected error occurred. Please try again." },
       { status: 500 }
     );
   }
 }
-

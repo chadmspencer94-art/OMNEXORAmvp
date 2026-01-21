@@ -18,12 +18,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Sanitize the token (remove any URL encoding issues)
+    const cleanToken = decodeURIComponent(token).trim();
+
+    if (!cleanToken || cleanToken.length < 32) {
+      return NextResponse.json(
+        { error: "Invalid verification token format" },
+        { status: 400 }
+      );
+    }
+
     // Consume the token (verifies and deletes it for single-use)
-    const verificationToken = await consumeEmailVerificationToken(token);
+    let verificationToken;
+    try {
+      verificationToken = await consumeEmailVerificationToken(cleanToken);
+    } catch (tokenError) {
+      console.error("[verify-email] Error consuming token:", tokenError);
+      return NextResponse.json(
+        { error: "Failed to verify token. Please request a new verification email." },
+        { status: 500 }
+      );
+    }
 
     if (!verificationToken) {
       return NextResponse.json(
-        { error: "Invalid or expired link" },
+        { error: "This verification link is invalid or has expired. Please request a new one." },
         { status: 400 }
       );
     }
@@ -35,19 +54,37 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
+      console.error(`[verify-email] User not found for ID: ${verificationToken.userId}`);
       return NextResponse.json(
-        { error: "User not found" },
+        { error: "User account not found. Please contact support." },
         { status: 404 }
       );
     }
 
+    // Check if already verified (in case of race condition or duplicate request)
+    if (user.emailVerifiedAt) {
+      return NextResponse.json(
+        { success: true, alreadyVerified: true },
+        { status: 200 }
+      );
+    }
+
     // Update user's emailVerifiedAt
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailVerifiedAt: new Date(),
-      },
-    });
+    try {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          emailVerifiedAt: new Date(),
+        },
+      });
+      console.log(`[verify-email] Email verified for user: ${user.email}`);
+    } catch (updateError) {
+      console.error("[verify-email] Failed to update user:", updateError);
+      return NextResponse.json(
+        { error: "Failed to verify email. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Also update KV store if user exists there
     try {
@@ -59,7 +96,8 @@ export async function POST(request: NextRequest) {
         await kv.set(`user:email:${user.email.toLowerCase()}`, kvUser);
       }
     } catch (kvError) {
-      console.warn("Failed to update KV store with emailVerifiedAt (non-critical):", kvError);
+      // Non-critical - log but don't fail
+      console.warn("[verify-email] Failed to update KV store (non-critical):", kvError);
     }
 
     return NextResponse.json(
@@ -67,11 +105,10 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error in verify-email endpoint:", error);
+    console.error("[verify-email] Unexpected error:", error);
     return NextResponse.json(
-      { error: "Failed to verify email. Please try again." },
+      { error: "An unexpected error occurred. Please try again or request a new verification email." },
       { status: 500 }
     );
   }
 }
-
