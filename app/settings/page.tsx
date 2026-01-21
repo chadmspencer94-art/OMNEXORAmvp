@@ -474,35 +474,69 @@ export default function SettingsPage() {
 
                 {/* Electrician-specific tips */}
                 {userData.primaryTrade === "Electrician" && (
-                  <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl border border-yellow-100 p-5 sm:p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center text-yellow-600 flex-shrink-0">
-                        <Zap className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-yellow-900 mb-2">Electrician Rate Settings</h3>
-                        <p className="text-sm text-yellow-700 mb-3">
-                          Set up your callout fees, hourly rates, and common job pricing for electrical work.
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
-                            Callout fee
-                          </span>
-                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
-                            Hourly rate
-                          </span>
-                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
-                            Point install
-                          </span>
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl border border-yellow-100 p-5 sm:p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center text-yellow-600 flex-shrink-0">
+                          <Zap className="w-5 h-5" />
                         </div>
-                        <Link
-                          href="/settings/business-profile"
-                          className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-yellow-700 hover:text-yellow-800"
-                        >
-                          Configure electrician rates
-                          <ChevronRight className="w-4 h-4" />
-                        </Link>
+                        <div>
+                          <h3 className="font-semibold text-yellow-900 mb-2">Electrician Rate Settings</h3>
+                          <p className="text-sm text-yellow-700 mb-3">
+                            Configure your callout fees, per-point rates, and hourly pricing for electrical work.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
+                              Callout fee
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
+                              Per point
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
+                              Hourly rate
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-yellow-700">
+                              After hours
+                            </span>
+                          </div>
+                          <Link
+                            href="/settings/business-profile"
+                            className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-yellow-700 hover:text-yellow-800"
+                          >
+                            Configure electrician rates
+                            <ChevronRight className="w-4 h-4" />
+                          </Link>
+                        </div>
                       </div>
+                    </div>
+                    
+                    {/* Electrical licensing & compliance info */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
+                      <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-yellow-600" />
+                        Licensing & Compliance (Critical)
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div className="p-3 bg-rose-50 rounded-lg border border-rose-200">
+                          <span className="font-medium text-rose-700">Licensed Work Only</span>
+                          <p className="text-rose-600 text-xs mt-0.5">All electrical work requires license</p>
+                        </div>
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <span className="font-medium text-slate-700">AS/NZS 3000</span>
+                          <p className="text-slate-500 text-xs mt-0.5">Wiring Rules compliance</p>
+                        </div>
+                        <div className="p-3 bg-amber-50 rounded-lg">
+                          <span className="font-medium text-amber-700">Certificate of Compliance</span>
+                          <p className="text-amber-600 text-xs mt-0.5">Required for notifiable work</p>
+                        </div>
+                        <div className="p-3 bg-emerald-50 rounded-lg">
+                          <span className="font-medium text-emerald-700">RCDs Mandatory</span>
+                          <p className="text-emerald-600 text-xs mt-0.5">Safety switches on all circuits</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-slate-500">
+                        OMNEXORA includes CoC templates and compliance notes for all electrical documentation.
+                      </p>
                     </div>
                   </div>
                 )}

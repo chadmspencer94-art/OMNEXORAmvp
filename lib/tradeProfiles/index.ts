@@ -11,6 +11,7 @@
 
 export * from "./plasterer";
 export * from "./roofer";
+export * from "./electrician";
 
 // Trade profile type
 export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Other";
@@ -24,6 +25,9 @@ export function getTradeSystemPromptContext(tradeType: string | null): string {
     case "Roofer":
       const { getRooferSystemPromptContext } = require("./roofer");
       return getRooferSystemPromptContext();
+    case "Electrician":
+      const { getElectricianSystemPromptContext } = require("./electrician");
+      return getElectricianSystemPromptContext();
     case "Painter":
       return `
 Trade-Specific Context (Painter):
@@ -45,14 +49,8 @@ Trade-Specific Context (Carpenter):
 - Safety: power tool safety, manual handling, working at heights
 `;
     case "Electrician":
-      return `
-Trade-Specific Context (Electrician):
-- This is an electrical job in Australia
-- Must be performed by licensed electrician
-- Must comply with AS/NZS 3000 (Wiring Rules)
-- Certificate of Compliance required for notifiable work
-- Safety: electrical isolation, live work procedures, testing
-`;
+      const { getElectricianSystemPromptContext: getElecContext } = require("./electrician");
+      return getElecContext();
     default:
       return `
 Trade-Specific Context:
@@ -100,9 +98,12 @@ export function getTradeComplianceNotes(tradeType: string | null): string[] {
     case "Electrician":
       return [
         "AS/NZS 3000 - Electrical installations (Wiring Rules)",
-        "AS/NZS 3008 - Electrical installations - Selection of cables",
+        "AS/NZS 3008 - Selection of cables",
+        "AS 3786 - Smoke alarms",
+        "Certificate of Compliance (CoC) for notifiable work",
+        "RCDs mandatory on all residential circuits",
         "State electrical licensing requirements",
-        "Certificate of Compliance requirements",
+        "Isolation and lockout/tagout procedures",
       ];
     default:
       return [
