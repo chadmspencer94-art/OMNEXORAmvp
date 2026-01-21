@@ -23,7 +23,7 @@ interface RateTemplate {
   updatedAt: string;
 }
 
-const TRADE_TYPES = ["Painter", "Plasterer", "Carpenter", "Electrician", "Roofer", "Plumber", "Concreter", "HVAC", "Flooring", "Other"];
+const TRADE_TYPES = ["Painter", "Plasterer", "Carpenter", "Electrician", "Roofer", "Plumber", "Concreter", "HVAC", "Flooring", "Landscaper", "Other"];
 const PROPERTY_TYPES = ["Residential", "Commercial", "Strata", "Other"];
 
 export default function RateTemplatesClient() {

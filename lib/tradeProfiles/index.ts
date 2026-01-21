@@ -17,9 +17,10 @@ export * from "./concreter";
 export * from "./carpenter";
 export * from "./hvac";
 export * from "./flooring";
+export * from "./landscaper";
 
 // Trade profile type
-export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "HVAC" | "Flooring" | "Other";
+export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "HVAC" | "Flooring" | "Landscaper" | "Other";
 
 // Get trade-specific system prompt context for AI
 export function getTradeSystemPromptContext(tradeType: string | null): string {
@@ -59,6 +60,9 @@ Trade-Specific Context (Painter):
     case "Flooring":
       const { getFlooringSystemPromptContext } = require("./flooring");
       return getFlooringSystemPromptContext();
+    case "Landscaper":
+      const { getLandscaperSystemPromptContext } = require("./landscaper");
+      return getLandscaperSystemPromptContext();
     case "Electrician":
       const { getElectricianSystemPromptContext: getElecContext } = require("./electrician");
       return getElecContext();
@@ -165,6 +169,17 @@ export function getTradeComplianceNotes(tradeType: string | null): string[] {
         "Expansion gaps mandatory (10mm min)",
         "Asbestos check before old floor removal",
         "Acclimatisation 48-72hrs before install",
+      ];
+    case "Landscaper":
+      return [
+        "AS 1926.1 - Pool fencing (1200mm min, self-closing gate)",
+        "AS 4678 - Retaining walls (engineering over 600-1000mm)",
+        "Tree removal permits (check local council)",
+        "Dial Before You Dig (mandatory excavation)",
+        "Stormwater - no redirect to neighbours",
+        "AS 3959 - Bushfire zone landscaping",
+        "Pool fence inspection certificate",
+        "Council approval for significant structures",
       ];
     default:
       return [
