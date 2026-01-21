@@ -14,6 +14,7 @@ export * from "./roofer";
 export * from "./electrician";
 export * from "./plumber";
 export * from "./concreter";
+export * from "./carpenter";
 
 // Trade profile type
 export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "Other";
@@ -48,14 +49,8 @@ Trade-Specific Context (Painter):
 - Safety: lead paint testing (pre-1970 buildings), working at heights, respiratory protection
 `;
     case "Carpenter":
-      return `
-Trade-Specific Context (Carpenter):
-- This is a carpentry job in Australia
-- Common work includes: framing, doors, windows, decking, cabinetry, trim
-- Materials: timber (hardwood/softwood), engineered wood, MDF
-- Must comply with Building Code of Australia structural requirements
-- Safety: power tool safety, manual handling, working at heights
-`;
+      const { getCarpenterSystemPromptContext } = require("./carpenter");
+      return getCarpenterSystemPromptContext();
     case "Electrician":
       const { getElectricianSystemPromptContext: getElecContext } = require("./electrician");
       return getElecContext();
@@ -98,10 +93,15 @@ export function getTradeComplianceNotes(tradeType: string | null): string[] {
       ];
     case "Carpenter":
       return [
-        "Building Code of Australia structural requirements",
         "AS 1684 - Residential timber-framed construction",
         "AS 1720 - Timber structures",
-        "Termite management requirements (varies by region)",
+        "AS 4440 - Nail plated timber roof trusses",
+        "AS 1604 - Timber preservative treatment (H-class)",
+        "AS 1657 - Stairs, walkways, balustrades",
+        "AS 3660.1 - Termite management",
+        "Balustrades: 1000mm min height, 125mm max gap",
+        "Stairs: Max 190mm riser, min 240mm going",
+        "Building Code of Australia structural provisions",
       ];
     case "Electrician":
       return [

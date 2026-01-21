@@ -557,35 +557,69 @@ export default function SettingsPage() {
 
                 {/* Carpenter-specific tips */}
                 {userData.primaryTrade === "Carpenter" && (
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100 p-5 sm:p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
-                        <Wrench className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-amber-900 mb-2">Carpenter Rate Settings</h3>
-                        <p className="text-sm text-amber-700 mb-3">
-                          Configure your day rates, hourly rates, and linear metre pricing for carpentry work.
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
-                            Day rate
-                          </span>
-                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
-                            Hourly rate
-                          </span>
-                          <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
-                            Trim per lm
-                          </span>
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100 p-5 sm:p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
+                          <Wrench className="w-5 h-5" />
                         </div>
-                        <Link
-                          href="/settings/business-profile"
-                          className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-amber-700 hover:text-amber-800"
-                        >
-                          Configure carpenter rates
-                          <ChevronRight className="w-4 h-4" />
-                        </Link>
+                        <div>
+                          <h3 className="font-semibold text-amber-900 mb-2">Carpenter Rate Settings</h3>
+                          <p className="text-sm text-amber-700 mb-3">
+                            Configure your rates for framing, decking, doors, flooring, and trim work.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
+                              Day rate
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
+                              Decking per m²
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
+                              Trim per lm
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-amber-700">
+                              Door hang
+                            </span>
+                          </div>
+                          <Link
+                            href="/settings/business-profile"
+                            className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-amber-700 hover:text-amber-800"
+                          >
+                            Configure carpenter rates
+                            <ChevronRight className="w-4 h-4" />
+                          </Link>
+                        </div>
                       </div>
+                    </div>
+                    
+                    {/* Carpentry standards & compliance info */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
+                      <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-amber-600" />
+                        Standards & Compliance
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <span className="font-medium text-slate-700">AS 1684</span>
+                          <p className="text-slate-500 text-xs mt-0.5">Timber-framed construction</p>
+                        </div>
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <span className="font-medium text-slate-700">AS 1657</span>
+                          <p className="text-slate-500 text-xs mt-0.5">Stairs & balustrades</p>
+                        </div>
+                        <div className="p-3 bg-amber-50 rounded-lg">
+                          <span className="font-medium text-amber-700">H-Class Treatment</span>
+                          <p className="text-amber-600 text-xs mt-0.5">H3 external, H4 in-ground</p>
+                        </div>
+                        <div className="p-3 bg-emerald-50 rounded-lg">
+                          <span className="font-medium text-emerald-700">Termite Management</span>
+                          <p className="text-emerald-600 text-xs mt-0.5">AS 3660.1 requirements</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-slate-500">
+                        OMNEXORA includes timber grades, treatment requirements, and balustrade/stair compliance checks.
+                      </p>
                     </div>
                   </div>
                 )}
