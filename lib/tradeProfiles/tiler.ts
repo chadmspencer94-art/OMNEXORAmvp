@@ -1128,9 +1128,9 @@ export function calculateTilingMaterials(params: {
 }
 
 /**
- * Get slip resistance requirement
+ * Get slip resistance requirement for tiling applications
  */
-export function getSlipResistanceRequirement(application: string): {
+export function getTileSlipResistanceRequirement(application: string): {
   pRating: string;
   rRating: string;
   notes: string;
