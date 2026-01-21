@@ -15,9 +15,10 @@ export * from "./electrician";
 export * from "./plumber";
 export * from "./concreter";
 export * from "./carpenter";
+export * from "./hvac";
 
 // Trade profile type
-export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "Other";
+export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Concreter" | "HVAC" | "Other";
 
 // Get trade-specific system prompt context for AI
 export function getTradeSystemPromptContext(tradeType: string | null): string {
@@ -51,6 +52,9 @@ Trade-Specific Context (Painter):
     case "Carpenter":
       const { getCarpenterSystemPromptContext } = require("./carpenter");
       return getCarpenterSystemPromptContext();
+    case "HVAC":
+      const { getHVACSystemPromptContext } = require("./hvac");
+      return getHVACSystemPromptContext();
     case "Electrician":
       const { getElectricianSystemPromptContext: getElecContext } = require("./electrician");
       return getElecContext();
@@ -135,6 +139,17 @@ export function getTradeComplianceNotes(tradeType: string | null): string[] {
         "Control joint spacing requirements",
         "Curing requirements (minimum 7 days)",
         "Silica dust and cement burn safety",
+      ];
+    case "HVAC":
+      return [
+        "ARC (Australian Refrigeration Council) license required",
+        "AS/NZS 5149 - Refrigerating systems safety",
+        "AS/NZS 3823 - Air conditioner performance",
+        "Ozone Protection and SGG Management Act",
+        "Refrigerant purchase/handling records required",
+        "GEMS energy efficiency registration",
+        "Electrical work may require electrician license",
+        "Annual refrigerant reporting to ARC",
       ];
     default:
       return [

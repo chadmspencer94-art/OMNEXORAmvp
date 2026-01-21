@@ -29,6 +29,7 @@ import {
   Home,
   Droplet,
   Hammer,
+  Wind,
 } from "lucide-react";
 import { featureFlags } from "@/lib/featureFlags";
 
@@ -89,6 +90,12 @@ const TRADE_CONFIG: Record<string, { icon: React.ReactNode; color: string; gradi
     color: "text-stone-600",
     gradient: "from-stone-500 to-zinc-600",
     label: "Concreter",
+  },
+  HVAC: {
+    icon: <Wind className="w-5 h-5" />,
+    color: "text-indigo-600",
+    gradient: "from-indigo-500 to-violet-600",
+    label: "HVAC Technician",
   },
   Other: {
     icon: <Briefcase className="w-5 h-5" />,
@@ -895,6 +902,75 @@ export default function SettingsPage() {
                       </div>
                       <p className="mt-3 text-xs text-slate-500">
                         OMNEXORA includes concrete grade specifications, reinforcement schedules, and site classification notes.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* HVAC-specific tips */}
+                {userData.primaryTrade === "HVAC" && (
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-xl border border-indigo-100 p-5 sm:p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 flex-shrink-0">
+                          <Wind className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-indigo-900 mb-2">HVAC Rate Settings</h3>
+                          <p className="text-sm text-indigo-700 mb-3">
+                            Configure your installation rates, service charges, and equipment pricing.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-indigo-700">
+                              Split install
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-indigo-700">
+                              Service rate
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-indigo-700">
+                              Pipework/m
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-indigo-700">
+                              Ducted
+                            </span>
+                          </div>
+                          <Link
+                            href="/settings/business-profile"
+                            className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-indigo-700 hover:text-indigo-800"
+                          >
+                            Configure HVAC rates
+                            <ChevronRight className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* ARC Licensing & compliance info */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
+                      <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-indigo-600" />
+                        ARC Licensing & Compliance (Critical)
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div className="p-3 bg-rose-50 rounded-lg border border-rose-200">
+                          <span className="font-medium text-rose-700">ARC License Required</span>
+                          <p className="text-rose-600 text-xs mt-0.5">Refrigerant handling mandatory</p>
+                        </div>
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <span className="font-medium text-slate-700">AS/NZS 5149</span>
+                          <p className="text-slate-500 text-xs mt-0.5">Refrigeration systems safety</p>
+                        </div>
+                        <div className="p-3 bg-indigo-50 rounded-lg">
+                          <span className="font-medium text-indigo-700">GEMS Registration</span>
+                          <p className="text-indigo-600 text-xs mt-0.5">Energy efficiency compliance</p>
+                        </div>
+                        <div className="p-3 bg-amber-50 rounded-lg">
+                          <span className="font-medium text-amber-700">Annual Reporting</span>
+                          <p className="text-amber-600 text-xs mt-0.5">Refrigerant usage to ARC</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-slate-500">
+                        OMNEXORA includes ARC license details on all documentation and refrigerant usage tracking.
                       </p>
                     </div>
                   </div>
