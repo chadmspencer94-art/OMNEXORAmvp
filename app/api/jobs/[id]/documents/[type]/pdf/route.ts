@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { getJobById } from "@/lib/jobs";
 import { hasDocumentFeatureAccess } from "@/lib/documentAccess";
-import { PdfDocument } from "@/lib/pdfGenerator";
+import { PdfDocument, PDF_CONFIG } from "@/lib/pdfGenerator";
 
 type DocumentType = "SWMS" | "VARIATION" | "EOT" | "PROGRESS_CLAIM" | "HANDOVER" | "MAINTENANCE";
 
@@ -13,6 +13,16 @@ const DOCUMENT_FIELDS: Record<DocumentType, { textField: keyof any; confirmedFie
   PROGRESS_CLAIM: { textField: "progressClaimText", confirmedField: "progressClaimConfirmed" },
   HANDOVER: { textField: "handoverText", confirmedField: "handoverConfirmed" },
   MAINTENANCE: { textField: "maintenanceText", confirmedField: "maintenanceConfirmed" },
+};
+
+// Document type labels for display
+const DOCUMENT_LABELS: Record<DocumentType, string> = {
+  SWMS: "Safe Work Method Statement",
+  VARIATION: "Variation Notice",
+  EOT: "Extension of Time",
+  PROGRESS_CLAIM: "Progress Claim",
+  HANDOVER: "Handover & Practical Completion",
+  MAINTENANCE: "Maintenance Schedule",
 };
 
 /**
@@ -156,9 +166,9 @@ export async function POST(
       );
     }
 
-    // Generate PDF - Compact one-page premium layout for client-facing documents
+    // Generate PDF with proper multi-page layout for documents with full content
     const pdf = new PdfDocument();
-    const docLabel = docType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    const docLabel = DOCUMENT_LABELS[docType] || docType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
     const documentNumber = `${docType}-${id.slice(0, 8).toUpperCase()}`;
     const documentDate = new Date().toLocaleDateString("en-AU", {
       day: "numeric",
@@ -167,7 +177,7 @@ export async function POST(
     });
 
     // =========================================
-    // COMPACT PREMIUM HEADER
+    // PREMIUM HEADER
     // =========================================
     pdf.addCompactPremiumHeader({
       documentType: docLabel,
@@ -188,49 +198,90 @@ export async function POST(
     });
 
     // =========================================
-    // DOCUMENT CONTENT (Compact formatting)
+    // DOCUMENT CONTENT - Full content with proper formatting
     // =========================================
-    const contentSections = content.split("\n\n");
-    let sectionCount = 0;
-    const maxSections = 8; // Limit sections for one-page fit
-    
-    for (const section of contentSections) {
-      if (section.trim() && sectionCount < maxSections) {
-        sectionCount++;
-        
-        // Check if it's a heading (starts with # or all caps)
-        if (section.match(/^#+\s/) || (section.length < 100 && section === section.toUpperCase() && !section.includes("."))) {
-          pdf.addCompactSectionHeading(section.replace(/^#+\s/, "").trim());
-        } else if (section.match(/^[-•*]\s/m)) {
-          // It's a bullet list - use compact version
-          const items = section.split("\n").filter((line: string) => line.trim());
-          pdf.addCompactBulletList(
-            items.map((item: string) => item.replace(/^[-•*]\s+/, "")),
-            6 // Max 6 items per list for compact fit
-          );
-          pdf.addSpace(2);
-        } else if (section.match(/^\d+\.\s/m)) {
-          // It's a numbered list - render compactly
-          const items = section.split("\n").filter((line: string) => line.trim()).slice(0, 6);
-          items.forEach((item: string, idx: number) => {
-            pdf.addCompactText(`${idx + 1}. ${item.replace(/^\d+\.\s+/, "")}`, { indent: 0 });
-          });
-          pdf.addSpace(2);
-        } else {
-          // Regular text - truncate if too long
-          const text = section.trim();
-          const truncatedText = text.length > 250 ? text.substring(0, 250) + "..." : text;
-          pdf.addCompactText(truncatedText);
-          pdf.addSpace(2);
-        }
+    // Parse content by lines, handling markdown formatting
+    const lines = content.split("\n");
+    let currentList: string[] = [];
+    let inChecklist = false;
+
+    const flushList = () => {
+      if (currentList.length > 0) {
+        pdf.addBulletList(currentList);
+        currentList = [];
+      }
+      inChecklist = false;
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      
+      // Skip empty lines
+      if (!line) {
+        flushList();
+        pdf.addSpace(2);
+        continue;
+      }
+
+      // Handle markdown headings: ## Heading or **Heading**
+      const markdownHeadingMatch = line.match(/^#{1,6}\s+(.+)$/);
+      const boldHeadingMatch = line.match(/^\*\*(.+)\*\*$/);
+      const numberedHeadingMatch = line.match(/^\d+\.\s+\*\*(.+)\*\*$/);
+      
+      if (markdownHeadingMatch || boldHeadingMatch || numberedHeadingMatch) {
+        flushList();
+        const headingText = (markdownHeadingMatch?.[1] || boldHeadingMatch?.[1] || numberedHeadingMatch?.[1] || "").trim();
+        pdf.addSectionHeading(headingText);
+        continue;
+      }
+
+      // Handle sub-headings with - prefix like "- Title"
+      const subHeadingMatch = line.match(/^[-•]\s+\*\*(.+)\*\*/);
+      if (subHeadingMatch) {
+        flushList();
+        pdf.addSubheading(subHeadingMatch[1].trim());
+        continue;
+      }
+
+      // Handle checkboxes: ☐ Item or [ ] Item
+      const checkboxMatch = line.match(/^[☐☑✓✔\[\]]\s*(.+)$/);
+      if (checkboxMatch) {
+        inChecklist = true;
+        currentList.push(`☐ ${checkboxMatch[1].replace(/\*\*/g, "").trim()}`);
+        continue;
+      }
+
+      // Handle bullet points: - Item or • Item or * Item
+      const bulletMatch = line.match(/^[-•*]\s+(.+)$/);
+      if (bulletMatch && !inChecklist) {
+        currentList.push(bulletMatch[1].replace(/\*\*/g, "").trim());
+        continue;
+      }
+
+      // Handle numbered list items: 1. Item
+      const numberedMatch = line.match(/^\d+\.\s+(.+)$/);
+      if (numberedMatch && !line.includes("**")) {
+        currentList.push(numberedMatch[1].replace(/\*\*/g, "").trim());
+        continue;
+      }
+
+      // Regular text - flush any pending list first
+      flushList();
+      
+      // Clean markdown from text (remove ** for bold, etc.)
+      const cleanedLine = line.replace(/\*\*/g, "").replace(/\*/g, "").trim();
+      if (cleanedLine) {
+        pdf.addParagraph(cleanedLine);
       }
     }
+    
+    // Flush any remaining list items
+    flushList();
 
     // =========================================
     // TOTALS BOX FOR PROGRESS CLAIM / INVOICE TYPES
     // =========================================
     if (docType === "PROGRESS_CLAIM") {
-      // Extract totals from content if available
       const totalMatch = content.match(/total[:\s]*\$?([\d,]+\.?\d*)/i);
       const gstMatch = content.match(/gst[:\s]*\$?([\d,]+\.?\d*)/i);
       const subtotalMatch = content.match(/subtotal[:\s]*\$?([\d,]+\.?\d*)/i);
@@ -251,7 +302,12 @@ export async function POST(
     // =========================================
     // SIGNATURE BLOCK (Trade + Client)
     // =========================================
+    pdf.addSpace(6);
+    pdf.addSeparator();
+    pdf.addSectionHeading("Acceptance & Signatures");
     pdf.addSpace(4);
+    
+    // Two-column signature layout
     pdf.addCompactDualSignatureBlock({
       tradeLabel: "CONTRACTOR/TRADE",
       tradeName: businessProfile?.legalName || "",
@@ -260,12 +316,9 @@ export async function POST(
     });
 
     // =========================================
-    // COMPACT FOOTER
+    // STANDARD FOOTER WITH PAGE NUMBERS
     // =========================================
-    pdf.addCompactFooter({
-      issuerName: businessProfile?.legalName || "OMNEXORA",
-      documentId: documentNumber,
-    });
+    pdf.addStandardFooters({ jobId: id });
 
     // Return PDF
     const blob = pdf.getBlob();
