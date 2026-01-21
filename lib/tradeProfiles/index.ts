@@ -12,9 +12,10 @@
 export * from "./plasterer";
 export * from "./roofer";
 export * from "./electrician";
+export * from "./plumber";
 
 // Trade profile type
-export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Other";
+export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Plumber" | "Other";
 
 // Get trade-specific system prompt context for AI
 export function getTradeSystemPromptContext(tradeType: string | null): string {
@@ -28,6 +29,9 @@ export function getTradeSystemPromptContext(tradeType: string | null): string {
     case "Electrician":
       const { getElectricianSystemPromptContext } = require("./electrician");
       return getElectricianSystemPromptContext();
+    case "Plumber":
+      const { getPlumberSystemPromptContext } = require("./plumber");
+      return getPlumberSystemPromptContext();
     case "Painter":
       return `
 Trade-Specific Context (Painter):
@@ -104,6 +108,17 @@ export function getTradeComplianceNotes(tradeType: string | null): string[] {
         "RCDs mandatory on all residential circuits",
         "State electrical licensing requirements",
         "Isolation and lockout/tagout procedures",
+      ];
+    case "Plumber":
+      return [
+        "AS/NZS 3500 - Plumbing and Drainage Code",
+        "AS 5601 - Gas installations",
+        "WaterMark certification required for all products",
+        "WELS water efficiency ratings",
+        "Tempering valves (TMV) mandatory in bathrooms",
+        "Compliance certificate for notifiable work",
+        "State plumbing licensing requirements",
+        "Backflow prevention requirements",
       ];
     default:
       return [
