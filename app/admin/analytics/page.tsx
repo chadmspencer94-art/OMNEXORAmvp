@@ -1,10 +1,10 @@
-import { requireAdmin } from "@/lib/authChecks";
+import { requireAdminUser } from "@/lib/authChecks";
 import AdminAdvancedAnalyticsClient from "./AdminAdvancedAnalyticsClient";
 import { ArrowLeft, Crown, BarChart3 } from "lucide-react";
 import Link from "next/link";
 
 export default async function AdminAdvancedAnalyticsPage() {
-  await requireAdmin();
+  await requireAdminUser();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
