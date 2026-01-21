@@ -26,6 +26,7 @@ import {
   Sparkles,
   LayoutGrid,
   Package,
+  Home,
 } from "lucide-react";
 import { featureFlags } from "@/lib/featureFlags";
 
@@ -68,6 +69,12 @@ const TRADE_CONFIG: Record<string, { icon: React.ReactNode; color: string; gradi
     color: "text-yellow-600",
     gradient: "from-yellow-500 to-amber-600",
     label: "Electrician",
+  },
+  Roofer: {
+    icon: <Home className="w-5 h-5" />,
+    color: "text-sky-600",
+    gradient: "from-sky-500 to-blue-600",
+    label: "Roofer",
   },
   Other: {
     icon: <Briefcase className="w-5 h-5" />,
@@ -599,6 +606,75 @@ export default function SettingsPage() {
                       </div>
                       <p className="mt-3 text-xs text-slate-500">
                         OMNEXORA automatically includes compliance notes in your documents based on job requirements.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Roofer-specific tips */}
+                {userData.primaryTrade === "Roofer" && (
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-br from-sky-50 to-blue-50 rounded-xl border border-sky-100 p-5 sm:p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600 flex-shrink-0">
+                          <Home className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-sky-900 mb-2">Roofer Rate Settings</h3>
+                          <p className="text-sm text-sky-700 mb-3">
+                            Configure your rates for metal roofing, tiles, guttering, and repair work.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-sky-700">
+                              Metal per m²
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-sky-700">
+                              Tiles per m²
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-sky-700">
+                              Gutters per lm
+                            </span>
+                            <span className="px-3 py-1 bg-white/60 rounded-full text-xs font-medium text-sky-700">
+                              Leak repairs
+                            </span>
+                          </div>
+                          <Link
+                            href="/settings/business-profile"
+                            className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-sky-700 hover:text-sky-800"
+                          >
+                            Configure roofer rates
+                            <ChevronRight className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Roofing safety & compliance info */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
+                      <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-sky-600" />
+                        Safety & Compliance (Critical)
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div className="p-3 bg-rose-50 rounded-lg border border-rose-200">
+                          <span className="font-medium text-rose-700">Working at Heights</span>
+                          <p className="text-rose-600 text-xs mt-0.5">Mandatory controls above 2m</p>
+                        </div>
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <span className="font-medium text-slate-700">AS 1562.1</span>
+                          <p className="text-slate-500 text-xs mt-0.5">Sheet roof & wall cladding</p>
+                        </div>
+                        <div className="p-3 bg-amber-50 rounded-lg">
+                          <span className="font-medium text-amber-700">AS 3959</span>
+                          <p className="text-amber-600 text-xs mt-0.5">Bushfire-prone areas (BAL)</p>
+                        </div>
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <span className="font-medium text-blue-700">Colorbond Warranty</span>
+                          <p className="text-blue-600 text-xs mt-0.5">Up to 36 years when installed correctly</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-slate-500">
+                        OMNEXORA includes SWMS templates with working at heights controls and compliance notes for all roofing documents.
                       </p>
                     </div>
                   </div>

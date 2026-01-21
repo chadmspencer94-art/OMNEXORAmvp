@@ -10,9 +10,10 @@
  */
 
 export * from "./plasterer";
+export * from "./roofer";
 
 // Trade profile type
-export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Other";
+export type TradeType = "Painter" | "Plasterer" | "Carpenter" | "Electrician" | "Roofer" | "Other";
 
 // Get trade-specific system prompt context for AI
 export function getTradeSystemPromptContext(tradeType: string | null): string {
@@ -20,6 +21,9 @@ export function getTradeSystemPromptContext(tradeType: string | null): string {
     case "Plasterer":
       const { getPlastererSystemPromptContext } = require("./plasterer");
       return getPlastererSystemPromptContext();
+    case "Roofer":
+      const { getRooferSystemPromptContext } = require("./roofer");
+      return getRooferSystemPromptContext();
     case "Painter":
       return `
 Trade-Specific Context (Painter):
@@ -69,6 +73,15 @@ export function getTradeComplianceNotes(tradeType: string | null): string[] {
         "AS/NZS 2588 - Gypsum plasterboard product standard",
         "AS 3740 - Waterproofing of wet areas (moisture-resistant board)",
         "Building Code of Australia fire-rating requirements",
+      ];
+    case "Roofer":
+      return [
+        "AS 1562.1 - Sheet roof and wall cladding (Metal)",
+        "AS 4200.2 - Pliable building membranes and underlays",
+        "AS 3959 - Construction in bushfire-prone areas",
+        "AS/NZS 3500.3 - Stormwater drainage",
+        "Working at Heights regulations (mandatory above 2m)",
+        "Building Code of Australia Part 3.5 - Roof cladding",
       ];
     case "Painter":
       return [
